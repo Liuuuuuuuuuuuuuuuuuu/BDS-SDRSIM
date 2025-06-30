@@ -43,7 +43,9 @@ static int     ca_ready=0;
 
 /* ---------- Channel helpers ---------- */
 void channel_reset(channel_t *c,int prn){
-    memset(c,0,sizeof(*c)); c->prn=prn;
+    memset(c,0,sizeof(*c));
+    c->prn   = prn;
+    c->sf_id = 1;                     /* start from subframe 1 */
     if(!ca_ready){
         for(int p=1;p<=63;++p)
             for(int i=0;i<CODE_LEN;++i)

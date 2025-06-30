@@ -8,6 +8,7 @@
 #include "channel.h"
 #include "coord.h"
 #include "orbits.h"
+#include "navbits.h"
 #include "timeconv.h"
 
 #define FSAMP     8.184e6
@@ -43,6 +44,8 @@ void generate_signal(const sim_config_t *cfg)
 {
     coord_t usr={0}; llh2xyz(cfg->llh,&usr);
     if(utc_to_bdt(cfg->time_start,&usr.week,&usr.sow)!=0){fputs("UTC format err\n",stderr);return;}
+
+    navbits_init(usr.week, usr.sow);
 
     channel_t ch[MAX_CH]; int n_ch; select_channels(ch,&n_ch,&usr);
 
