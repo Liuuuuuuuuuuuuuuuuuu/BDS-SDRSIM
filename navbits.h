@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include "bdssim.h"
 
-#define SUBFRAME_BITS (300)          /* 30 word ×10 bit */
+#define SUBFRAME_BITS (300)          /* 10 words × 30 bits */
+#define HALF_SUBFRAME_BITS (SUBFRAME_BITS/2)
 #define SF_STREAM_LEN (SUBFRAME_BITS)
 
 void navbits_init(int bdt_week, double sow);

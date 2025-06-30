@@ -34,7 +34,7 @@ static void build_subframe1(uint8_t *out, const ephemeris_t *e, int week, double
     memset(out,0,SF_STREAM_LEN);
 
     /* word1：帧同步 11 bits（11100010010） + FraID(001) + SOW[19:12] */
-    uint16_t info = 0x702;            /* 11100010010 */
+    uint16_t info = 0x712;            /* 11100010010 */
     info = ((info << 3)|0x1) & 0x7FF; /* +FraID=001 */
     info = (info<<8) | ((uint32_t)sow>>12 & 0xFF);
     put_word(out,0, make_word30(info));
@@ -56,6 +56,9 @@ static void build_subframe1(uint8_t *out, const ephemeris_t *e, int week, double
     int32_t a2_i = (int32_t)llround(e->af2 / pow(2,-66));
     uint32_t info5 = ((a1_i & 0xFFFF)<<11) | (a2_i & 0x7FF);
     put_word(out,120, make_word30(info5));
+
+    /* 前 5 words 重複一次構成 10 words */
+    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
 /* --------------------------------- 子帧 2 ----------------------------------- */
@@ -64,7 +67,7 @@ static void build_subframe2(uint8_t *out, const ephemeris_t *e)
     memset(out,0,SF_STREAM_LEN);
 
     /* word1: FrameSync + FraID=010 + toe[15:8] */
-    uint16_t info = 0x702;            /* sync */
+    uint16_t info = 0x712;            /* sync */
     info = ((info<<3)|0x2) & 0x7FF;   /* FraID=010 */
     info = (info<<8) | ((uint32_t)e->toe>>8 &0xFF);
     put_word(out,0, make_word30(info));
@@ -88,6 +91,8 @@ static void build_subframe2(uint8_t *out, const ephemeris_t *e)
 
     /* word5: M0[20:0] 首段 */
     put_word(out,120, make_word30(M0_i & 0x1FFFFF));
+
+    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
 /* --------------------------------- 子帧 3 ----------------------------------- */
@@ -96,7 +101,7 @@ static void build_subframe3(uint8_t *out, const ephemeris_t *e)
     memset(out,0,SF_STREAM_LEN);
 
     /* word1 : sync + FraID=011 + Ω0[21:14] */
-    uint16_t info = 0x702;
+    uint16_t info = 0x712;
     info = ((info<<3)|0x3) & 0x7FF;
     int32_t O0_i = (int32_t)llround(e->omega0 / pow(2,-31));
     info = (info<<8) | ((O0_i>>14)&0xFF);
@@ -122,6 +127,8 @@ static void build_subframe3(uint8_t *out, const ephemeris_t *e)
     int32_t odot_i = (int32_t)llround(e->omegadot / pow(2,-43));/* 24 bits */
     uint32_t info5 = ((idot_i &0x3FF)<<20) | (odot_i &0xFFFFF);
     put_word(out,120, make_word30(info5));
+
+    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
 /* ---------------------------------------------------------------------------- */
