@@ -13,6 +13,9 @@
 uint8_t      prn_code[MAX_SAT][CODE_LEN];   /* Gold 2046-chip */
 ephemeris_t  eph[MAX_SAT];                  /* ★ 真正配置記憶體 ★ */
 
+double nav_time_min = 0.0;
+double nav_time_max = 0.0;
+
 int simulator_inited = 0;
 
 /* ───────────── Gold 2046 產生 ───────────── */

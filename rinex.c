@@ -8,8 +8,7 @@
 #include <ctype.h>
 #include <time.h>
 #include "bdssim.h"
-
-extern ephemeris_t eph[MAX_SAT];
+#include "globals.h"
 
 /* ---------- 小工具 ---------- */
 static double fld(const char *ln, int idx, int ind)
@@ -65,6 +64,9 @@ int read_rinex_nav(const char *fname)
 
     const int IND1 = 23;   /* 第一行 offset */
     const int INDN = 4;    /* 後 7 行 offset */
+
+    nav_time_min = 1e20;
+    nav_time_max = -1e20;
 
     while (fgets(l, sizeof(l), fp))
     {
@@ -142,6 +144,10 @@ int read_rinex_nav(const char *fname)
         /* 星期計數也寫一次（部分接收機只讀 .week） */
         int week_rnx = ifld(r[4], 2, INDN);
         if (week_rnx > 0) e->week = week_rnx;
+
+        double t_bdt = e->week * 604800.0 + e->toc;
+        if (t_bdt < nav_time_min) nav_time_min = t_bdt;
+        if (t_bdt > nav_time_max) nav_time_max = t_bdt;
     }
 
     fclose(fp);
