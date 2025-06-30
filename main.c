@@ -1,0 +1,102 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <getopt.h>
+
+#include "bdssim.h"
+#include "timeconv.h"
+
+/* ───────────────────────────── */
+static void usage(const char *p)
+{
+    puts("用法:");
+    printf("  %s --rinex nav.rnx --start YYYY/MM/DD,hh:mm:ss "
+           "[--llh lat,lon,h] [--duration sec]\n", p);
+}
+
+int main(int argc,char *argv[])
+{
+    /* 1. 預設參數 ----------------------------------- */
+    sim_config_t cfg = {0};
+    cfg.sample_rate = 8184000;
+    cfg.gain        = 1.0;
+    cfg.step_ms     = 10;
+    cfg.duration    = 300;                /* 預設 300 秒 */
+
+    /* 2. 解析 CLI ----------------------------------- */
+    static struct option longopt[] = {
+        {"rinex",    required_argument, 0, 'e'},
+        {"start",    required_argument, 0, 't'},
+        {"llh",      required_argument, 0, 'l'},
+        {"duration", required_argument, 0, 'd'},
+        {"help",     no_argument,       0, 'h'},
+        {0,0,0,0}
+    };
+
+    int c, idx;
+    while((c = getopt_long(argc, argv, "e:t:l:d:h", longopt, &idx)) != -1){
+        switch(c){
+        case 'e':
+            strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
+            break;
+        case 't':
+            strncpy(cfg.time_start, optarg, sizeof(cfg.time_start)-1);
+            break;
+        case 'l': {                      /* lat,lon,h */
+            double lat, lon, h;
+            if(sscanf(optarg,"%lf,%lf,%lf",&lat,&lon,&h) != 3){
+                fprintf(stderr,"--llh 格式應為 lat,lon,h\n");
+                return 1;
+            }
+            cfg.llh[0] = lat;
+            cfg.llh[1] = lon;
+            cfg.llh[2] = h;
+            break;
+        }
+        case 'd':
+            cfg.duration = (uint32_t)atoi(optarg);
+            break;
+        default:
+            usage(argv[0]); return 0;
+        }
+    }
+
+    if(cfg.rinex_file[0]=='\0' || cfg.time_start[0]=='\0'){
+        usage(argv[0]); return 1;
+    }
+
+    /* 3. 初始化 ------------------------------------- */
+    if(!init_simulator(&cfg)){
+        fprintf(stderr,"初始化失敗\n");
+        return 1;
+    }
+    
+    /* ---- 3-b. 把使用者參數轉成 coord_t，並選 PRN → 顯示 ---- */
+    coord_t usr;
+    llh2xyz(cfg.llh, &usr);
+    utc_to_bdt(cfg.time_start, &usr.week, &usr.sow);
+
+    channel_t ch[MAX_CH];
+    int n_ch;
+    select_channels(ch,&n_ch,&usr);
+
+    /* 印出確認訊息 */
+    printf("[cfg] UTC   : %s\n", cfg.time_start);
+    printf("[cfg] BDT   : week %d  sow %.3f\n", usr.week, usr.sow);
+    printf("[cfg] LLH   : %.6f, %.6f, %.1f\n",
+           cfg.llh[0], cfg.llh[1], cfg.llh[2]);
+    printf("[cfg] XYZ   : %.3f %.3f %.3f (m)\n",
+           usr.xyz[0], usr.xyz[1], usr.xyz[2]);
+    printf("[cfg] PRN   :");
+    for(int i=0;i<n_ch;i++) printf(" %02d", ch[i].prn);
+    puts("");
+
+    /* 4. 產生基帶 ----------------------------------- */
+    generate_signal(&cfg);
+
+    /* 5. 結束 --------------------------------------- */
+    cleanup_simulator();
+    puts("👍 全部完成");
+    return 0;
+}
+
