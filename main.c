@@ -5,6 +5,7 @@
 
 #include "bdssim.h"
 #include "timeconv.h"
+#include "globals.h"
 
 /* ───────────────────────────── */
 static void usage(const char *p)
@@ -65,16 +66,42 @@ int main(int argc,char *argv[])
         usage(argv[0]); return 1;
     }
 
+    /* --duration 1~3600 sec; --llh lat[-90,90], lon[-180,180], h[-1000,20000] */
+    if(cfg.duration==0 || cfg.duration>3600){
+        fputs("--duration 範圍 1~3600 秒\n", stderr);
+        return 1;
+    }
+    if(cfg.llh[0]<-90.0 || cfg.llh[0]>90.0 ||
+       cfg.llh[1]<-180.0 || cfg.llh[1]>180.0 ||
+       cfg.llh[2]<-1000.0 || cfg.llh[2]>20000.0){
+        fputs("--llh 超出合理範圍\n", stderr);
+        return 1;
+    }
+
     /* 3. 初始化 ------------------------------------- */
     if(!init_simulator(&cfg)){
         fprintf(stderr,"初始化失敗\n");
         return 1;
     }
-    
+
+    /* -- start 時間檢查：必須在星曆區間 h-1 ~ h+1 內 -- */
+    int start_week; double start_sow;
+    if(utc_to_bdt(cfg.time_start, &start_week, &start_sow)!=0){
+        fputs("--start 格式錯誤\n", stderr);
+        return 1;
+    }
+    double start_bdt = start_week*604800.0 + start_sow;
+    if(start_bdt < nav_time_min - 3600.0 ||
+       start_bdt + cfg.duration > nav_time_max + 3600.0){
+        fputs("--start 超出星曆可用區間\n", stderr);
+        return 1;
+    }
+
     /* ---- 3-b. 把使用者參數轉成 coord_t，並選 PRN → 顯示 ---- */
     coord_t usr;
     llh2xyz(cfg.llh, &usr);
-    utc_to_bdt(cfg.time_start, &usr.week, &usr.sow);
+    usr.week = start_week;
+    usr.sow  = start_sow;
 
     channel_t ch[MAX_CH];
     int n_ch;
