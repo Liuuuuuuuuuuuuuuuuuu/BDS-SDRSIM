@@ -19,6 +19,8 @@ static double solve_kepler(double M,double e)
 /* ---------- 位置（共用） ---------- */
 static void sat_pos(const ephemeris_t *ep, double tk, double *xyz)
 {
+    if(ep->toe==0) tk = 0;           /* 防呆：缺 toe 則視為同步 */
+    
     double A   = ep->sqrtA*ep->sqrtA;
     double n0  = sqrt(GM/(A*A*A));
     double n   = n0 + ep->deltan;
@@ -45,8 +47,6 @@ static void sat_pos(const ephemeris_t *ep, double tk, double *xyz)
 
     double cosO = cos(omega), sinO = sin(omega);
     double cosi = cos(i),     sini = sin(i);
-    
-     if(ep->toe==0) tk = 0;           /* 防呆：缺 toe 則視為同步 */
 
     xyz[0] = x_op*cosO - y_op*cosi*sinO;
     xyz[1] = x_op*sinO + y_op*cosi*cosO;
