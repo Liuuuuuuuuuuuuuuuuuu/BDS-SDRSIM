@@ -56,6 +56,9 @@ static void build_subframe1(uint8_t *out, const ephemeris_t *e, int week, double
     int32_t a2_i = (int32_t)llround(e->af2 / pow(2,-66));
     uint32_t info5 = ((a1_i & 0xFFFF)<<11) | (a2_i & 0x7FF);
     put_word(out,120, make_word30(info5));
+
+    /* 前 5 words 重複一次構成 10 words */
+    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
 /* --------------------------------- 子帧 2 ----------------------------------- */
@@ -88,6 +91,8 @@ static void build_subframe2(uint8_t *out, const ephemeris_t *e)
 
     /* word5: M0[20:0] 首段 */
     put_word(out,120, make_word30(M0_i & 0x1FFFFF));
+
+    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
 /* --------------------------------- 子帧 3 ----------------------------------- */
@@ -122,6 +127,8 @@ static void build_subframe3(uint8_t *out, const ephemeris_t *e)
     int32_t odot_i = (int32_t)llround(e->omegadot / pow(2,-43));/* 24 bits */
     uint32_t info5 = ((idot_i &0x3FF)<<20) | (odot_i &0xFFFFF);
     put_word(out,120, make_word30(info5));
+
+    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
 /* ---------------------------------------------------------------------------- */
