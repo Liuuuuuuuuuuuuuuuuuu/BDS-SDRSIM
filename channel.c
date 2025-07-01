@@ -34,7 +34,10 @@ static inline void fast_sincos(double ph,float*co,float*si){
 /* ---------- 振幅 ---------- */
 double calc_amp(double rho,int n_ch,double gain){
     double p = -130.0 - 20.0*log10(rho/2.0e7);
-    return gain * (float)pow(10.0,(p-DBM_REF)/20.0)/n_ch;
+    double a = pow(10.0,(p-DBM_REF)/20.0);    /* relative field amplitude */
+    /* Scale to 16‑bit output range. Each channel shares the range */
+    a *= 16384.0 / n_ch;
+    return gain * a;
 }
 
 /* ---------- CA cache ---------- */
