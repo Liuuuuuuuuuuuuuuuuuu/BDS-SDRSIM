@@ -67,7 +67,8 @@ void gen_samples_1ms(channel_t *c,int week,double sow,int16_t*I,int16_t*Q)
     if(c->bit_ptr==0 && c->ms_count==0)
         get_subframe_bits(c->prn,c->sf_id,week,sow,nav);
 
-    const double dphi = PI2*(FCARRIER + c->fd)/FS;
+    /* Baseband output – only apply Doppler frequency */
+    const double dphi = PI2*c->fd/FS;
     const double dcode = c->code_rate/FS;     /* chips per sample */
     double code_phase = c->code_phase;
     double phase = c->carr_phase;
