@@ -17,14 +17,17 @@ typedef struct {
     uint16_t code_ptr;
     uint16_t bit_ptr;
     uint8_t  sf_id;
+    uint8_t  ms_count;      /* 0~19: ms index within data bit */
 } channel_t;
 
 void channel_reset(channel_t *, int prn);
 void update_channel_dynamics(channel_t *, double rho, double rdot, int n_ch);
-void gen_samples_1ms(channel_t *, int16_t *I, int16_t *Q);
+void gen_samples_1ms(channel_t *, int week, double sow,
+                     int16_t *I, int16_t *Q);
 
 /* === 修正：用指標而非 array declarator === */
-void get_subframe_bits(int prn, int sf_id, uint8_t *out);   /* out[300] */
+void get_subframe_bits(int prn, int sf_id, int week, double sow,
+                       uint8_t *out);   /* out[300] */
 
 #endif
 

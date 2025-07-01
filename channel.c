@@ -61,10 +61,11 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch){
 }
 
 /* ---------- 產生 1 ms ---------- */
-void gen_samples_1ms(channel_t *c,int16_t*I,int16_t*Q)
+void gen_samples_1ms(channel_t *c,int week,double sow,int16_t*I,int16_t*Q)
 {
     static uint8_t nav[300];
-    if(c->bit_ptr==0) get_subframe_bits(c->prn,c->sf_id,nav);
+    if(c->bit_ptr==0 && c->ms_count==0)
+        get_subframe_bits(c->prn,c->sf_id,week,sow,nav);
 
     const double dphi = PI2*(FCARRIER + c->fd)/FS;
     const double dcode = c->code_rate/FS;     /* chips per sample */
@@ -83,8 +84,15 @@ void gen_samples_1ms(channel_t *c,int16_t*I,int16_t*Q)
         /* NCO */
         phase += dphi; if(phase>=PI2) phase-=PI2;
         code_phase += dcode;
-        if(code_phase>=CODE_LEN){ code_phase-=CODE_LEN;
-            if(++c->bit_ptr==300){ c->bit_ptr=0; c->sf_id=c->sf_id%3+1;}
+        if(code_phase>=CODE_LEN){
+            code_phase-=CODE_LEN;
+            if(++c->ms_count==20){
+                c->ms_count=0;
+                if(++c->bit_ptr==300){
+                    c->bit_ptr=0;
+                    c->sf_id=c->sf_id%3+1;
+                }
+            }
         }
     }
     c->carr_phase = phase;

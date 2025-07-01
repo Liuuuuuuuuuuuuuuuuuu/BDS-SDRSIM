@@ -13,7 +13,6 @@
 
 #define FSAMP     8.184e6
 #define SAMP_1MS  8184
-#define STEP_MS   10          /* 幾何更新粒度 */
 
 static const int geo[] ={1,2,3,4,5,59,60,61,62,63};
 static int is_geo(int p){for(int i=0;i<10;i++) if(p==geo[i]) return 1; return 0;}
@@ -45,7 +44,7 @@ void generate_signal(const sim_config_t *cfg)
     coord_t usr={0}; llh2xyz(cfg->llh,&usr);
     if(utc_to_bdt(cfg->time_start,&usr.week,&usr.sow)!=0){fputs("UTC format err\n",stderr);return;}
 
-    navbits_init(usr.week, usr.sow);
+    navbits_init();
 
     channel_t ch[MAX_CH]; int n_ch; select_channels(ch,&n_ch,&usr);
 
@@ -62,6 +61,7 @@ void generate_signal(const sim_config_t *cfg)
     int16_t tmpI[MAX_CH][SAMP_1MS],tmpQ[MAX_CH][SAMP_1MS];
     int32_t accI[SAMP_1MS],accQ[SAMP_1MS],outI[SAMP_1MS],outQ[SAMP_1MS];
 
+    const int STEP_MS = cfg->step_ms;
     const uint64_t total_ms=(uint64_t)cfg->duration*1000;
     for(uint64_t ms=0; ms<total_ms; ms+=STEP_MS)
     {
@@ -82,7 +82,8 @@ void generate_signal(const sim_config_t *cfg)
             /* 併行各通道 */
             #pragma omp parallel for
             for(int c=0;c<n_ch;++c)
-                gen_samples_1ms(&ch[c],tmpI[c],tmpQ[c]);
+                gen_samples_1ms(&ch[c],usr.week,sow+step*0.001,
+                               tmpI[c],tmpQ[c]);
 
             /* 歸併 */
             for(int c=0;c<n_ch;++c)
@@ -99,7 +100,7 @@ void generate_signal(const sim_config_t *cfg)
             fwrite(outI,2,SAMP_1MS,fp);
             fwrite(outQ,2,SAMP_1MS,fp);
         }
-        /* 進度 0.01 s = STEP_MS ms */
+        /* 進度顯示 */
         printf("\r進度: %.2f / %.2f 秒",(ms+STEP_MS)/1000.0,total_ms/1000.0);
         fflush(stdout);
     }
