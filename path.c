@@ -55,18 +55,12 @@ int load_path_llh(const char *file,path_t *path)
 
 static int parse_nmea_gga(const char *buf,double *lat,double *lon,double *h)
 {
-    if(strncmp(buf,"$G",2)!=0) return -1;
-    const char *p=strchr(buf,','); if(!p) return -1; /* time */
-    p++; if(!*p) return -1; /* lat */
-    double rawlat=0.0; if(sscanf(p,"%lf",&rawlat)!=1) return -1;
-    p=strchr(p,','); if(!p) return -1; char ns='N'; sscanf(p+1,"%c",&ns);
-    p=strchr(p+1,','); if(!p) return -1; double rawlon=0.0; if(sscanf(p+1,"%lf",&rawlon)!=1) return -1;
-    p=strchr(p+1,','); if(!p) return -1; char ew='E'; sscanf(p+1,"%c",&ew);
-    for(int i=0;i<4;i++){ p=strchr(p+1,','); if(!p) return -1; }
-    if(sscanf(p+1,"%lf",h)!=1) *h=0.0;
+    double rawlat=0.0, rawlon=0.0, alt=0.0; char ns='N', ew='E';
+    int n = sscanf(buf, "$%*[^,],%*[^,],%lf,%c,%lf,%c,%*[^,],%*[^,],%*[^,],%lf", &rawlat,&ns,&rawlon,&ew,&alt);
+    if(n<5) return -1;
     int d=(int)(rawlat/100); *lat=d+(rawlat-d*100)/60.0; if(ns=='S') *lat=-*lat;
     d=(int)(rawlon/100); *lon=d+(rawlon-d*100)/60.0; if(ew=='W') *lon=-*lon;
-    return 0;
+    *h=alt; return 0;
 }
 
 int load_path_nmea(const char *file,path_t *path)
