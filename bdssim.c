@@ -101,14 +101,17 @@ void generate_signal(const sim_config_t *cfg)
                     accI[k]+=tmpI[c][k];
                     accQ[k]+=tmpQ[c][k];
                 }
+            /* 限幅後交錯成 I/Q 格式 */
+            int16_t iq[2*SAMP_1MS];
             for(int k=0;k<SAMP_1MS;++k){
                 int32_t i=accI[k], q=accQ[k];
                 if(i>32767)i=32767; else if(i<-32768)i=-32768;
                 if(q>32767)q=32767; else if(q<-32768)q=-32768;
                 outI[k]=i; outQ[k]=q;
+                iq[2*k]   = outI[k];
+                iq[2*k+1] = outQ[k];
             }
-            fwrite(outI,2,SAMP_1MS,fp);
-            fwrite(outQ,2,SAMP_1MS,fp);
+            fwrite(iq,2,2*SAMP_1MS,fp);
         }
         /* 進度顯示 */
         printf("\r進度: %.2f / %.2f 秒",(ms+STEP_MS)/1000.0,total_ms/1000.0);
