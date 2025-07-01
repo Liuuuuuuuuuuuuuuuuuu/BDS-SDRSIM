@@ -36,6 +36,8 @@ typedef struct {
     char   time_start[32];     /* UTC 字串 */
     /* 靜態使用者位置 (deg,deg,m) ------------------ */
     double llh[3];
+    char   path_file[256];     /* 動態路徑檔案 */
+    int    path_type;          /* 0: static, 1:xyz,2:llh,3:nmea */
 
     /* 其他選項 */
     uint32_t sample_rate;      /* 取樣率 (Hz) */

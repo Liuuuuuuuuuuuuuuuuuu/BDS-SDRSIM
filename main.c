@@ -6,13 +6,15 @@
 #include "bdssim.h"
 #include "timeconv.h"
 #include "globals.h"
+#include "path.h"
 
 /* ───────────────────────────── */
 static void usage(const char *p)
 {
     puts("用法:");
-    printf("  %s --rinex nav.rnx --start YYYY/MM/DD,hh:mm:ss "
-           "[--llh lat,lon,h] [--duration sec]\n", p);
+    printf("  %s --rinex nav.rnx --start YYYY/MM/DD,hh:mm:ss \n", p);
+    puts("     [--llh lat,lon,h] [--xyz file] [--llh-file file] [--nmea file]");
+    puts("     [--duration sec]\n");
 }
 
 int main(int argc,char *argv[])
@@ -29,13 +31,16 @@ int main(int argc,char *argv[])
         {"rinex",    required_argument, 0, 'e'},
         {"start",    required_argument, 0, 't'},
         {"llh",      required_argument, 0, 'l'},
+        {"xyz",      required_argument, 0, 'x'},
+        {"llh-file", required_argument, 0, 'y'},
+        {"nmea",     required_argument, 0, 'n'},
         {"duration", required_argument, 0, 'd'},
         {"help",     no_argument,       0, 'h'},
         {0,0,0,0}
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:d:h", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:h", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -54,6 +59,18 @@ int main(int argc,char *argv[])
             cfg.llh[2] = h;
             break;
         }
+        case 'x':
+            strncpy(cfg.path_file,optarg,sizeof(cfg.path_file)-1);
+            cfg.path_type=1;
+            break;
+        case 'y':
+            strncpy(cfg.path_file,optarg,sizeof(cfg.path_file)-1);
+            cfg.path_type=2;
+            break;
+        case 'n':
+            strncpy(cfg.path_file,optarg,sizeof(cfg.path_file)-1);
+            cfg.path_type=3;
+            break;
         case 'd':
             cfg.duration = (uint32_t)atoi(optarg);
             break;
@@ -97,9 +114,20 @@ int main(int argc,char *argv[])
         return 1;
     }
 
-    /* ---- 3-b. 把使用者參數轉成 coord_t，並選 PRN → 顯示 ---- */
+    /* ---- 3-b. 使用者初始座標 ---- */
     coord_t usr;
-    llh2xyz(cfg.llh, &usr);
+    path_t path={0};
+    if(cfg.path_type==1)       load_path_xyz(cfg.path_file,&path);
+    else if(cfg.path_type==2)  load_path_llh(cfg.path_file,&path);
+    else if(cfg.path_type==3)  load_path_nmea(cfg.path_file,&path);
+    if(cfg.path_type!=0 && path.n==0){
+        fputs("路徑檔讀取失敗\n",stderr); return 1;
+    }
+    if(cfg.path_type==0)      llh2xyz(cfg.llh,&usr);
+    else {                    
+        interpolate_path(&path,0.0,&usr);
+        xyz2llh(usr.xyz,&usr);
+    }
     usr.week = start_week;
     usr.sow  = start_sow;
 
@@ -111,7 +139,7 @@ int main(int argc,char *argv[])
     printf("[cfg] UTC   : %s\n", cfg.time_start);
     printf("[cfg] BDT   : week %d  sow %.3f\n", usr.week, usr.sow);
     printf("[cfg] LLH   : %.6f, %.6f, %.1f\n",
-           cfg.llh[0], cfg.llh[1], cfg.llh[2]);
+           usr.llh[0], usr.llh[1], usr.llh[2]);
     printf("[cfg] XYZ   : %.3f %.3f %.3f (m)\n",
            usr.xyz[0], usr.xyz[1], usr.xyz[2]);
     printf("[cfg] PRN   :");
@@ -120,6 +148,7 @@ int main(int argc,char *argv[])
 
     /* 4. 產生基帶 ----------------------------------- */
     generate_signal(&cfg);
+    free_path(&path);
 
     /* 5. 結束 --------------------------------------- */
     cleanup_simulator();

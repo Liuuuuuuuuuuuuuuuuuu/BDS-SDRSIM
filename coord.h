@@ -16,6 +16,7 @@ typedef struct {
 
 /* 介面 ----------------------------------------------------- */
 void   llh2xyz(const double llh_deg[3], coord_t *c);
+void   xyz2llh(const double xyz[3], coord_t *c);
 void   ecef2enu(const coord_t *usr, const double sat_xyz[3], double enu[3]);
 double enu_elevation_deg(const double enu[3]);
 
