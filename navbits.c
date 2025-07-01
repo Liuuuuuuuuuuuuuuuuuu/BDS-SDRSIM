@@ -132,25 +132,39 @@ static void build_subframe3(uint8_t *out, const ephemeris_t *e)
 }
 
 /* --------------------------------- 子帧 4 ----------------------------------- */
-static void build_subframe4(uint8_t *out)
+
+static void build_subframe4(uint8_t *out,int week,double sow)
+
 {
     memset(out,0,SF_STREAM_LEN);
     uint16_t info = 0x712;            /* sync */
     info = ((info<<3)|0x4) & 0x7FF;   /* FraID=100 */
+
+    info = (info<<8) | ((uint32_t)sow>>12 & 0xFF);
     put_word(out,0, make_word30(info));
-    for(int w=1; w<10; ++w)
+    uint32_t info2 = (((uint32_t)sow&0xFFF)<<13) | (week&0x1FFF);
+    put_word(out,30, make_word30(info2));
+    for(int w=2; w<10; ++w)
+
         put_word(out,w*30, make_word30(0));
     for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
 /* --------------------------------- 子帧 5 ----------------------------------- */
-static void build_subframe5(uint8_t *out)
+
+static void build_subframe5(uint8_t *out,int week,double sow)
+
 {
     memset(out,0,SF_STREAM_LEN);
     uint16_t info = 0x712;            /* sync */
     info = ((info<<3)|0x5) & 0x7FF;   /* FraID=101 */
+
+    info = (info<<8) | ((uint32_t)sow>>12 & 0xFF);
     put_word(out,0, make_word30(info));
-    for(int w=1; w<10; ++w)
+    uint32_t info2 = (((uint32_t)sow&0xFFF)<<13) | (week&0x1FFF);
+    put_word(out,30, make_word30(info2));
+    for(int w=2; w<10; ++w)
+
         put_word(out,w*30, make_word30(0));
     for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
@@ -178,9 +192,11 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,uint8_t *out)
     }else if(sf_id==3){
         memcpy(out,sf_static[prn][1],SF_STREAM_LEN);
     }else if(sf_id==4){
-        memcpy(out,sf_static[prn][2],SF_STREAM_LEN);
+
+        build_subframe4(out,week,sow);
     }else if(sf_id==5){
-        memcpy(out,sf_static[prn][3],SF_STREAM_LEN);
+        build_subframe5(out,week,sow);
+
     }else{
         memset(out,0,SF_STREAM_LEN);
     }

@@ -90,7 +90,7 @@ void gen_samples_1ms(channel_t *c,int week,double sow,int16_t*I,int16_t*Q)
                 c->ms_count=0;
                 if(++c->bit_ptr==300){
                     c->bit_ptr=0;
-                    c->sf_id=c->sf_id%3+1;
+                    c->sf_id=c->sf_id%5+1;
                 }
             }
         }
