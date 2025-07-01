@@ -177,8 +177,8 @@ void navbits_init(void)
     for(int prn=1;prn<=63;prn++){
         build_subframe2(sf_static[prn][0], &eph[prn]);
         build_subframe3(sf_static[prn][1], &eph[prn]);
-        build_subframe4(sf_static[prn][2]);
-        build_subframe5(sf_static[prn][3]);
+        build_subframe4(sf_static[prn][2],0,0);
+        build_subframe5(sf_static[prn][3],0,0);
     }
 }
 

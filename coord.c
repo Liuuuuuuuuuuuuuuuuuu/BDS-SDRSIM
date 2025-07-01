@@ -21,6 +21,27 @@ void llh2xyz(const double llh_deg[3], coord_t *c)
     c->xyz[2] = (N * (1.0 - WGS_E2) + h) * sinp;
 }
 
+/* ECEF → LLH ------------------------------------------------------- */
+void xyz2llh(const double xyz[3], coord_t *c)
+{
+    const double x=xyz[0], y=xyz[1], z=xyz[2];
+    const double a=WGS_A, e2=WGS_E2;
+    double lon=atan2(y,x);
+    double p=hypot(x,y);
+    double lat=atan2(z,p*(1.0-e2));
+    for(int i=0;i<5;i++){
+        double N=a/sqrt(1.0-e2*sin(lat)*sin(lat));
+        double h=p/cos(lat)-N;
+        lat=atan2(z,p*(1.0-e2*N/(N+h)));
+    }
+    double N=a/sqrt(1.0-e2*sin(lat)*sin(lat));
+    double h=p/cos(lat)-N;
+    c->llh[0]=lat*(180.0/M_PI);
+    c->llh[1]=lon*(180.0/M_PI);
+    c->llh[2]=h;
+    c->xyz[0]=x; c->xyz[1]=y; c->xyz[2]=z;
+}
+
 /* ECEF → ENU ------------------------------------------------------- */
 void ecef2enu(const coord_t *usr, const double sat_xyz[3], double enu[3])
 {
