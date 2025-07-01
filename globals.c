@@ -15,6 +15,7 @@ ephemeris_t  eph[MAX_SAT];                  /* ★ 真正配置記憶體 ★ */
 
 double nav_time_min = 0.0;
 double nav_time_max = 0.0;
+int    nav_week     = 0;
 
 int simulator_inited = 0;
 
@@ -63,6 +64,7 @@ bool init_simulator(sim_config_t *cfg)
     if(simulator_inited) return true;
     init_prn_table();
     if(read_rinex_nav(cfg->rinex_file)!=0) return false;
+    nav_week = (int)(nav_time_min/604800.0);
     simulator_inited = 1;
     return true;
 }

@@ -11,17 +11,43 @@
 #include "navbits.h"
 #include "timeconv.h"
 #include "path.h"
-
+#include "globals.h"     /* nav_week */
+#define OMEGA_E   7.2921150e-5
 #define FSAMP     8.184e6
 #define SAMP_1MS  8184
 
 static const int geo[] ={1,2,3,4,5,59,60,61,62,63};
 static int is_geo(int p){for(int i=0;i<10;i++) if(p==geo[i]) return 1; return 0;}
 
+/* ---- Rotate fixed LLH with Earth rotation ----- */
+static void static_user_at(int week,double sow,const coord_t*ref,
+                           coord_t*out,double vel[3])
+{
+    double lat=ref->llh[0]*(M_PI/180.0);
+    double lon0=ref->llh[1]*(M_PI/180.0);
+    double h=ref->llh[2];
+    double sinp=sin(lat); double cosp=cos(lat);
+    double N=WGS_A/sqrt(1.0-WGS_E2*sinp*sinp);
+    double t=(week-nav_week)*604800.0 + sow;
+    double lon=lon0 + OMEGA_E*t;
+    double cosL=cos(lon), sinL=sin(lon);
+    out->xyz[0]=(N+h)*cosp*cosL;
+    out->xyz[1]=(N+h)*cosp*sinL;
+    out->xyz[2]=(N*(1.0-WGS_E2)+h)*sinp;
+    out->llh[0]=ref->llh[0]; out->llh[1]=ref->llh[1]; out->llh[2]=ref->llh[2];
+    out->week=week; out->sow=sow;
+    if(vel){
+        vel[0]=-OMEGA_E*out->xyz[1];
+        vel[1]= OMEGA_E*out->xyz[0];
+        vel[2]=0.0;
+    }
+}
+
 /*----------------------------------------------------*/
 int select_channels(channel_t *ch,int *n,const coord_t*u)
 {
     struct cand{int prn;double elev,rho,rdot;} c[63]; int m=0;
+    double uv[3]={-OMEGA_E*u->xyz[1], OMEGA_E*u->xyz[0], 0.0};
     for(int prn=1;prn<=63;++prn){
         if(is_geo(prn))continue;
         double sat[3],vel[3]; calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
@@ -29,7 +55,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u)
         double el=enu_elevation_deg(enu); if(el<10)continue;
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*vel[0]+dy*vel[1]+dz*vel[2])/rho;
+        double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
         c[m++] = (struct cand){prn,el,rho,rdot};
     }
     /* sort by elev desc */
@@ -52,16 +78,20 @@ void generate_signal(const sim_config_t *cfg)
     else { interpolate_path(&path,0.0,&usr); xyz2llh(usr.xyz,&usr); }
     if(utc_to_bdt(cfg->time_start,&usr.week,&usr.sow)!=0){fputs("UTC format err\n",stderr);return;}
 
+    coord_t ref_llh=usr;              /* 保存經緯度作旋轉基準 */
+    static_user_at(usr.week,usr.sow,&ref_llh,&usr,NULL);
+
     navbits_init();
 
     channel_t ch[MAX_CH]; int n_ch; select_channels(ch,&n_ch,&usr);
 
+    double uvel[3]={-OMEGA_E*usr.xyz[1], OMEGA_E*usr.xyz[0], 0.0};
     /* 首次幾何 – 初始化振幅/NCO */
     for(int i=0;i<n_ch;++i){
         double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,usr.week,usr.sow,sat,vel);
         double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*vel[0]+dy*vel[1]+dz*vel[2])/rho;
+        double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
         update_channel_dynamics(&ch[i],rho,rdot,n_ch);
     }
 
@@ -71,17 +101,32 @@ void generate_signal(const sim_config_t *cfg)
 
     const int STEP_MS = cfg->step_ms;
     const uint64_t total_ms=(uint64_t)cfg->duration*1000;
+    coord_t ref_usr=ref_llh; /* keep LLH */
+    double start_bdt = usr.week*604800.0 + usr.sow;
     for(uint64_t ms=0; ms<total_ms; ms+=STEP_MS)
     {
-        /* --- 幾何重算每 STEP_MS --- */
-        double sow = usr.sow + ms*0.001;
-        if(cfg->path_type!=0)
+        double t_abs = start_bdt + ms*0.001;
+        int week = (int)(t_abs/604800.0);
+        double sow = t_abs - week*604800.0;
+
+        double uvel[3];
+        if(cfg->path_type==0){
+            static_user_at(week,sow,&ref_usr,&usr,uvel);
+        } else {
+            coord_t prev=usr;
             interpolate_path(&path, ms/1000.0, &usr);
+            xyz2llh(usr.xyz,&usr);
+            double dt=STEP_MS*0.001;
+            uvel[0]=(usr.xyz[0]-prev.xyz[0])/dt;
+            uvel[1]=(usr.xyz[1]-prev.xyz[1])/dt;
+            uvel[2]=(usr.xyz[2]-prev.xyz[2])/dt;
+        }
+
         for(int i=0;i<n_ch;++i){
-            double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,usr.week,sow,sat,vel);
+            double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,week,sow,sat,vel);
             double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
             double rho=hypot(hypot(dx,dy),dz);
-            double rdot=(dx*vel[0]+dy*vel[1]+dz*vel[2])/rho;
+            double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
             update_channel_dynamics(&ch[i],rho,rdot,n_ch);
         }
 
@@ -92,7 +137,7 @@ void generate_signal(const sim_config_t *cfg)
             /* 併行各通道 */
             #pragma omp parallel for
             for(int c=0;c<n_ch;++c)
-                gen_samples_1ms(&ch[c],usr.week,sow+step*0.001,
+                gen_samples_1ms(&ch[c],week,sow+step*0.001,
                                tmpI[c],tmpQ[c]);
 
             /* 歸併 */
