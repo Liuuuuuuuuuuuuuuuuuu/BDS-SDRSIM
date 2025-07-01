@@ -4,6 +4,15 @@ This project generates synthetic BeiDou B1I baseband samples for SDR
 experiments.  Navigation data is read from a RINEX navigation file and
 converted into the binary subframe format required by receivers.
 
+## System Overview
+
+BDS‑SDRSIM parses BeiDou ephemeris from the RINEX navigation file,
+computes satellite positions and Doppler shifts for the requested start
+time and user location, and builds the B1I navigation subframes.  Each
+enabled satellite channel spreads these bits with the appropriate PRN
+code and the channels are summed to produce complex baseband samples.
+The output is ready to be transmitted by an SDR.
+
 ## Build
 
 ```
@@ -55,3 +64,18 @@ Example path files are provided in the `examples/` directory. Usage:
 Subframes 2 and 3 are pre‑built from ephemeris while subframes 1, 4 and
 5 are generated on demand so that the Time‑of‑Week is consistent with
 the simulation start.
+
+## SDR playback
+
+The file `beidou_b1i.bin` contains interleaved 16‑bit little‑endian I/Q
+samples at 8.184 MHz. Configure your SDR transmitter to this sample
+rate and set the RF centre frequency to **1561.098 MHz**.  The following
+command illustrates playback with a HackRF:
+
+```bash
+hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 8184000 -x 0
+```
+
+Use the `-R` option for continuous looping if needed.  Other SDRs can
+transmit the file in a similar manner as long as they support the same
+sample rate.
