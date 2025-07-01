@@ -32,9 +32,9 @@ static inline void fast_sincos(double ph,float*co,float*si){
 }
 
 /* ---------- 振幅 ---------- */
-double calc_amp(double rho,int n_ch){
+double calc_amp(double rho,int n_ch,double gain){
     double p = -130.0 - 20.0*log10(rho/2.0e7);
-    return (float)pow(10.0,(p-DBM_REF)/20.0)/n_ch;
+    return gain * (float)pow(10.0,(p-DBM_REF)/20.0)/n_ch;
 }
 
 /* ---------- CA cache ---------- */
@@ -54,8 +54,8 @@ void channel_reset(channel_t *c,int prn){
     }
 }
 /* 幾何→計算振幅 / 初始多普勒 */
-void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch){
-    c->amp = calc_amp(rho,n_ch);
+void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch,double gain){
+    c->amp = calc_amp(rho,n_ch,gain);
     c->fd  = -FCARRIER*rdot/299792458.0;               /* Hz */
     c->code_rate = CHIPRATE*(1.0+rdot/299792458.0);    /* Hz */
 }

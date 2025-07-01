@@ -14,7 +14,7 @@ static void usage(const char *p)
     puts("用法:");
     printf("  %s --rinex nav.rnx --start YYYY/MM/DD,hh:mm:ss \n", p);
     puts("     [--llh lat,lon,h] [--xyz file] [--llh-file file] [--nmea file]");
-    puts("     [--duration sec]\n");
+    puts("     [--duration sec] [--gain amp]\n");
 }
 
 int main(int argc,char *argv[])
@@ -35,12 +35,13 @@ int main(int argc,char *argv[])
         {"llh-file", required_argument, 0, 'y'},
         {"nmea",     required_argument, 0, 'n'},
         {"duration", required_argument, 0, 'd'},
+        {"gain",     required_argument, 0, 'g'},
         {"help",     no_argument,       0, 'h'},
         {0,0,0,0}
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:h", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:h", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -73,6 +74,13 @@ int main(int argc,char *argv[])
             break;
         case 'd':
             cfg.duration = (uint32_t)atoi(optarg);
+            break;
+        case 'g':
+            cfg.gain = atof(optarg);
+            if(cfg.gain <= 0.0){
+                fprintf(stderr,"--gain 必須 >0\n");
+                return 1;
+            }
             break;
         default:
             usage(argv[0]); return 0;
@@ -144,6 +152,7 @@ int main(int argc,char *argv[])
            usr.xyz[0], usr.xyz[1], usr.xyz[2]);
     printf("[cfg] PRN   :");
     for(int i=0;i<n_ch;i++) printf(" %02d", ch[i].prn);
+    printf("\n[cfg] Gain  : %.2f\n", cfg.gain);
     puts("");
 
     /* 4. 產生基帶 ----------------------------------- */
