@@ -18,6 +18,7 @@ typedef struct {
     uint16_t bit_ptr;
     uint8_t  sf_id;
     uint8_t  ms_count;      /* 0~19: ms index within data bit */
+    uint8_t  nav_bits[300]; /* cached subframe bits */
 } channel_t;
 
 void channel_reset(channel_t *, int prn);
