@@ -87,6 +87,7 @@ void generate_signal(const sim_config_t *cfg)
 
     double uvel[3]={-OMEGA_E*usr.xyz[1], OMEGA_E*usr.xyz[0], 0.0};
     /* 首次幾何 – 初始化振幅/NCO */
+    double uvel0[3]; user_ecef_velocity(&usr,uvel0);
     for(int i=0;i<n_ch;++i){
         double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,usr.week,usr.sow,sat,vel);
         double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
