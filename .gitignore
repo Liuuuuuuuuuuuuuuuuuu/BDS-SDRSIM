@@ -1,0 +1,7 @@
+*.o
+bds-sim
+prn_test
+test_beidou
+*.bin
+*.gz
+cookies.txt
