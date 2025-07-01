@@ -12,29 +12,6 @@
 #include "timeconv.h"
 #include "path.h"
 #define OMEGA_E   7.2921150e-5
-
-/* 旋轉靜態使用者位置到當前 t，單位秒 ------------------------- */
-static void update_static_xyz(coord_t *u, int week, double sow)
-{
-    double lat = u->llh[0] * (M_PI/180.0);
-    double lon0= u->llh[1] * (M_PI/180.0);
-    double h   = u->llh[2];
-    double sinp= sin(lat); double cosp= cos(lat);
-    double N = WGS_A / sqrt(1.0 - WGS_E2*sinp*sinp);
-    double dt = (week - u->week)*604800.0 + (sow - u->sow);
-    double lon = lon0 + OMEGA_E*dt;
-    u->xyz[0] = (N + h)*cosp*cos(lon);
-    u->xyz[1] = (N + h)*cosp*sin(lon);
-    u->xyz[2] = ((1.0-WGS_E2)*N + h)*sinp;
-}
-
-/* 使用者在 ECEF 系下的速度（僅地球自轉） -------------------- */
-static void user_ecef_velocity(const coord_t *u,double v[3])
-{
-    v[0] = -OMEGA_E*u->xyz[1];
-    v[1] =  OMEGA_E*u->xyz[0];
-    v[2] =  0.0;
-}
 #define FSAMP     8.184e6
 #define SAMP_1MS  8184
 
@@ -53,7 +30,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u)
         double el=enu_elevation_deg(enu); if(el<10)continue;
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
+        double rdot=(dx*vel[0] + dy*vel[1] + dz*vel[2])/rho;
         c[m++] = (struct cand){prn,el,rho,rdot};
     }
     /* sort by elev desc */
@@ -86,7 +63,7 @@ void generate_signal(const sim_config_t *cfg)
         double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,usr.week,usr.sow,sat,vel);
         double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*(vel[0]-uvel0[0]) + dy*(vel[1]-uvel0[1]) + dz*(vel[2]-uvel0[2]))/rho;
+        double rdot=(dx*vel[0] + dy*vel[1] + dz*vel[2])/rho;
         update_channel_dynamics(&ch[i],rho,rdot,n_ch);
     }
 
@@ -102,15 +79,13 @@ void generate_signal(const sim_config_t *cfg)
         double sow = usr.sow + ms*0.001;
         if(cfg->path_type!=0){
             interpolate_path(&path, ms/1000.0, &usr);
-        }else{
-            update_static_xyz(&usr, usr.week, sow);
         }
-        double uvel[3]; user_ecef_velocity(&usr,uvel);
+
         for(int i=0;i<n_ch;++i){
             double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,usr.week,sow,sat,vel);
             double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
             double rho=hypot(hypot(dx,dy),dz);
-            double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
+            double rdot=(dx*vel[0] + dy*vel[1] + dz*vel[2])/rho;
             update_channel_dynamics(&ch[i],rho,rdot,n_ch);
         }
 
