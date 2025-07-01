@@ -22,6 +22,7 @@ static int is_geo(int p){for(int i=0;i<10;i++) if(p==geo[i]) return 1; return 0;
 int select_channels(channel_t *ch,int *n,const coord_t*u)
 {
     struct cand{int prn;double elev,rho,rdot;} c[63]; int m=0;
+    double uv[3]; user_ecef_velocity(u,uv);
     for(int prn=1;prn<=63;++prn){
         if(is_geo(prn))continue;
         double sat[3],vel[3]; calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
@@ -57,6 +58,7 @@ void generate_signal(const sim_config_t *cfg)
     channel_t ch[MAX_CH]; int n_ch; select_channels(ch,&n_ch,&usr);
 
     /* 首次幾何 – 初始化振幅/NCO */
+    double uvel0[3]; user_ecef_velocity(&usr,uvel0);
     for(int i=0;i<n_ch;++i){
         double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,usr.week,usr.sow,sat,vel);
         double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
@@ -78,6 +80,7 @@ void generate_signal(const sim_config_t *cfg)
         if(cfg->path_type!=0){
             interpolate_path(&path, ms/1000.0, &usr);
         }
+
         for(int i=0;i<n_ch;++i){
             double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,usr.week,sow,sat,vel);
             double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
