@@ -20,7 +20,10 @@ make
 ```
 
 The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
-file containing interleaved I/Q samples at 8.184 MHz.
+file containing interleaved **16‑bit little‑endian** I/Q samples at
+8.184 MHz.  Each sample is a pair of 16‑bit integers `(I,Q)` so be
+careful not to interpret the file as 8‑bit data—otherwise the Q channel
+may appear to contain only zeros or `-1` values.
 
 ## Usage
 
@@ -67,8 +70,12 @@ the simulation start.
 
 ## SDR playback
 
-The file `beidou_b1i.bin` contains interleaved 16‑bit little‑endian I/Q
-samples at 8.184 MHz.  The signal is at baseband (zero‑IF), so tune the
+The file `beidou_b1i.bin` contains interleaved **16‑bit little‑endian**
+I/Q samples at 8.184 MHz.  Ensure any analysis or playback software
+reads the file as 16‑bit integers; using 8‑bit interpretation will yield
+Q samples that look like zeros.
+
+The signal is at baseband (zero‑IF), so tune the
 SDR’s RF centre frequency to the desired transmit frequency – for B1I
 this is typically **1561.098 MHz** – and play the samples at the same
 rate.  The following command illustrates playback with a HackRF:
