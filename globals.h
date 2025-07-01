@@ -10,6 +10,7 @@ extern ephemeris_t  eph[MAX_SAT];
 extern int          simulator_inited;
 extern double       nav_time_min;
 extern double       nav_time_max;
+extern int          nav_week;       /* ephemeris week reference */
 
 #endif
 
