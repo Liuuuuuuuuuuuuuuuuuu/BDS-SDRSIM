@@ -73,7 +73,7 @@ void gen_samples_1ms(channel_t *c,int week,double sow,int16_t*I,int16_t*Q)
     double phase = c->carr_phase;
 
     for(int n=0;n<SAMP_1MS;++n){
-        int chip = (int)code_phase & (CODE_LEN-1);
+        int chip = (int)code_phase;            /* 0..2045 */
         int16_t ca = ca_wave[c->prn][chip];
         int16_t nb = c->nav_bits[c->bit_ptr]?+1:-1;
         float co,si; fast_sincos(phase,&co,&si);
@@ -82,7 +82,9 @@ void gen_samples_1ms(channel_t *c,int week,double sow,int16_t*I,int16_t*Q)
         Q[n]=(int16_t)lrintf(s*si);
 
         /* NCO */
-        phase += dphi; if(phase>=PI2) phase-=PI2;
+        phase += dphi;
+        if(phase>=PI2)      phase-=PI2;
+        else if(phase<0.0)  phase+=PI2;
         code_phase += dcode;
         if(code_phase>=CODE_LEN){
             code_phase-=CODE_LEN;
