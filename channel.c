@@ -63,9 +63,8 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch){
 /* ---------- 產生 1 ms ---------- */
 void gen_samples_1ms(channel_t *c,int week,double sow,int16_t*I,int16_t*Q)
 {
-    static uint8_t nav[300];
     if(c->bit_ptr==0 && c->ms_count==0)
-        get_subframe_bits(c->prn,c->sf_id,week,sow,nav);
+        get_subframe_bits(c->prn,c->sf_id,week,sow,c->nav_bits);
 
     /* Baseband output – only apply Doppler frequency */
     const double dphi = PI2*c->fd/FS;
@@ -76,7 +75,7 @@ void gen_samples_1ms(channel_t *c,int week,double sow,int16_t*I,int16_t*Q)
     for(int n=0;n<SAMP_1MS;++n){
         int chip = (int)code_phase & (CODE_LEN-1);
         int16_t ca = ca_wave[c->prn][chip];
-        int16_t nb = nav[c->bit_ptr]?+1:-1;
+        int16_t nb = c->nav_bits[c->bit_ptr]?+1:-1;
         float co,si; fast_sincos(phase,&co,&si);
         float s = c->amp*ca*nb;
         I[n]=(int16_t)lrintf(s*co);
