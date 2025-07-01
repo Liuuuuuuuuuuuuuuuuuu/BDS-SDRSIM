@@ -40,6 +40,8 @@ signal level.
 
 `--start` specifies the UTC start time; `--duration` is in seconds and
 `--llh` defines the user location in degrees and meters.
+Run `./bds-sim --help` to see all command options. A brief configuration
+summary is printed before signal generation begins.
 
 ### Dynamic user trajectory
 
