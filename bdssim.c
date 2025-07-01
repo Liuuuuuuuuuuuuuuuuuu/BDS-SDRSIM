@@ -10,6 +10,7 @@
 #include "orbits.h"
 #include "navbits.h"
 #include "timeconv.h"
+#include "path.h"
 
 #define FSAMP     8.184e6
 #define SAMP_1MS  8184
@@ -41,7 +42,14 @@ int select_channels(channel_t *ch,int *n,const coord_t*u)
 /*----------------------------------------------------*/
 void generate_signal(const sim_config_t *cfg)
 {
-    coord_t usr={0}; llh2xyz(cfg->llh,&usr);
+    coord_t usr={0};
+    path_t path={0};
+    if(cfg->path_type==1)       load_path_xyz(cfg->path_file,&path);
+    else if(cfg->path_type==2)  load_path_llh(cfg->path_file,&path);
+    else if(cfg->path_type==3)  load_path_nmea(cfg->path_file,&path);
+    if(cfg->path_type!=0 && path.n==0){fputs("path read error\n",stderr);return;}
+    if(cfg->path_type==0)      llh2xyz(cfg->llh,&usr);
+    else { interpolate_path(&path,0.0,&usr); xyz2llh(usr.xyz,&usr); }
     if(utc_to_bdt(cfg->time_start,&usr.week,&usr.sow)!=0){fputs("UTC format err\n",stderr);return;}
 
     navbits_init();
@@ -67,6 +75,8 @@ void generate_signal(const sim_config_t *cfg)
     {
         /* --- 幾何重算每 STEP_MS --- */
         double sow = usr.sow + ms*0.001;
+        if(cfg->path_type!=0)
+            interpolate_path(&path, ms/1000.0, &usr);
         for(int i=0;i<n_ch;++i){
             double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,usr.week,sow,sat,vel);
             double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
@@ -106,5 +116,6 @@ void generate_signal(const sim_config_t *cfg)
     }
     puts(""); fclose(fp);
     puts("[bdssim] 完成多星基帶輸出 beidou_b1i.bin");
+    free_path(&path);
 }
 
