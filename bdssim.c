@@ -19,6 +19,35 @@
 static const int geo[] ={1,2,3,4,5,59,60,61,62,63};
 static int is_geo(int p){for(int i=0;i<10;i++) if(p==geo[i]) return 1; return 0;}
 
+/* ---- Compute user's ECEF velocity due to Earth rotation ---- */
+static void user_ecef_velocity(const coord_t *u,double vel[3])
+{
+    if(!u || !vel) return;
+    vel[0] = -OMEGA_E*u->xyz[1];
+    vel[1] =  OMEGA_E*u->xyz[0];
+    vel[2] =  0.0;
+}
+
+/* ---- 檢查模擬起始時間與星曆 toe 差距是否過大 ---- */
+static void check_ephemeris_age(int week,double sow)
+{
+    double t = week*604800.0 + sow;
+    int warn = 0;
+    for(int prn=1; prn<=63; ++prn){
+        if(eph[prn].prn==0) continue;
+        double toe = eph[prn].week*604800.0 + eph[prn].toe;
+        double diff = fabs(t - toe);
+        if(diff > 2*86400.0){
+            fprintf(stderr,
+                    "[warn] PRN%02d toe %.1f days away from start\n",
+                    prn, diff/86400.0);
+            warn = 1;
+        }
+    }
+    if(warn)
+        fputs("建議使用接近星曆 toe 的起始時間以避免 tk 錯誤\n", stderr);
+}
+
 /* ---- Rotate fixed LLH with Earth rotation ----- */
 static void static_user_at(int week,double sow,const coord_t*ref,
                            coord_t*out,double vel[3])
@@ -83,6 +112,9 @@ void generate_signal(const sim_config_t *cfg)
 
     navbits_init();
 
+    /* 檢查 start 時間是否與星曆 toe 接近 */
+    check_ephemeris_age(usr.week, usr.sow);
+
     channel_t ch[MAX_CH]; int n_ch; select_channels(ch,&n_ch,&usr);
 
     double uvel[3]={-OMEGA_E*usr.xyz[1], OMEGA_E*usr.xyz[0], 0.0};
@@ -94,11 +126,15 @@ void generate_signal(const sim_config_t *cfg)
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
         update_channel_dynamics(&ch[i],rho,rdot,n_ch);
+        printf("PRN%02d t=%.1fs rdot=%.2f fd=%.2fHz\n",
+               ch[i].prn, 0.0, rdot, ch[i].fd);
     }
 
     FILE *fp=fopen("beidou_b1i.bin","wb"); if(!fp){perror("bin");return;}
     int16_t tmpI[MAX_CH][SAMP_1MS],tmpQ[MAX_CH][SAMP_1MS];
     int32_t accI[SAMP_1MS],accQ[SAMP_1MS];
+    double sumI=0.0,sumQ=0.0,sumI2=0.0,sumQ2=0.0;
+    uint64_t samp_cnt=0;
 
     const int STEP_MS = cfg->step_ms;
     const uint64_t total_ms=(uint64_t)cfg->duration*1000;
@@ -124,11 +160,14 @@ void generate_signal(const sim_config_t *cfg)
         }
 
         for(int i=0;i<n_ch;++i){
-            double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,week,sow,sat,vel);
+            double sat[3],vel[3];
+            calc_sat_position_velocity(ch[i].prn,week,sow,sat,vel);
             double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
             double rho=hypot(hypot(dx,dy),dz);
             double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
             update_channel_dynamics(&ch[i],rho,rdot,n_ch);
+            printf("PRN%02d t=%.1fs rdot=%.2f fd=%.2fHz\n",
+                   ch[i].prn, t_abs-start_bdt, rdot, ch[i].fd);
         }
 
         /* --- STEP_MS 次 1ms 取樣 --- */
@@ -157,7 +196,12 @@ void generate_signal(const sim_config_t *cfg)
                 if(q>32767)q=32767; else if(q<-32768)q=-32768;
                 iq[2*k]   = (int16_t)i;
                 iq[2*k+1] = (int16_t)q;
+                sumI  += iq[2*k];
+                sumQ  += iq[2*k+1];
+                sumI2 += (double)iq[2*k]*iq[2*k];
+                sumQ2 += (double)iq[2*k+1]*iq[2*k+1];
             }
+            samp_cnt += SAMP_1MS;
             fwrite(iq,sizeof(int16_t),2*SAMP_1MS,fp);
 
         }
@@ -167,6 +211,11 @@ void generate_signal(const sim_config_t *cfg)
     }
     puts(""); fclose(fp);
     puts("[bdssim] 完成多星基帶輸出 beidou_b1i.bin");
+    double meanI=sumI/samp_cnt, meanQ=sumQ/samp_cnt;
+    double stdI = sqrt(sumI2/samp_cnt - meanI*meanI);
+    double stdQ = sqrt(sumQ2/samp_cnt - meanQ*meanQ);
+    printf("I mean=%.2f std=%.2f, Q mean=%.2f std=%.2f\n",
+           meanI, stdI, meanQ, stdQ);
     free_path(&path);
 }
 
