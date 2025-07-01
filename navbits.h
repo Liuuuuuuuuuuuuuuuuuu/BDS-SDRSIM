@@ -11,7 +11,7 @@
 #define SF_STREAM_LEN (SUBFRAME_BITS)
 
 void navbits_init(void);
-void get_subframe_bits(int prn, int sf_id, int week, double sow, uint8_t *out); /* sf_id=1,2,3 */
+void get_subframe_bits(int prn, int sf_id, int week, double sow, uint8_t *out); /* sf_id=1..5 */
 
 #endif
 
