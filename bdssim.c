@@ -11,7 +11,7 @@
 #include "navbits.h"
 #include "timeconv.h"
 #include "path.h"
-
+#define OMEGA_E   7.2921150e-5
 #define FSAMP     8.184e6
 #define SAMP_1MS  8184
 
@@ -29,7 +29,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u)
         double el=enu_elevation_deg(enu); if(el<10)continue;
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*vel[0]+dy*vel[1]+dz*vel[2])/rho;
+        double rdot=(dx*vel[0] + dy*vel[1] + dz*vel[2])/rho;
         c[m++] = (struct cand){prn,el,rho,rdot};
     }
     /* sort by elev desc */
@@ -61,7 +61,7 @@ void generate_signal(const sim_config_t *cfg)
         double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,usr.week,usr.sow,sat,vel);
         double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*vel[0]+dy*vel[1]+dz*vel[2])/rho;
+        double rdot=(dx*vel[0] + dy*vel[1] + dz*vel[2])/rho;
         update_channel_dynamics(&ch[i],rho,rdot,n_ch);
     }
 
@@ -75,13 +75,14 @@ void generate_signal(const sim_config_t *cfg)
     {
         /* --- 幾何重算每 STEP_MS --- */
         double sow = usr.sow + ms*0.001;
-        if(cfg->path_type!=0)
+        if(cfg->path_type!=0){
             interpolate_path(&path, ms/1000.0, &usr);
+        }
         for(int i=0;i<n_ch;++i){
             double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,usr.week,sow,sat,vel);
             double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
             double rho=hypot(hypot(dx,dy),dz);
-            double rdot=(dx*vel[0]+dy*vel[1]+dz*vel[2])/rho;
+            double rdot=(dx*vel[0] + dy*vel[1] + dz*vel[2])/rho;
             update_channel_dynamics(&ch[i],rho,rdot,n_ch);
         }
 
