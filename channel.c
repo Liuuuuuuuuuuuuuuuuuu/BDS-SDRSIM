@@ -9,7 +9,7 @@
 #define FCARRIER   1561.098e6      /* B1I */
 #define CHIPRATE   2.046e6
 #define FS         8.184e6
-#define DBM_REF   (-159.0)         /* ±1.0 → –159 dBm */
+#define DBM_REF   (-130.0)         /* ±1.0 → –130 dBm */
 
 /* ---------- 32k sin LUT ---------- */
 #define LUTBITS   15
