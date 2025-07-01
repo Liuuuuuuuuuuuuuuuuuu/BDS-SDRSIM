@@ -67,7 +67,7 @@ void generate_signal(const sim_config_t *cfg)
 
     FILE *fp=fopen("beidou_b1i.bin","wb"); if(!fp){perror("bin");return;}
     int16_t tmpI[MAX_CH][SAMP_1MS],tmpQ[MAX_CH][SAMP_1MS];
-    int32_t accI[SAMP_1MS],accQ[SAMP_1MS],outI[SAMP_1MS],outQ[SAMP_1MS];
+    int32_t accI[SAMP_1MS],accQ[SAMP_1MS];
 
     const int STEP_MS = cfg->step_ms;
     const uint64_t total_ms=(uint64_t)cfg->duration*1000;
@@ -101,14 +101,17 @@ void generate_signal(const sim_config_t *cfg)
                     accI[k]+=tmpI[c][k];
                     accQ[k]+=tmpQ[c][k];
                 }
+            /* 限幅並打包成 I/Q */
+            int16_t iq[2*SAMP_1MS];
             for(int k=0;k<SAMP_1MS;++k){
-                int32_t i=accI[k], q=accQ[k];
+                int32_t i=accI[k];
+                int32_t q=accQ[k];
                 if(i>32767)i=32767; else if(i<-32768)i=-32768;
                 if(q>32767)q=32767; else if(q<-32768)q=-32768;
-                outI[k]=i; outQ[k]=q;
+                iq[2*k]   = (int16_t)i;
+                iq[2*k+1] = (int16_t)q;
             }
-            fwrite(outI,2,SAMP_1MS,fp);
-            fwrite(outQ,2,SAMP_1MS,fp);
+            fwrite(iq,sizeof(int16_t),2*SAMP_1MS,fp);
         }
         /* 進度顯示 */
         printf("\r進度: %.2f / %.2f 秒",(ms+STEP_MS)/1000.0,total_ms/1000.0);
