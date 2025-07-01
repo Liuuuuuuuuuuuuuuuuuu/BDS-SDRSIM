@@ -35,8 +35,9 @@ may appear to contain only zeros or `-1` values.
           --llh lat,lon,height
 ```
 
-`--gain` scales the output amplitude. Values greater than 1 boost the
-signal level.
+`--gain` scales the output amplitude.  With the default gain of `1.0`
+the composite signal uses most of the 16‑bit range.  Larger values boost
+the level but may cause clipping.
 
 `--start` specifies the UTC start time; `--duration` is in seconds and
 `--llh` defines the user location in degrees and meters.
