@@ -19,6 +19,15 @@
 static const int geo[] ={1,2,3,4,5,59,60,61,62,63};
 static int is_geo(int p){for(int i=0;i<10;i++) if(p==geo[i]) return 1; return 0;}
 
+/* ---- Compute user's ECEF velocity due to Earth rotation ---- */
+static void user_ecef_velocity(const coord_t *u,double vel[3])
+{
+    if(!u || !vel){ return; }
+    vel[0] = -OMEGA_E*u->xyz[1];
+    vel[1] =  OMEGA_E*u->xyz[0];
+    vel[2] =  0.0;
+}
+
 /* ---- Rotate fixed LLH with Earth rotation ----- */
 static void static_user_at(int week,double sow,const coord_t*ref,
                            coord_t*out,double vel[3])

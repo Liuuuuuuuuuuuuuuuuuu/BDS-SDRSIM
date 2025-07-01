@@ -27,8 +27,11 @@ void calc_sat_position_velocity(int prn,int week,double sow,
         return;
     }
 
-    /* ---- 時間差 tk：週差納入並限制在 ±302400 s ---- */
-    double tk = (week - ep->week)*604800.0 + (sow - ep->toe);
+    /* ---- 時間差 tk：採用 GPS 絕對秒數基準，避免週數交界問題 ---- */
+    double simulated_time      = week*604800.0 + sow;
+    double ephemeris_toe_time  = ep->week*604800.0 + ep->toe;
+
+    double tk = simulated_time - ephemeris_toe_time;
     if(tk> 302400) tk-=604800;
     if(tk<-302400) tk+=604800;
 
