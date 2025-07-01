@@ -3,19 +3,19 @@ CC      = gcc
 CFLAGS = -O2 -Wall -Wextra -fopenmp -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE
 
 OBJS = main.o globals.o bch.o navbits.o channel.o \
-       bdssim.o rinex.o orbits.o coord.o path.o
+       bdssim.o rinex.o orbits.o coord.o path.o getopt.o
        
 bds-sim: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) -lm
 
-prn_test: prn_test.o globals.o bch.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
+prn_test: prn_test.o globals.o bch.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o getopt.o
 	$(CC) $(CFLAGS) $^ -o $@ -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	       rm -f *.o bds-sim prn_test test_beidou *.bin *.gz
+	rm -f *.o bds-sim prn_test *.bin *.gz
 	@echo "✅ 已清除中間檔與 .gz 暫存檔"
 
 # =====================[ 下載區 ]=====================

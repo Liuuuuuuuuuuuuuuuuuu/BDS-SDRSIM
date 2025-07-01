@@ -13,24 +13,11 @@ enabled satellite channel spreads these bits with the appropriate PRN
 code and the channels are summed to produce complex baseband samples.
 The output is ready to be transmitted by an SDR.
 
-## Detailed System Description
-
-BDS-SDRSIM reads BeiDou ephemeris from a RINEX navigation file and
-initialises a set of satellite channels. For each simulation step the
-tool computes the user position (static or from a path file), derives
-satellite geometry and Doppler, and updates the channel state. The
-navigation message for subframes 1–5 is generated with correct
-time-of-week. Each channel spreads the bits with its PRN code and the
-samples are summed into a 16‑bit I/Q stream at 8.184 MHz.
-
 ## Build
 
 ```
 make
 ```
-
-The optional command `make prn_test` builds a small utility that prints
-the first chips of PRN codes using the bundled RINEX file.
 
 The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
 file containing interleaved **16‑bit little‑endian** I/Q samples at
@@ -68,9 +55,6 @@ Instead of a fixed location you may supply a 1 Hz path file. Three formats are 
 ```
 
 Example path files are provided in the `examples/` directory. Usage:
-The files contain one position per line at a 1 Hz rate. Coordinates are
-either ECEF XYZ in metres, latitude/longitude/height in degrees and
-metres, or NMEA GGA sentences.
 
 ```
 ./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
