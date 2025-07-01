@@ -22,7 +22,7 @@ typedef struct {
 } channel_t;
 
 void channel_reset(channel_t *, int prn);
-void update_channel_dynamics(channel_t *, double rho, double rdot, int n_ch);
+void update_channel_dynamics(channel_t *, double rho, double rdot, int n_ch, double gain);
 void gen_samples_1ms(channel_t *, int week, double sow,
                      int16_t *I, int16_t *Q);
 

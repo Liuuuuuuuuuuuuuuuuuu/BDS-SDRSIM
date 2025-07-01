@@ -125,7 +125,7 @@ void generate_signal(const sim_config_t *cfg)
         double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,n_ch);
+        update_channel_dynamics(&ch[i],rho,rdot,n_ch,cfg->gain);
         printf("PRN%02d t=%.1fs rdot=%.2f fd=%.2fHz\n",
                ch[i].prn, 0.0, rdot, ch[i].fd);
     }
@@ -165,7 +165,7 @@ void generate_signal(const sim_config_t *cfg)
             double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
             double rho=hypot(hypot(dx,dy),dz);
             double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
-            update_channel_dynamics(&ch[i],rho,rdot,n_ch);
+            update_channel_dynamics(&ch[i],rho,rdot,n_ch,cfg->gain);
             printf("PRN%02d t=%.1fs rdot=%.2f fd=%.2fHz\n",
                    ch[i].prn, t_abs-start_bdt, rdot, ch[i].fd);
         }

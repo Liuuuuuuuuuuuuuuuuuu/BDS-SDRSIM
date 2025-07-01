@@ -31,8 +31,12 @@ may appear to contain only zeros or `-1` values.
 ./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
           --start 2025/06/25,00:00:00 \
           --duration 60 \
+          --gain 1.0 \
           --llh lat,lon,height
 ```
+
+`--gain` scales the output amplitude. Values greater than 1 boost the
+signal level.
 
 `--start` specifies the UTC start time; `--duration` is in seconds and
 `--llh` defines the user location in degrees and meters.
