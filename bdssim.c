@@ -101,6 +101,7 @@ void generate_signal(const sim_config_t *cfg)
                     accI[k]+=tmpI[c][k];
                     accQ[k]+=tmpQ[c][k];
                 }
+
             /* 限幅並打包成 I/Q */
             int16_t iq[2*SAMP_1MS];
             for(int k=0;k<SAMP_1MS;++k){
@@ -112,6 +113,7 @@ void generate_signal(const sim_config_t *cfg)
                 iq[2*k+1] = (int16_t)q;
             }
             fwrite(iq,sizeof(int16_t),2*SAMP_1MS,fp);
+
         }
         /* 進度顯示 */
         printf("\r進度: %.2f / %.2f 秒",(ms+STEP_MS)/1000.0,total_ms/1000.0);
