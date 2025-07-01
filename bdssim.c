@@ -121,13 +121,13 @@ void generate_signal(const sim_config_t *cfg)
     /* 首次幾何 – 初始化振幅/NCO */
     double uvel0[3]; user_ecef_velocity(&usr,uvel0);
     for(int i=0;i<n_ch;++i){
-        double sat[3],vel[3]; calc_sat_position_velocity(ch[i].prn,usr.week,usr.sow,sat,vel);
+        double sat[3],vel[3];
+        calc_sat_position_velocity(ch[i].prn,usr.week,usr.sow,sat,vel);
         double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
         update_channel_dynamics(&ch[i],rho,rdot,n_ch,cfg->gain);
-        printf("PRN%02d t=%.1fs rdot=%.2f fd=%.2fHz\n",
-               ch[i].prn, 0.0, rdot, ch[i].fd);
+        printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
     }
 
     FILE *fp=fopen("beidou_b1i.bin","wb"); if(!fp){perror("bin");return;}
@@ -166,8 +166,6 @@ void generate_signal(const sim_config_t *cfg)
             double rho=hypot(hypot(dx,dy),dz);
             double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
             update_channel_dynamics(&ch[i],rho,rdot,n_ch,cfg->gain);
-            printf("PRN%02d t=%.1fs rdot=%.2f fd=%.2fHz\n",
-                   ch[i].prn, t_abs-start_bdt, rdot, ch[i].fd);
         }
 
         /* --- STEP_MS 次 1ms 取樣 --- */
