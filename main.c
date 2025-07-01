@@ -21,7 +21,7 @@ int main(int argc,char *argv[])
     sim_config_t cfg = {0};
     cfg.sample_rate = 8184000;
     cfg.gain        = 1.0;
-    cfg.step_ms     = 10;
+    cfg.step_ms     = 1;
     cfg.duration    = 300;                /* 預設 300 秒 */
 
     /* 2. 解析 CLI ----------------------------------- */

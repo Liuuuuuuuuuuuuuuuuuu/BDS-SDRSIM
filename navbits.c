@@ -132,20 +132,27 @@ static void build_subframe3(uint8_t *out, const ephemeris_t *e)
 }
 
 /* ---------------------------------------------------------------------------- */
-static uint8_t sf_bits[MAX_SAT][3][SF_STREAM_LEN]; /* PRN×子帧×bits */
+static uint8_t sf_static[MAX_SAT][2][SF_STREAM_LEN]; /* subframe 2 & 3 */
 
-void navbits_init(int week,double sow)
+void navbits_init(void)
 {
     for(int prn=1;prn<=63;prn++){
-        build_subframe1(sf_bits[prn][0], &eph[prn], week, sow);
-        build_subframe2(sf_bits[prn][1], &eph[prn]);
-        build_subframe3(sf_bits[prn][2], &eph[prn]);
+        build_subframe2(sf_static[prn][0], &eph[prn]);
+        build_subframe3(sf_static[prn][1], &eph[prn]);
     }
 }
 
-/* 取出子帧 bit 流 (300 bits) */
-void get_subframe_bits(int prn,int sf_id,uint8_t *out)
+/* 根據時間取得子帧 bit 流 (300 bits) */
+void get_subframe_bits(int prn,int sf_id,int week,double sow,uint8_t *out)
 {
-    memcpy(out,sf_bits[prn][sf_id-1],SF_STREAM_LEN);
+    if(sf_id==1){
+        build_subframe1(out,&eph[prn],week,sow);
+    }else if(sf_id==2){
+        memcpy(out,sf_static[prn][0],SF_STREAM_LEN);
+    }else if(sf_id==3){
+        memcpy(out,sf_static[prn][1],SF_STREAM_LEN);
+    }else{
+        memset(out,0,SF_STREAM_LEN);
+    }
 }
 
