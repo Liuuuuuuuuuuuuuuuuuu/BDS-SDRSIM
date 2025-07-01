@@ -11,10 +11,15 @@
 /* ───────────────────────────── */
 static void usage(const char *p)
 {
-    puts("用法:");
-    printf("  %s --rinex nav.rnx --start YYYY/MM/DD,hh:mm:ss \n", p);
-    puts("     [--llh lat,lon,h] [--xyz file] [--llh-file file] [--nmea file]");
-    puts("     [--duration sec] [--gain amp]\n");
+    printf("用法: %s --rinex file --start YYYY/MM/DD,hh:mm:ss [選項]\n", p);
+    puts("選項:");
+    puts("  --llh lat,lon,h      固定使用者位置");
+    puts("  --xyz file           ECEF 路徑檔");
+    puts("  --llh-file file      LLH 路徑檔");
+    puts("  --nmea file          NMEA 路徑檔");
+    puts("  --duration sec       模擬秒數 (1-3600)");
+    puts("  --gain amp           輸出增益 (>0)");
+    puts("  --help               顯示本說明\n");
 }
 
 int main(int argc,char *argv[])
@@ -82,8 +87,12 @@ int main(int argc,char *argv[])
                 return 1;
             }
             break;
+        case 'h':
+            usage(argv[0]);
+            return 0;
         default:
-            usage(argv[0]); return 0;
+            usage(argv[0]);
+            return 1;
         }
     }
 
@@ -143,17 +152,16 @@ int main(int argc,char *argv[])
     int n_ch;
     select_channels(ch,&n_ch,&usr);
 
-    /* 印出確認訊息 */
-    printf("[cfg] UTC   : %s\n", cfg.time_start);
-    printf("[cfg] BDT   : week %d  sow %.3f\n", usr.week, usr.sow);
-    printf("[cfg] LLH   : %.6f, %.6f, %.1f\n",
+    /* 印出確認訊息 (簡潔模式) */
+    printf("[cfg] UTC %s  BDT W%d %.3f\n",
+           cfg.time_start, usr.week, usr.sow);
+    printf("[cfg] LLH %.6f %.6f %.1f\n",
            usr.llh[0], usr.llh[1], usr.llh[2]);
-    printf("[cfg] XYZ   : %.3f %.3f %.3f (m)\n",
+    printf("[cfg] XYZ %.3f %.3f %.3f (m)\n",
            usr.xyz[0], usr.xyz[1], usr.xyz[2]);
-    printf("[cfg] PRN   :");
+    printf("[cfg] PRN:");
     for(int i=0;i<n_ch;i++) printf(" %02d", ch[i].prn);
-    printf("\n[cfg] Gain  : %.2f\n", cfg.gain);
-    puts("");
+    printf("  Gain %.2f\n\n", cfg.gain);
 
     /* 4. 產生基帶 ----------------------------------- */
     generate_signal(&cfg);
@@ -161,7 +169,7 @@ int main(int argc,char *argv[])
 
     /* 5. 結束 --------------------------------------- */
     cleanup_simulator();
-    puts("👍 全部完成");
+    puts("[done] beidou_b1i.bin 已產生");
     return 0;
 }
 
