@@ -68,9 +68,10 @@ the simulation start.
 ## SDR playback
 
 The file `beidou_b1i.bin` contains interleaved 16‑bit little‑endian I/Q
-samples at 8.184 MHz. Configure your SDR transmitter to this sample
-rate and set the RF centre frequency to **1561.098 MHz**.  The following
-command illustrates playback with a HackRF:
+samples at 8.184 MHz.  The signal is at baseband (zero‑IF), so tune the
+SDR’s RF centre frequency to the desired transmit frequency – for B1I
+this is typically **1561.098 MHz** – and play the samples at the same
+rate.  The following command illustrates playback with a HackRF:
 
 ```bash
 hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 8184000 -x 0
