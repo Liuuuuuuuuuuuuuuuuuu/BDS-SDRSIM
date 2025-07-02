@@ -44,6 +44,11 @@ double calc_amp(double rho,int n_ch,double gain){
 static int16_t ca_wave[64][CODE_LEN];
 static int     ca_ready=0;
 
+/* BeiDou D1 Neumann-Hoffman 20-bit code (0=+1, 1=-1) */
+static const uint8_t nh20_bits[20]={
+    0,0,0,0,0,1,0,0,1,1,0,1,0,1,0,0,1,1,1,0
+};
+
 /* ---------- Channel helpers ---------- */
 void channel_reset(channel_t *c,int prn){
     memset(c,0,sizeof(*c));
@@ -78,7 +83,8 @@ void gen_samples_1ms(channel_t *c,int week,double sow,int16_t*I,int16_t*Q)
     for(int n=0;n<SAMP_1MS;++n){
         int chip = (int)code_phase;            /* 0..2045 */
         int16_t ca = ca_wave[c->prn][chip];
-        int16_t nb = c->nav_bits[c->bit_ptr]?+1:-1;
+        uint8_t nh = nh20_bits[c->ms_count];
+        int16_t nb = (c->nav_bits[c->bit_ptr]^nh)?+1:-1;
         float co,si; fast_sincos(phase,&co,&si);
         float s = c->amp*ca*nb;
         I[n]=(int16_t)lrintf(s*co);
