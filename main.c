@@ -19,6 +19,8 @@ static void usage(const char *p)
     puts("  --nmea file          NMEA 路徑檔");
     puts("  --duration sec       模擬秒數 (1-3600)");
     puts("  --gain amp           輸出增益 (>0)");
+    puts("  --noise stddev       加入 AWGN 雜訊標準差");
+    puts("  --seed n            雜訊亂數種子 (整數)");
     puts("  --srate Hz           取樣率 (Hz)");
     puts("  --help               顯示本說明\n");
 }
@@ -31,6 +33,8 @@ int main(int argc,char *argv[])
     cfg.gain        = 1.0;
     cfg.step_ms     = 1;
     cfg.duration    = 300;                /* 預設 300 秒 */
+    cfg.noise_std   = 0.0;
+    cfg.noise_seed  = 1;
 
     /* 2. 解析 CLI ----------------------------------- */
     static struct option longopt[] = {
@@ -42,13 +46,15 @@ int main(int argc,char *argv[])
         {"nmea",     required_argument, 0, 'n'},
         {"duration", required_argument, 0, 'd'},
         {"gain",     required_argument, 0, 'g'},
+        {"noise",    required_argument, 0, 'z'},
+        {"seed",     required_argument, 0, 'R'},
         {"srate",    required_argument, 0, 's'},
         {"help",     no_argument,       0, 'h'},
         {0,0,0,0}
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:s:h", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:s:h", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -88,6 +94,16 @@ int main(int argc,char *argv[])
                 fprintf(stderr,"--gain 必須 >0\n");
                 return 1;
             }
+            break;
+        case 'z':
+            cfg.noise_std = atof(optarg);
+            if(cfg.noise_std < 0.0){
+                fprintf(stderr, "--noise 需 >=0\n");
+                return 1;
+            }
+            break;
+        case 'R':
+            cfg.noise_seed = (unsigned)strtoul(optarg,NULL,0);
             break;
         case 's':
             cfg.sample_rate = (uint32_t)atof(optarg);

@@ -58,6 +58,10 @@ may appear to contain only zeros or `-1` values.
 the composite signal uses most of the 16‑bit range.  Larger values boost
 the level but may cause clipping.
 
+`--noise` adds complex AWGN with the given standard deviation (in 16‑bit
+sample units).  The default is `0` (no noise).
+`--seed` specifies the random seed for noise generation. The default is `1`.
+
 `--srate` sets the I/Q sample rate in Hertz. The default is `5000000`.
 
 `--start` specifies the UTC start time; `--duration` is in seconds and
