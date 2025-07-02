@@ -1,4 +1,4 @@
-/* bdssim.c : 8.184 Msps 北斗 B1I 基帶產生器 */
+/* bdssim.c : 4.092 Msps 北斗 B1I 基帶產生器 */
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -13,8 +13,8 @@
 #include "path.h"
 #include "globals.h"     /* nav_week */
 #define OMEGA_E   7.2921150e-5
-#define FSAMP     8.184e6
-#define SAMP_1MS  8184
+#define FSAMP     4.092e6
+#define SAMP_1MS  4092
 
 static const int geo[] ={1,2,3,4,5,59,60,61,62,63};
 static int is_geo(int p){for(int i=0;i<10;i++) if(p==geo[i]) return 1; return 0;}
