@@ -44,6 +44,7 @@ typedef struct {
     uint32_t duration;         /* 模擬秒數 */
     uint32_t step_ms;          /* 幾何更新粒度 (ms) */
     double   gain;             /* 輸出增益 */
+    double   noise_std;        /* AWGN 標準差 (0 表示無) */
 } sim_config_t;
 
 /* ---------- 介面 ---------- */
