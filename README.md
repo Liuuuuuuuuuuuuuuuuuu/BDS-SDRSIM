@@ -10,7 +10,10 @@ BDS‑SDRSIM parses BeiDou ephemeris from the RINEX navigation file,
 computes satellite positions and Doppler shifts for the requested start
 time and user location, and builds the B1I navigation subframes.  Each
 enabled satellite channel spreads these bits with the appropriate PRN
-code and the channels are summed to produce complex baseband samples.
+code.  The 50 bps D1 navigation message is further modulated by the
+standard 20‑bit Neumann–Hoffman sequence so that the resulting signal
+matches the BeiDou B1I specification.  Finally the channels are summed to
+produce complex baseband samples ready for SDR playback.
 The output is ready to be transmitted by an SDR.
 
 ## Detailed System Description
