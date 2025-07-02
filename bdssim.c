@@ -113,7 +113,8 @@ void generate_signal(const sim_config_t *cfg)
 {
     coord_t usr={0};
     path_t path={0};
-    srand(1);               /* deterministic noise */
+    if(cfg->noise_std>0.0)
+        srand(cfg->noise_seed);
     if(cfg->path_type==1)       load_path_xyz(cfg->path_file,&path);
     else if(cfg->path_type==2)  load_path_llh(cfg->path_file,&path);
     else if(cfg->path_type==3)  load_path_nmea(cfg->path_file,&path);

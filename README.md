@@ -60,6 +60,7 @@ the level but may cause clipping.
 
 `--noise` adds complex AWGN with the given standard deviation (in 16‑bit
 sample units).  The default is `0` (no noise).
+`--seed` specifies the random seed for noise generation. The default is `1`.
 
 `--srate` sets the I/Q sample rate in Hertz. The default is `5000000`.
 
