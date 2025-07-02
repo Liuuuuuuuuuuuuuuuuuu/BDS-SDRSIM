@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
+#include <stdlib.h>
 #include <omp.h>
 #include "bdssim.h"
 #include "channel.h"
@@ -17,6 +18,20 @@
 
 static const int geo[] ={1,2,3,4,5,59,60,61,62,63};
 static int is_geo(int p){for(int i=0;i<10;i++) if(p==geo[i]) return 1; return 0;}
+
+/* ---- Gaussian RNG (Box-Muller) ---- */
+static double gauss_rand(void)
+{
+    static int have=0; static double next=0.0;
+    if(have){ have=0; return next; }
+    double u1=(double)rand()/RAND_MAX;
+    double u2=(double)rand()/RAND_MAX;
+    double r=sqrt(-2.0*log(u1));
+    double theta=2.0*M_PI*u2;
+    next=r*sin(theta);
+    have=1;
+    return r*cos(theta);
+}
 
 /* ---- Compute user's ECEF velocity due to Earth rotation ---- */
 static void user_ecef_velocity(const coord_t *u,double vel[3])
@@ -98,6 +113,8 @@ void generate_signal(const sim_config_t *cfg)
 {
     coord_t usr={0};
     path_t path={0};
+    if(cfg->noise_std>0.0)
+        srand(cfg->noise_seed);
     if(cfg->path_type==1)       load_path_xyz(cfg->path_file,&path);
     else if(cfg->path_type==2)  load_path_llh(cfg->path_file,&path);
     else if(cfg->path_type==3)  load_path_nmea(cfg->path_file,&path);
@@ -188,11 +205,15 @@ void generate_signal(const sim_config_t *cfg)
                     accQ[k]+=tmpQ[c][k];
                 }
 
-            /* 限幅並打包成 I/Q */
+            /* 限幅並打包成 I/Q (加入 AWGN) */
             int16_t iq[2*samp_per_ms];
             for(int k=0;k<samp_per_ms;++k){
                 int32_t i=accI[k];
                 int32_t q=accQ[k];
+                if(cfg->noise_std>0.0){
+                    i += lrint(cfg->noise_std*gauss_rand());
+                    q += lrint(cfg->noise_std*gauss_rand());
+                }
                 if(i>32767)i=32767; else if(i<-32768)i=-32768;
                 if(q>32767)q=32767; else if(q<-32768)q=-32768;
                 iq[2*k]   = (int16_t)i;
