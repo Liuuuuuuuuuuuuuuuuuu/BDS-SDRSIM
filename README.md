@@ -24,7 +24,7 @@ tool computes the user position (static or from a path file), derives
 satellite geometry and Doppler, and updates the channel state. The
 navigation message for subframes 1–5 is generated with correct
 time-of-week. Each channel spreads the bits with its PRN code and the
-samples are summed into a 16‑bit I/Q stream at 4.092 MHz.
+samples are summed into a 16‑bit I/Q stream at 5 MHz.
 
 ## Build
 
@@ -37,7 +37,7 @@ the first chips of PRN codes using the bundled RINEX file.
 
 The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
 file containing interleaved **16‑bit little‑endian** I/Q samples at
-4.092 MHz.  Each sample is a pair of 16‑bit integers `(I,Q)` so be
+5 MHz.  Each sample is a pair of 16‑bit integers `(I,Q)` so be
 careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
 
@@ -97,7 +97,7 @@ the simulation start.
 ## SDR playback
 
 The file `beidou_b1i.bin` contains interleaved **16‑bit little‑endian**
-I/Q samples at 4.092 MHz.  Ensure any analysis or playback software
+I/Q samples at 5 MHz.  Ensure any analysis or playback software
 reads the file as 16‑bit integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
 
@@ -107,7 +107,7 @@ this is typically **1561.098 MHz** – and play the samples at the same
 rate.  The following command illustrates playback with a HackRF:
 
 ```bash
-hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 4092000 -x 0
+hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 5000000 -x 0
 ```
 
 Use the `-R` option for continuous looping if needed.  Other SDRs can

@@ -5,7 +5,7 @@
 
 #define MAX_CH     12
 #define CODE_LEN   2046
-#define SAMP_1MS   4092
+#define SAMP_1MS   5000
 
 typedef struct {
     int     prn;
