@@ -64,8 +64,13 @@ void channel_reset(channel_t *c,int prn){
 /* 幾何→計算振幅 / 初始多普勒 */
 void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch,double gain){
     c->amp = calc_amp(rho,n_ch,gain);
-    c->fd  = -FCARRIER*rdot/299792458.0;               /* Hz */
-    c->code_rate = CHIPRATE*(1.0+rdot/299792458.0);    /* Hz */
+    c->fd  = -FCARRIER*rdot/299792458.0;               /* Doppler (Hz) */
+    /*
+     * Positive range rate (rdot) means the satellite is moving away
+     * from the user, resulting in a lower received chipping rate.
+     * The correct relationship is therefore (1 - rdot/c).
+     */
+    c->code_rate = CHIPRATE*(1.0 - rdot/299792458.0);  /* Code frequency (Hz) */
 }
 
 void channel_set_fs(double sample_rate)
