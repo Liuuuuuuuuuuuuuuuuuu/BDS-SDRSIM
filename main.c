@@ -19,6 +19,7 @@ static void usage(const char *p)
     puts("  --nmea file          NMEA 路徑檔");
     puts("  --duration sec       模擬秒數 (1-3600)");
     puts("  --gain amp           輸出增益 (>0)");
+    puts("  --srate Hz           取樣率 (Hz)");
     puts("  --help               顯示本說明\n");
 }
 
@@ -41,12 +42,13 @@ int main(int argc,char *argv[])
         {"nmea",     required_argument, 0, 'n'},
         {"duration", required_argument, 0, 'd'},
         {"gain",     required_argument, 0, 'g'},
+        {"srate",    required_argument, 0, 's'},
         {"help",     no_argument,       0, 'h'},
         {0,0,0,0}
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:h", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:s:h", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -84,6 +86,14 @@ int main(int argc,char *argv[])
             cfg.gain = atof(optarg);
             if(cfg.gain <= 0.0){
                 fprintf(stderr,"--gain 必須 >0\n");
+                return 1;
+            }
+            break;
+        case 's':
+            cfg.sample_rate = (uint32_t)atof(optarg);
+            if(cfg.sample_rate < 100000)
+            {
+                fprintf(stderr, "--srate 無效\n");
                 return 1;
             }
             break;
@@ -161,7 +171,8 @@ int main(int argc,char *argv[])
            usr.xyz[0], usr.xyz[1], usr.xyz[2]);
     printf("[cfg] PRN:");
     for(int i=0;i<n_ch;i++) printf(" %02d", ch[i].prn);
-    printf("  Gain %.2f\n\n", cfg.gain);
+    printf("  Fs %.1fMHz  Gain %.2f\n\n",
+           cfg.sample_rate/1e6, cfg.gain);
 
     /* 4. 產生基帶 ----------------------------------- */
     generate_signal(&cfg);

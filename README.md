@@ -24,7 +24,8 @@ tool computes the user position (static or from a path file), derives
 satellite geometry and Doppler, and updates the channel state. The
 navigation message for subframes 1–5 is generated with correct
 time-of-week. Each channel spreads the bits with its PRN code and the
-samples are summed into a 16‑bit I/Q stream at 5 MHz.
+samples are summed into a 16‑bit I/Q stream at a configurable sample
+rate (default 5 MHz).
 
 ## Build
 
@@ -36,8 +37,9 @@ The optional command `make prn_test` builds a small utility that prints
 the first chips of PRN codes using the bundled RINEX file.
 
 The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
-file containing interleaved **16‑bit little‑endian** I/Q samples at
-5 MHz.  Each sample is a pair of 16‑bit integers `(I,Q)` so be
+file containing interleaved **16‑bit little‑endian** I/Q samples. By
+default the file is written at 5 MHz.  Each sample is a pair of
+16‑bit integers `(I,Q)` so be
 careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
 
@@ -47,6 +49,7 @@ may appear to contain only zeros or `-1` values.
 ./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
           --start 2025/06/25,00:00:00 \
           --duration 60 \
+          --srate 5000000 \
           --gain 1.0 \
           --llh lat,lon,height
 ```
@@ -54,6 +57,8 @@ may appear to contain only zeros or `-1` values.
 `--gain` scales the output amplitude.  With the default gain of `1.0`
 the composite signal uses most of the 16‑bit range.  Larger values boost
 the level but may cause clipping.
+
+`--srate` sets the I/Q sample rate in Hertz. The default is `5000000`.
 
 `--start` specifies the UTC start time; `--duration` is in seconds and
 `--llh` defines the user location in degrees and meters.
@@ -97,8 +102,9 @@ the simulation start.
 ## SDR playback
 
 The file `beidou_b1i.bin` contains interleaved **16‑bit little‑endian**
-I/Q samples at 5 MHz.  Ensure any analysis or playback software
-reads the file as 16‑bit integers; using 8‑bit interpretation will yield
+I/Q samples written at the configured sample rate (default 5 MHz).
+Ensure any analysis or playback software reads the file as 16‑bit
+integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
 
 The signal is at baseband (zero‑IF), so tune the
