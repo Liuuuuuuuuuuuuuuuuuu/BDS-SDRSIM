@@ -26,7 +26,7 @@ int main(int argc,char *argv[])
 {
     /* 1. 預設參數 ----------------------------------- */
     sim_config_t cfg = {0};
-    cfg.sample_rate = 8184000;
+    cfg.sample_rate = 5000000;
     cfg.gain        = 1.0;
     cfg.step_ms     = 1;
     cfg.duration    = 300;                /* 預設 300 秒 */

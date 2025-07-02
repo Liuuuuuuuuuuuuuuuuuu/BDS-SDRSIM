@@ -8,7 +8,7 @@
 #define PI2        6.2831853071795864769
 #define FCARRIER   1561.098e6      /* B1I */
 #define CHIPRATE   2.046e6
-#define FS         8.184e6
+static double fs = 4.092e6;
 #define DBM_REF   (-130.0)         /* ±1.0 → –130 dBm */
 
 /* ---------- 32k sin LUT ---------- */
@@ -68,19 +68,25 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch,double
     c->code_rate = CHIPRATE*(1.0+rdot/299792458.0);    /* Hz */
 }
 
+void channel_set_fs(double sample_rate)
+{
+    fs = sample_rate;
+}
+
 /* ---------- 產生 1 ms ---------- */
-void gen_samples_1ms(channel_t *c,int week,double sow,int16_t*I,int16_t*Q)
+void gen_samples_1ms(channel_t *c,int week,double sow,
+                     int samp_per_ms,int16_t*I,int16_t*Q)
 {
     if(c->bit_ptr==0 && c->ms_count==0)
         get_subframe_bits(c->prn,c->sf_id,week,sow,c->nav_bits);
 
     /* Baseband output – only apply Doppler frequency */
-    const double dphi = PI2*c->fd/FS;
-    const double dcode = c->code_rate/FS;     /* chips per sample */
+    const double dphi = PI2*c->fd/fs;
+    const double dcode = c->code_rate/fs;     /* chips per sample */
     double code_phase = c->code_phase;
     double phase = c->carr_phase;
 
-    for(int n=0;n<SAMP_1MS;++n){
+    for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;            /* 0..2045 */
         int16_t ca = ca_wave[c->prn][chip];
         uint8_t nh = nh20_bits[c->ms_count];

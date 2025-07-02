@@ -5,7 +5,6 @@
 
 #define MAX_CH     12
 #define CODE_LEN   2046
-#define SAMP_1MS   8184
 
 typedef struct {
     int     prn;
@@ -22,9 +21,11 @@ typedef struct {
 } channel_t;
 
 void channel_reset(channel_t *, int prn);
-void update_channel_dynamics(channel_t *, double rho, double rdot, int n_ch, double gain);
+void update_channel_dynamics(channel_t *, double rho, double rdot,
+                             int n_ch, double gain);
+void channel_set_fs(double sample_rate);
 void gen_samples_1ms(channel_t *, int week, double sow,
-                     int16_t *I, int16_t *Q);
+                     int samp_per_ms, int16_t *I, int16_t *Q);
 
 /* === 修正：用指標而非 array declarator === */
 void get_subframe_bits(int prn, int sf_id, int week, double sow,

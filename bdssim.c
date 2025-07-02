@@ -1,4 +1,4 @@
-/* bdssim.c : 8.184 Msps 北斗 B1I 基帶產生器 */
+/* bdssim.c : BeiDou B1I baseband generator */
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -13,8 +13,7 @@
 #include "path.h"
 #include "globals.h"     /* nav_week */
 #define OMEGA_E   7.2921150e-5
-#define FSAMP     8.184e6
-#define SAMP_1MS  8184
+#define FSAMP_DEF 5.0e6
 
 static const int geo[] ={1,2,3,4,5,59,60,61,62,63};
 static int is_geo(int p){for(int i=0;i<10;i++) if(p==geo[i]) return 1; return 0;}
@@ -130,9 +129,13 @@ void generate_signal(const sim_config_t *cfg)
         printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
     }
 
+    double fs = cfg->sample_rate ? cfg->sample_rate : FSAMP_DEF;
+    int samp_per_ms = (int)(fs/1000.0 + 0.5);
+    channel_set_fs(fs);
+
     FILE *fp=fopen("beidou_b1i.bin","wb"); if(!fp){perror("bin");return;}
-    int16_t tmpI[MAX_CH][SAMP_1MS],tmpQ[MAX_CH][SAMP_1MS];
-    int32_t accI[SAMP_1MS],accQ[SAMP_1MS];
+    int16_t tmpI[MAX_CH][samp_per_ms],tmpQ[MAX_CH][samp_per_ms];
+    int32_t accI[samp_per_ms],accQ[samp_per_ms];
     double sumI=0.0,sumQ=0.0,sumI2=0.0,sumQ2=0.0;
     uint64_t samp_cnt=0;
 
@@ -176,18 +179,18 @@ void generate_signal(const sim_config_t *cfg)
             #pragma omp parallel for
             for(int c=0;c<n_ch;++c)
                 gen_samples_1ms(&ch[c],week,sow+step*0.001,
-                               tmpI[c],tmpQ[c]);
+                               samp_per_ms,tmpI[c],tmpQ[c]);
 
             /* 歸併 */
             for(int c=0;c<n_ch;++c)
-                for(int k=0;k<SAMP_1MS;++k){
+                for(int k=0;k<samp_per_ms;++k){
                     accI[k]+=tmpI[c][k];
                     accQ[k]+=tmpQ[c][k];
                 }
 
             /* 限幅並打包成 I/Q */
-            int16_t iq[2*SAMP_1MS];
-            for(int k=0;k<SAMP_1MS;++k){
+            int16_t iq[2*samp_per_ms];
+            for(int k=0;k<samp_per_ms;++k){
                 int32_t i=accI[k];
                 int32_t q=accQ[k];
                 if(i>32767)i=32767; else if(i<-32768)i=-32768;
@@ -199,8 +202,8 @@ void generate_signal(const sim_config_t *cfg)
                 sumI2 += (double)iq[2*k]*iq[2*k];
                 sumQ2 += (double)iq[2*k+1]*iq[2*k+1];
             }
-            samp_cnt += SAMP_1MS;
-            fwrite(iq,sizeof(int16_t),2*SAMP_1MS,fp);
+            samp_cnt += samp_per_ms;
+            fwrite(iq,sizeof(int16_t),2*samp_per_ms,fp);
 
         }
         /* 進度顯示 */
