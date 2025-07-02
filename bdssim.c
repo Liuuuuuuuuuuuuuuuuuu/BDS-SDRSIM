@@ -24,8 +24,9 @@ static double gauss_rand(void)
 {
     static int have=0; static double next=0.0;
     if(have){ have=0; return next; }
-    double u1=(double)rand()/RAND_MAX;
-    double u2=(double)rand()/RAND_MAX;
+    /* avoid log(0) by ensuring 0<u1<1 */
+    double u1=((double)rand()+1.0)/((double)RAND_MAX+2.0);
+    double u2=((double)rand()+1.0)/((double)RAND_MAX+2.0);
     double r=sqrt(-2.0*log(u1));
     double theta=2.0*M_PI*u2;
     next=r*sin(theta);
