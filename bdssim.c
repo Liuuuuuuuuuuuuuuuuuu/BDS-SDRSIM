@@ -177,11 +177,13 @@ void generate_signal(const sim_config_t *cfg)
     int samp_per_ms = (int)(fs/1000.0 + 0.5);
     channel_set_fs(fs);
 
-    FILE *fp=fopen("beidou_b1i.bin","wb"); if(!fp){perror("bin");return;}
-    FILE *fp8=NULL;
+    FILE *fp=NULL, *fp8=NULL;
     if(cfg->byte_output){
         fp8=fopen("beidou_b1i_u8.bin","wb");
-        if(!fp8){perror("u8"); fclose(fp); return;}
+        if(!fp8){perror("u8"); return;}
+    } else {
+        fp=fopen("beidou_b1i.bin","wb");
+        if(!fp){perror("bin"); return;}
     }
     int16_t tmpI[MAX_CH][samp_per_ms],tmpQ[MAX_CH][samp_per_ms];
     int32_t accI[samp_per_ms],accQ[samp_per_ms];
@@ -252,17 +254,24 @@ void generate_signal(const sim_config_t *cfg)
                 sumQ2 += (double)iq[2*k+1]*iq[2*k+1];
             }
             samp_cnt += samp_per_ms;
-            fwrite(iq,sizeof(int16_t),2*samp_per_ms,fp);
-            if(fp8) fwrite(iq8,sizeof(int8_t),2*samp_per_ms,fp8);
+            if(fp)
+                fwrite(iq,sizeof(int16_t),2*samp_per_ms,fp);
+            else
+                fwrite(iq8,sizeof(int8_t),2*samp_per_ms,fp8);
 
         }
         /* 進度顯示 */
         printf("\r進度: %.2f / %.2f 秒",(ms+STEP_MS)/1000.0,total_ms/1000.0);
         fflush(stdout);
     }
-    puts(""); fclose(fp); if(fp8) fclose(fp8);
-    puts("[bdssim] 完成多星基帶輸出 beidou_b1i.bin");
-    if(fp8) puts("[bdssim] 完成多星基帶輸出 beidou_b1i_u8.bin");
+    puts("");
+    if(fp){
+        fclose(fp);
+        puts("[bdssim] 完成多星基帶輸出 beidou_b1i.bin");
+    } else {
+        fclose(fp8);
+        puts("[bdssim] 完成多星基帶輸出 beidou_b1i_u8.bin");
+    }
     double meanI=sumI/samp_cnt, meanQ=sumQ/samp_cnt;
     double stdI = sqrt(sumI2/samp_cnt - meanI*meanI);
     double stdQ = sqrt(sumQ2/samp_cnt - meanQ*meanQ);

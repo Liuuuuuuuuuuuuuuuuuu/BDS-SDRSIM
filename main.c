@@ -22,7 +22,7 @@ static void usage(const char *p)
     puts("  --noise stddev       加入 AWGN 雜訊標準差");
     puts("  --seed n            雜訊亂數種子 (整數)");
     puts("  --srate Hz           取樣率 (Hz)");
-    puts("  --byte               另輸出 8-bit 檔 beidou_b1i_u8.bin");
+    puts("  --byte               25MHz 取樣率並以 8-bit 檔輸出");
     puts("  --help               顯示本說明\n");
 }
 
@@ -161,6 +161,9 @@ int main(int argc,char *argv[])
         return 1;
     }
 
+    if(cfg.byte_output)
+        cfg.sample_rate = 25000000;
+
     /* 3. 初始化 ------------------------------------- */
     if(!init_simulator(&cfg)){
         fprintf(stderr,"初始化失敗\n");
@@ -219,9 +222,10 @@ int main(int argc,char *argv[])
 
     /* 5. 結束 --------------------------------------- */
     cleanup_simulator();
-    puts("[done] beidou_b1i.bin 已產生");
     if(cfg.byte_output)
         puts("[done] beidou_b1i_u8.bin 已產生");
+    else
+        puts("[done] beidou_b1i.bin 已產生");
     return 0;
 }
 
