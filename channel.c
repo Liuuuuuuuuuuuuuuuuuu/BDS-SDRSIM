@@ -1,6 +1,7 @@
 /* channel.c : 單通道 1 ms B1I I/Q 產生 */
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <math.h>
 #include "channel.h"
 #include "globals.h"               /* prn_code */
@@ -89,6 +90,11 @@ void channel_reset(channel_t *c,int prn){
                 ca_wave[p][i] = prn_code[p][i]?+1:-1;
         ca_ready=1;
     }
+
+    /* Randomise starting carrier and code phase so I/Q averages
+       are well balanced even for short captures. */
+    c->carr_phase = ((double)rand()/(double)RAND_MAX)*PI2;
+    c->code_phase = ((double)rand()/(double)RAND_MAX)*CODE_LEN;
 }
 /* 幾何→計算振幅 / 初始多普勒 */
 void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch,double gain){

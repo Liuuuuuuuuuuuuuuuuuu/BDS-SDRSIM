@@ -22,7 +22,7 @@ static void usage(const char *p)
     puts("  --noise stddev       加入 AWGN 雜訊標準差");
     puts("  --seed n            雜訊亂數種子 (整數)");
     puts("  --srate Hz           取樣率 (Hz)");
-    puts("  --byte               25MHz 取樣率並以 8-bit 檔輸出");
+    puts("  --byte               25MHz 取樣率並僅輸出 I 之 8-bit 檔");
     puts("  --help               顯示本說明\n");
 }
 
