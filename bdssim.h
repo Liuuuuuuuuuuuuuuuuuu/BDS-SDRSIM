@@ -46,7 +46,7 @@ typedef struct {
     double   gain;             /* 輸出增益 */
     double   noise_std;        /* AWGN 標準差 (0 表示無) */
     unsigned noise_seed;       /* AWGN 亂數種子 */
-    bool     byte_output;      /* 同時輸出 8-bit 檔 */
+    bool     byte_output;      /* 以 8-bit 檔輸出 */
 } sim_config_t;
 
 /* ---------- 介面 ---------- */

@@ -42,8 +42,8 @@ default the file is written at 5 MHz.  Each sample is a pair of
 16‑bit integers `(I,Q)` so be
 careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
-Using the `--byte` flag sets the sample rate to **25 MHz** and additionally
-writes `beidou_b1i_u8.bin` with signed **8‑bit** samples for quick
+Using the `--byte` flag sets the sample rate to **25 MHz** and writes only
+`beidou_b1i_u8.bin` containing signed **8‑bit** samples for quick
 inspection.
 The legacy option `-byte` is still recognised as an alias for `--byte`.
 
@@ -75,7 +75,7 @@ sample units).  The default is `0` (no noise).
 `--seed` specifies the random seed for noise generation. The default is `1`.
 
 `--srate` sets the I/Q sample rate in Hertz. The default is `5000000`.
-`--byte`  forces a 25 MHz sample rate and also saves an 8‑bit version of
+`--byte`  forces a 25 MHz sample rate and saves only an 8‑bit version of
 the baseband samples.
 
 `--start` specifies the UTC start time; `--duration` is in seconds and
@@ -127,8 +127,8 @@ Ensure any analysis or playback software reads the file as 16‑bit
 integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
 When `--byte` is used, the sample rate is fixed to **25 MHz** and the
-companion file `beidou_b1i_u8.bin` stores the same samples in signed
-8‑bit format.
+output file `beidou_b1i_u8.bin` stores the samples in signed
+8‑bit format only.
 
 The signal is at baseband (zero‑IF), so tune the
 SDR’s RF centre frequency to the desired transmit frequency – for B1I
