@@ -72,7 +72,8 @@ range.
 
 `--noise` adds complex AWGN with the given standard deviation (in 16‑bit
 sample units).  The default is `0` (no noise).
-`--seed` specifies the random seed for noise generation. The default is `1`.
+`--seed` specifies the random seed for both noise generation and the
+initial carrier phase of each channel. The default is `1`.
 
 `--srate` sets the I/Q sample rate in Hertz. The default is `5000000`.
 `--byte`  forces a 25 MHz sample rate and saves only an 8‑bit version of
