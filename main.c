@@ -22,7 +22,7 @@ static void usage(const char *p)
     puts("  --noise stddev       加入 AWGN 雜訊標準差");
     puts("  --seed n            雜訊亂數種子 (整數)");
     puts("  --srate Hz           取樣率 (Hz)");
-    puts("  --byte               另輸出 8-bit 檔 beidou_b1i_u8.bin");
+    puts("  --byte               另輸出 8-bit 檔並將取樣率設為 25MHz");
     puts("  --help               顯示本說明\n");
 }
 
@@ -160,6 +160,9 @@ int main(int argc,char *argv[])
         fputs("--llh 超出合理範圍\n", stderr);
         return 1;
     }
+
+    if(cfg.byte_output)
+        cfg.sample_rate = 25000000;
 
     /* 3. 初始化 ------------------------------------- */
     if(!init_simulator(&cfg)){
