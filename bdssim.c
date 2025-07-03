@@ -234,7 +234,7 @@ void generate_signal(const sim_config_t *cfg)
 
             /* 限幅並打包成 I/Q (加入 AWGN) */
             int16_t iq[2*samp_per_ms];
-            int8_t  iq8[2*samp_per_ms];
+            int8_t  i8[samp_per_ms];            /* byte output holds I only */
             for(int k=0;k<samp_per_ms;++k){
                 int32_t i=accI[k];
                 int32_t q=accQ[k];
@@ -246,8 +246,7 @@ void generate_signal(const sim_config_t *cfg)
                 if(q>32767)q=32767; else if(q<-32768)q=-32768;
                 iq[2*k]   = (int16_t)i;
                 iq[2*k+1] = (int16_t)q;
-                iq8[2*k]  = (int8_t)(iq[2*k]/256);
-                iq8[2*k+1]= (int8_t)(iq[2*k+1]/256);
+                i8[k]     = (int8_t)(iq[2*k]/256);
                 sumI  += iq[2*k];
                 sumQ  += iq[2*k+1];
                 sumI2 += (double)iq[2*k]*iq[2*k];
@@ -257,7 +256,7 @@ void generate_signal(const sim_config_t *cfg)
             if(fp)
                 fwrite(iq,sizeof(int16_t),2*samp_per_ms,fp);
             else
-                fwrite(iq8,sizeof(int8_t),2*samp_per_ms,fp8);
+                fwrite(i8,sizeof(int8_t),samp_per_ms,fp8);
 
         }
         /* 進度顯示 */
