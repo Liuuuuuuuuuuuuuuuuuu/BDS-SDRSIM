@@ -58,6 +58,13 @@ may appear to contain only zeros or `-1` values.
 the composite signal uses most of the 16‑bit range.  Larger values boost
 the level but may cause clipping.
 
+The amplitude itself is derived from a simple link budget.  Each orbit
+type is assigned a nominal transmit power (about 52 dBm for GEO,
+53 dBm for IGSO and 55 dBm for MEO).  Path loss is computed from the
+current slant range including a fixed 2 dB atmospheric term.  The gain
+factor multiplies this result before limiting to the 16‑bit output
+range.
+
 `--noise` adds complex AWGN with the given standard deviation (in 16‑bit
 sample units).  The default is `0` (no noise).
 `--seed` specifies the random seed for noise generation. The default is `1`.

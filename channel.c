@@ -31,12 +31,41 @@ static inline void fast_sincos(double ph,float*co,float*si){
     *co = sin_lut[j] + f*(sin_lut[j2]-sin_lut[j]);
 }
 
-/* ---------- 振幅 ---------- */
-double calc_amp(double rho,int n_ch,double gain){
-    double p = -130.0 - 20.0*log10(rho/2.0e7);
-    double a = pow(10.0,(p-DBM_REF)/20.0);    /* relative field amplitude */
-    /* Scale to 16‑bit output range. Each channel shares the range */
-    a *= 16384.0 / n_ch;
+/* ---------- 振幅與功率模型 ---------- */
+
+/*
+ * 依衛星軌道類型給予不同的 EIRP。此處僅以簡化常數代表：
+ *   GEO  衛星約 52 dBm
+ *   IGSO 衛星約 53 dBm
+ *   MEO  衛星約 55 dBm
+ */
+
+static const int geo_prn[] = {1,2,3,4,5,59,60,61,62,63};
+
+static int is_geo_prn(int prn)
+{
+    for(size_t i=0;i<sizeof(geo_prn)/sizeof(geo_prn[0]);++i)
+        if(prn==geo_prn[i]) return 1;
+    return 0;
+}
+
+static double sat_eirp_dbm(int prn)
+{
+    if(is_geo_prn(prn))      return 52.0; /* GEO */
+    else if(prn>=6 && prn<=10) return 53.0; /* IGSO (粗略) */
+    else                      return 55.0; /* MEO  */
+}
+
+/* 大氣衰減常數 (dB) */
+#define ATM_LOSS_DB    2.0
+
+double calc_amp(int prn,double rho,int n_ch,double gain)
+{
+    double lambda    = 299792458.0/FCARRIER;
+    double path_loss = 20.0*log10(4.0*M_PI*rho/lambda) + ATM_LOSS_DB;
+    double p_dbm     = sat_eirp_dbm(prn) - path_loss;  /* 收到的功率 */
+    double a = pow(10.0,(p_dbm-DBM_REF)/20.0);         /* 相對場幅值 */
+    a *= 16384.0 / n_ch;                               /* 16 位範圍 */
     return gain * a;
 }
 
@@ -63,7 +92,7 @@ void channel_reset(channel_t *c,int prn){
 }
 /* 幾何→計算振幅 / 初始多普勒 */
 void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch,double gain){
-    c->amp = calc_amp(rho,n_ch,gain);
+    c->amp = calc_amp(c->prn,rho,n_ch,gain);
     c->fd  = -FCARRIER*rdot/299792458.0;               /* Doppler (Hz) */
     /*
      * Positive range rate (rdot) means the satellite is moving away
