@@ -34,15 +34,6 @@ static double gauss_rand(void)
     return r*cos(theta);
 }
 
-/* ---- Compute user's ECEF velocity due to Earth rotation ---- */
-static void user_ecef_velocity(const coord_t *u,double vel[3])
-{
-    if(!u || !vel) return;
-    vel[0] = -OMEGA_E*u->xyz[1];
-    vel[1] =  OMEGA_E*u->xyz[0];
-    vel[2] =  0.0;
-}
-
 /* ---- 檢查模擬起始時間與星曆 toe 差距是否過大 ---- */
 static void check_ephemeris_age(int week,double sow)
 {
@@ -94,7 +85,8 @@ int select_channels(channel_t *ch,int *n,const coord_t*u)
     double uv[3]={-OMEGA_E*u->xyz[1], OMEGA_E*u->xyz[0], 0.0};
     for(int prn=1;prn<=63;++prn){
         if(is_geo(prn))continue;
-        double sat[3],vel[3]; calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
+        double sat[3],vel[3];
+        calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
         double enu[3]; ecef2enu(u,sat,enu);
         double el=enu_elevation_deg(enu); if(el<10)continue;
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
@@ -102,12 +94,47 @@ int select_channels(channel_t *ch,int *n,const coord_t*u)
         double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
         c[m++] = (struct cand){prn,el,rho,rdot};
     }
-    /* sort by elev desc */
+    /* sort by elevation (desc) */
     for(int i=0;i<m-1;++i) for(int j=i+1;j<m;++j)
         if(c[j].elev>c[i].elev){struct cand t=c[i];c[i]=c[j];c[j]=t;}
     *n = m<MAX_CH?m:MAX_CH;
     for(int i=0;i<*n;++i) channel_reset(&ch[i],c[i].prn);
     return *n;
+}
+
+/* 更新當前可見通道（可動態加入/移除） */
+static void update_channels_dynamic(channel_t *ch,int *n,const coord_t *u,const double uvel[3],double gain)
+{
+    struct cand{int prn;double elev,rho,rdot;} cand[63];
+    int m=0;
+    double uv[3];
+    if(uvel) { uv[0]=uvel[0]; uv[1]=uvel[1]; uv[2]=uvel[2]; }
+    else { uv[0]=uv[1]=uv[2]=0.0; }
+    for(int prn=1;prn<=63;++prn){
+        if(is_geo(prn)) continue;
+        double sat[3],vel[3];
+        calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
+        double enu[3]; ecef2enu(u,sat,enu);
+        double el=enu_elevation_deg(enu); if(el<10.0) continue;
+        double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
+        double rho=hypot(hypot(dx,dy),dz);
+        double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
+        cand[m++] = (struct cand){prn,el,rho,rdot};
+    }
+    for(int i=0;i<m-1;++i) for(int j=i+1;j<m;++j)
+        if(cand[j].elev>cand[i].elev){struct cand t=cand[i];cand[i]=cand[j];cand[j]=t;}
+
+    int new_n = m<MAX_CH?m:MAX_CH;
+    channel_t new_ch[MAX_CH];
+    for(int i=0;i<new_n;++i){
+        int idx=-1;
+        for(int j=0;j<*n;++j) if(ch[j].prn==cand[i].prn){ idx=j; break; }
+        if(idx>=0) new_ch[i]=ch[idx];
+        else       channel_reset(&new_ch[i],cand[i].prn);
+        update_channel_dynamics(&new_ch[i],cand[i].rho,cand[i].rdot,new_n,gain);
+    }
+    for(int i=0;i<new_n;++i) ch[i]=new_ch[i];
+    *n = new_n;
 }
 /*----------------------------------------------------*/
 void generate_signal(const sim_config_t *cfg)
@@ -136,7 +163,6 @@ void generate_signal(const sim_config_t *cfg)
 
     double uvel[3]={-OMEGA_E*usr.xyz[1], OMEGA_E*usr.xyz[0], 0.0};
     /* 首次幾何 – 初始化振幅/NCO */
-    double uvel0[3]; user_ecef_velocity(&usr,uvel0);
     for(int i=0;i<n_ch;++i){
         double sat[3],vel[3];
         calc_sat_position_velocity(ch[i].prn,usr.week,usr.sow,sat,vel);
@@ -180,14 +206,7 @@ void generate_signal(const sim_config_t *cfg)
             uvel[2]=(usr.xyz[2]-prev.xyz[2])/dt;
         }
 
-        for(int i=0;i<n_ch;++i){
-            double sat[3],vel[3];
-            calc_sat_position_velocity(ch[i].prn,week,sow,sat,vel);
-            double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
-            double rho=hypot(hypot(dx,dy),dz);
-            double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
-            update_channel_dynamics(&ch[i],rho,rdot,n_ch,cfg->gain);
-        }
+        update_channels_dynamic(ch,&n_ch,&usr,uvel,cfg->gain);
 
         /* --- STEP_MS 次 1ms 取樣 --- */
         for(int step=0;step<STEP_MS;++step){
