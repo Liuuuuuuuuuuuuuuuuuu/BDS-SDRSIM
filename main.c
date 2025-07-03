@@ -22,6 +22,7 @@ static void usage(const char *p)
     puts("  --noise stddev       加入 AWGN 雜訊標準差");
     puts("  --seed n            雜訊亂數種子 (整數)");
     puts("  --srate Hz           取樣率 (Hz)");
+    puts("  --byte               另輸出 8-bit 檔 beidou_b1i_u8.bin");
     puts("  --help               顯示本說明\n");
 }
 
@@ -35,6 +36,14 @@ int main(int argc,char *argv[])
     cfg.duration    = 300;                /* 預設 300 秒 */
     cfg.noise_std   = 0.0;
     cfg.noise_seed  = 1;
+    cfg.byte_output = false;
+    bool llh_given   = false;
+
+    /* 處理 "-byte" 舊習慣 */
+    for(int i=1;i<argc;i++){
+        if(strcmp(argv[i],"-byte")==0)
+            argv[i] = "--byte";
+    }
 
     /* 2. 解析 CLI ----------------------------------- */
     static struct option longopt[] = {
@@ -49,12 +58,13 @@ int main(int argc,char *argv[])
         {"noise",    required_argument, 0, 'z'},
         {"seed",     required_argument, 0, 'R'},
         {"srate",    required_argument, 0, 's'},
+        {"byte",     no_argument,       0, 'b'},
         {"help",     no_argument,       0, 'h'},
         {0,0,0,0}
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:s:h", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:s:hb", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -71,6 +81,7 @@ int main(int argc,char *argv[])
             cfg.llh[0] = lat;
             cfg.llh[1] = lon;
             cfg.llh[2] = h;
+            llh_given  = true;
             break;
         }
         case 'x':
@@ -113,6 +124,9 @@ int main(int argc,char *argv[])
                 return 1;
             }
             break;
+        case 'b':
+            cfg.byte_output = true;
+            break;
         case 'h':
             usage(argv[0]);
             return 0;
@@ -124,6 +138,15 @@ int main(int argc,char *argv[])
 
     if(cfg.rinex_file[0]=='\0' || cfg.time_start[0]=='\0'){
         usage(argv[0]); return 1;
+    }
+
+    if(cfg.path_type!=0 && llh_given){
+        fputs("--llh 與路徑檔選項不可並用\n", stderr);
+        return 1;
+    }
+    if(cfg.path_type==0 && !llh_given){
+        fputs("請指定 --llh 或路徑檔\n", stderr);
+        return 1;
     }
 
     /* --duration 1~3600 sec; --llh lat[-90,90], lon[-180,180], h[-1000,20000] */
@@ -197,6 +220,8 @@ int main(int argc,char *argv[])
     /* 5. 結束 --------------------------------------- */
     cleanup_simulator();
     puts("[done] beidou_b1i.bin 已產生");
+    if(cfg.byte_output)
+        puts("[done] beidou_b1i_u8.bin 已產生");
     return 0;
 }
 

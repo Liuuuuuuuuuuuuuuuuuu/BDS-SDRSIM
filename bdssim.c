@@ -178,6 +178,11 @@ void generate_signal(const sim_config_t *cfg)
     channel_set_fs(fs);
 
     FILE *fp=fopen("beidou_b1i.bin","wb"); if(!fp){perror("bin");return;}
+    FILE *fp8=NULL;
+    if(cfg->byte_output){
+        fp8=fopen("beidou_b1i_u8.bin","wb");
+        if(!fp8){perror("u8"); fclose(fp); return;}
+    }
     int16_t tmpI[MAX_CH][samp_per_ms],tmpQ[MAX_CH][samp_per_ms];
     int32_t accI[samp_per_ms],accQ[samp_per_ms];
     double sumI=0.0,sumQ=0.0,sumI2=0.0,sumQ2=0.0;
@@ -227,6 +232,7 @@ void generate_signal(const sim_config_t *cfg)
 
             /* 限幅並打包成 I/Q (加入 AWGN) */
             int16_t iq[2*samp_per_ms];
+            int8_t  iq8[2*samp_per_ms];
             for(int k=0;k<samp_per_ms;++k){
                 int32_t i=accI[k];
                 int32_t q=accQ[k];
@@ -238,6 +244,8 @@ void generate_signal(const sim_config_t *cfg)
                 if(q>32767)q=32767; else if(q<-32768)q=-32768;
                 iq[2*k]   = (int16_t)i;
                 iq[2*k+1] = (int16_t)q;
+                iq8[2*k]  = (int8_t)(iq[2*k]/256);
+                iq8[2*k+1]= (int8_t)(iq[2*k+1]/256);
                 sumI  += iq[2*k];
                 sumQ  += iq[2*k+1];
                 sumI2 += (double)iq[2*k]*iq[2*k];
@@ -245,14 +253,16 @@ void generate_signal(const sim_config_t *cfg)
             }
             samp_cnt += samp_per_ms;
             fwrite(iq,sizeof(int16_t),2*samp_per_ms,fp);
+            if(fp8) fwrite(iq8,sizeof(int8_t),2*samp_per_ms,fp8);
 
         }
         /* 進度顯示 */
         printf("\r進度: %.2f / %.2f 秒",(ms+STEP_MS)/1000.0,total_ms/1000.0);
         fflush(stdout);
     }
-    puts(""); fclose(fp);
+    puts(""); fclose(fp); if(fp8) fclose(fp8);
     puts("[bdssim] 完成多星基帶輸出 beidou_b1i.bin");
+    if(fp8) puts("[bdssim] 完成多星基帶輸出 beidou_b1i_u8.bin");
     double meanI=sumI/samp_cnt, meanQ=sumQ/samp_cnt;
     double stdI = sqrt(sumI2/samp_cnt - meanI*meanI);
     double stdQ = sqrt(sumQ2/samp_cnt - meanQ*meanQ);
