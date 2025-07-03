@@ -223,7 +223,7 @@ int main(int argc,char *argv[])
     /* 5. 結束 --------------------------------------- */
     cleanup_simulator();
     if(cfg.byte_output)
-        puts("[done] beidou_b1i_u8.bin 已產生");
+        puts("[done] beidou_b1i_u8.bin (I-only) 已產生");
     else
         puts("[done] beidou_b1i.bin 已產生");
     return 0;

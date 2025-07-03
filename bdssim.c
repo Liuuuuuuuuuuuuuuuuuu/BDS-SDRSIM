@@ -269,7 +269,7 @@ void generate_signal(const sim_config_t *cfg)
         puts("[bdssim] 完成多星基帶輸出 beidou_b1i.bin");
     } else {
         fclose(fp8);
-        puts("[bdssim] 完成多星基帶輸出 beidou_b1i_u8.bin");
+        puts("[bdssim] 完成 I-only 基帶輸出 beidou_b1i_u8.bin");
     }
     double meanI=sumI/samp_cnt, meanQ=sumQ/samp_cnt;
     double stdI = sqrt(sumI2/samp_cnt - meanI*meanI);

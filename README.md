@@ -44,7 +44,7 @@ careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
 Using the `--byte` flag sets the sample rate to **25 MHz** and writes
 `beidou_b1i_u8.bin` containing the **8‑bit** I channel only for quick
-inspection.
+inspection.  The Q samples are discarded entirely.
 The legacy option `-byte` is still recognised as an alias for `--byte`.
 
 ## Usage
@@ -129,7 +129,7 @@ integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
 When `--byte` is used, the sample rate is fixed to **25 MHz** and the
 output file `beidou_b1i_u8.bin` stores only the I samples in signed
-8‑bit format.
+8‑bit format.  Only the real component is retained; Q is not saved.
 
 The signal is at baseband (zero‑IF), so tune the
 SDR’s RF centre frequency to the desired transmit frequency – for B1I
