@@ -37,6 +37,13 @@ int main(int argc,char *argv[])
     cfg.noise_std   = 0.0;
     cfg.noise_seed  = 1;
     cfg.byte_output = false;
+    bool llh_given   = false;
+
+    /* 處理 "-byte" 舊習慣 */
+    for(int i=1;i<argc;i++){
+        if(strcmp(argv[i],"-byte")==0)
+            argv[i] = "--byte";
+    }
 
     /* 2. 解析 CLI ----------------------------------- */
     static struct option longopt[] = {
@@ -74,6 +81,7 @@ int main(int argc,char *argv[])
             cfg.llh[0] = lat;
             cfg.llh[1] = lon;
             cfg.llh[2] = h;
+            llh_given  = true;
             break;
         }
         case 'x':
@@ -130,6 +138,15 @@ int main(int argc,char *argv[])
 
     if(cfg.rinex_file[0]=='\0' || cfg.time_start[0]=='\0'){
         usage(argv[0]); return 1;
+    }
+
+    if(cfg.path_type!=0 && llh_given){
+        fputs("--llh 與路徑檔選項不可並用\n", stderr);
+        return 1;
+    }
+    if(cfg.path_type==0 && !llh_given){
+        fputs("請指定 --llh 或路徑檔\n", stderr);
+        return 1;
     }
 
     /* --duration 1~3600 sec; --llh lat[-90,90], lon[-180,180], h[-1000,20000] */

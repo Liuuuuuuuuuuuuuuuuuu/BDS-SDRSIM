@@ -44,6 +44,7 @@ careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
 Using the `--byte` flag additionally writes `beidou_b1i_u8.bin` with
 signed **8‑bit** samples for quick inspection.
+The legacy option `-byte` is still recognised as an alias for `--byte`.
 
 ## Usage
 
@@ -76,7 +77,9 @@ sample units).  The default is `0` (no noise).
 `--byte`  additionally saves an 8‑bit version of the baseband samples.
 
 `--start` specifies the UTC start time; `--duration` is in seconds and
-`--llh` defines the user location in degrees and meters.
+`--llh` defines the user location in degrees and meters. These static
+coordinates are mutually exclusive with the dynamic path options
+`--xyz`, `--llh-file` and `--nmea`.
 Run `./bds-sim --help` to see all command options. A brief configuration
 summary is printed before signal generation begins.
 
