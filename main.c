@@ -30,7 +30,8 @@ int main(int argc,char *argv[])
 {
     /* 1. 預設參數 ----------------------------------- */
     sim_config_t cfg = {0};
-    cfg.sample_rate = 5000000;
+    /* default sample rate tuned for AD9361 clean clocking (6.144 MSps) */
+    cfg.sample_rate = 6144000;
     cfg.gain        = 1.0;
     cfg.step_ms     = 1;
     cfg.duration    = 300;                /* 預設 300 秒 */
