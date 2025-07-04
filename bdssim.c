@@ -14,7 +14,7 @@
 #include "path.h"
 #include "globals.h"     /* nav_week */
 #define OMEGA_E   7.2921150e-5
-#define FSAMP_DEF 5.0e6
+#define FSAMP_DEF 6.144e6
 
 static const int geo[] ={1,2,3,4,5,59,60,61,62,63};
 static int is_geo(int p){for(int i=0;i<10;i++) if(p==geo[i]) return 1; return 0;}
