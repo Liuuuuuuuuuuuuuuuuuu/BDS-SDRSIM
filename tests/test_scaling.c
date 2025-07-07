@@ -29,6 +29,17 @@ void test_amplitude_and_interleave(void)
     TEST_ASSERT_EQUAL_INT16(0,Q[0]);
 }
 
+/* With zero carrier offset the Q branch should remain zero for all
+ * samples.  Swapping the I/Q calculation would break this invariant. */
+void test_q_branch_zero(void)
+{
+    channel_t c; setup_ch(&c);
+    int16_t I[CODE_LEN],Q[CODE_LEN];
+    gen_samples_1ms(&c,0,0,CODE_LEN,I,Q);
+    for(int i=0;i<CODE_LEN;i++)
+        TEST_ASSERT_EQUAL_INT16(0,Q[i]);
+}
+
 void test_dc_offset(void)
 {
     channel_t c; setup_ch(&c);
