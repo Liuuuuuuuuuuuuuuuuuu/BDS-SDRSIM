@@ -81,10 +81,6 @@ static const uint8_t nh20_bits[20]={
     0,0,0,0,0,1,0,0,1,1,0,1,0,1,0,0,1,1,1,0
 };
 
-/* BeiDou D2 Neumann-Hoffman 10-bit code (0=+1, 1=-1) */
-static const uint8_t nh10_bits[10]={
-    0,0,0,1,1,0,1,1,1,0
-};
 
 /* ---------- Channel helpers ---------- */
 void channel_reset(channel_t *c,int prn){
@@ -165,8 +161,9 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
 }
 
 /*
- * ======== D2 (1 kbps) support ========
- *  - 資料速率 1 kbps，Neumann-Hoffman 10-bit overlay
+ * ======== D2 (500 bps) support ========
+ *  - 資料速率 500 bps (2 ms per bit)
+ *  - 不使用二次 Neumann-Hoffman 編碼
  *  - 與 D1 交錯：偶數毫秒 Tx D2，奇數毫秒 Tx D1
  */
 void gen_samples_1ms_d2(channel_t *c, int week, double sow,
@@ -183,8 +180,7 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
     for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;
         int16_t ca = ca_wave[c->prn][chip];
-        uint8_t nh = nh10_bits[c->ms_count_d2];
-        int16_t nb = (c->nav_bits_d2[c->bit_ptr_d2]^nh)?+1:-1;
+        int16_t nb = c->nav_bits_d2[c->bit_ptr_d2] ? -1:+1;
         float co,si; fast_sincos(phase,&co,&si);
         float s = c->amp*ca*nb;
         I[n]=(int16_t)lrintf(s*co);
@@ -201,7 +197,7 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
     c->carr_phase = phase;
     c->code_phase = code_phase;
 
-    if(++c->ms_count_d2==10){
+    if(++c->ms_count_d2==2){
         c->ms_count_d2=0;
         if(++c->bit_ptr_d2==300){
             c->bit_ptr_d2=0;
