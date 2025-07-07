@@ -55,7 +55,7 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
 ./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
           --start 2025/06/25,00:00:00 \
           --duration 60 \
-          --srate 8192000 \
+          --srate 8 \
           --gain 1.0 \
           --llh lat,lon,height \
           --byte
@@ -79,7 +79,9 @@ sample units).  The default is `0` (no noise).
 `--seed` specifies the random seed for both noise generation and the
 initial carrier phase of each channel. The default is `1`.
 
-`--srate` sets the I/Q sample rate in Hertz. The default is `8192000`.
+`--srate` sets the I/Q sample rate in Hertz. Values `2`, `4` and `8`
+select the common 2.048, 4.096 and 8.192 MHz rates respectively. The
+default is `8192000`.
 `--byte`  forces a 25 MHz sample rate and saves an 8‑bit file containing
 only the I samples.
 
