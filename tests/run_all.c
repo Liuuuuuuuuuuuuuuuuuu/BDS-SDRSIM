@@ -20,6 +20,8 @@ void test_full_word(void);
 void test_subframe1_sync(void);
 void test_subframe1_repeat(void);
 void test_subframe_bits_length(void);
+void test_subframe1_dummy_zero(void);
+void test_subframe1_parity(void);
 
 void test_chipseq_length_advances(void);
 void test_navbit_inversion(void);
@@ -46,6 +48,8 @@ int main(void)
     RUN_TEST(test_subframe1_sync);
     RUN_TEST(test_subframe1_repeat);
     RUN_TEST(test_subframe_bits_length);
+    RUN_TEST(test_subframe1_dummy_zero);
+    RUN_TEST(test_subframe1_parity);
 
     RUN_TEST(test_chipseq_length_advances);
     RUN_TEST(test_navbit_inversion);
