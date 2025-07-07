@@ -48,12 +48,3 @@ void test_bitptr_after_20ms(void)
     TEST_ASSERT_EQUAL_UINT16(1,c.bit_ptr);
 }
 
-int test_chipseq_main(void)
-{
-    load_rinex("tests/vectors/BRDM_sample.rnx");
-    navbits_init();
-    RUN_TEST(test_chipseq_length_advances);
-    RUN_TEST(test_navbit_inversion);
-    RUN_TEST(test_bitptr_after_20ms);
-    return 0;
-}

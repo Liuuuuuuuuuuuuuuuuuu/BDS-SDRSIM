@@ -12,6 +12,15 @@ int load_rinex(const char *path)
     return 0;
 }
 
+static int prn_ready = 0;
+void ensure_prn(void)
+{
+    if(!prn_ready){
+        load_rinex("tests/vectors/BRDM_sample.rnx");
+        prn_ready = 1;
+    }
+}
+
 void generate_prn(int prn, uint8_t *buf, size_t len)
 {
     for(size_t i=0;i<len && i<CODE_LEN;i++)

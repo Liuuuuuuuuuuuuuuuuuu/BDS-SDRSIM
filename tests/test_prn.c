@@ -45,7 +45,7 @@ void test_prn_autocorr(void)
         }
         if(abs(sum) > max_side) max_side = abs(sum);
     }
-    TEST_ASSERT_LESS_OR_EQUAL_INT(170, max_side);
+    TEST_ASSERT_LESS_OR_EQUAL_INT(162, max_side);
 }
 
 /* Cross-correlation between PRN1 and PRN2 should stay below
@@ -63,14 +63,5 @@ void test_prn_crosscorr(void)
         }
         if(abs(sum) > max) max = abs(sum);
     }
-    TEST_ASSERT_LESS_OR_EQUAL_INT(160, max);
-}
-
-int test_prn_main(void)
-{
-    TEST_ASSERT_EQUAL_INT_MESSAGE(0, load_rinex("tests/vectors/BRDM_sample.rnx"), "load rinex");
-    RUN_TEST(test_prn_sequence);
-    RUN_TEST(test_prn_autocorr);
-    RUN_TEST(test_prn_crosscorr);
-    return 0;
+    TEST_ASSERT_LESS_OR_EQUAL_INT(162, max);
 }

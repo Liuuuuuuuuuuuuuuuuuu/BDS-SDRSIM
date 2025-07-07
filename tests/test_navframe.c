@@ -6,7 +6,6 @@
 
 void test_subframe1_sync(void)
 {
-    load_rinex("tests/vectors/BRDM_sample.rnx");
     navbits_init();
     uint8_t bits[SUBFRAME_BITS];
     get_subframe_bits(1,1,0,0,bits);
@@ -35,12 +34,4 @@ void test_subframe_bits_length(void)
         count++; /* every element should be filled */
     }
     TEST_ASSERT_EQUAL_INT(300, count);
-}
-
-int test_navframe_main(void)
-{
-    RUN_TEST(test_subframe1_sync);
-    RUN_TEST(test_subframe1_repeat);
-    RUN_TEST(test_subframe_bits_length);
-    return 0;
 }
