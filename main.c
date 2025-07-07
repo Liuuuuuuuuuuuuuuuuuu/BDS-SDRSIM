@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <math.h>
 
 #include "bdssim.h"
 #include "timeconv.h"
@@ -120,14 +121,22 @@ int main(int argc,char *argv[])
         case 'R':
             cfg.noise_seed = (unsigned)strtoul(optarg,NULL,0);
             break;
-        case 's':
-            cfg.sample_rate = (uint32_t)atof(optarg);
-            if(cfg.sample_rate < 100000)
-            {
+        case 's': {
+            double val = atof(optarg);
+            if(val>0 && val<1000){
+                if(fabs(val-2.0)<0.2)      cfg.sample_rate = 2048000;
+                else if(fabs(val-4.0)<0.2) cfg.sample_rate = 4096000;
+                else if(fabs(val-8.0)<0.2) cfg.sample_rate = 8192000;
+                else                       cfg.sample_rate = (uint32_t)(val*1e6+0.5);
+            }else{
+                cfg.sample_rate = (uint32_t)val;
+            }
+            if(cfg.sample_rate < 100000){
                 fprintf(stderr, "--srate 無效\n");
                 return 1;
             }
             break;
+        }
         case 'b':
             cfg.byte_output = true;
             break;
