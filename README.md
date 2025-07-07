@@ -12,7 +12,9 @@ time and user location, and builds the B1I navigation subframes.  Each
 enabled satellite channel spreads these bits with the appropriate PRN
 code.  The 50 bps D1 navigation message is further modulated by the
 standard 20‑bit Neumann–Hoffman sequence so that the resulting signal
-matches the BeiDou B1I specification.  Finally the channels are summed to
+matches the BeiDou B1I specification.  Optionally a 1 kbps D2 message
+using a 10‑bit Neumann–Hoffman overlay can be interleaved every other
+millisecond.  Finally the channels are summed to
 produce complex baseband samples ready for SDR playback.
 The output is ready to be transmitted by an SDR.
 
@@ -25,7 +27,7 @@ satellite geometry and Doppler, and updates the channel state. The
 navigation message for subframes 1–5 is generated with correct
 time-of-week. Each channel spreads the bits with its PRN code and the
 samples are summed into a 16‑bit I/Q stream at a configurable sample
-rate (default 5.120 MHz).
+rate (default 8.192 MHz).
 
 ## Build
 
@@ -38,7 +40,7 @@ the first chips of PRN codes using the bundled RINEX file.
 
 The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
 file containing interleaved **16‑bit little‑endian** I/Q samples. By
-default the file is written at 5.120 MHz.  Each sample is a pair of
+default the file is written at 8.192 MHz.  Each sample is a pair of
 16‑bit integers `(I,Q)` so be
 careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
@@ -53,7 +55,7 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
 ./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
           --start 2025/06/25,00:00:00 \
           --duration 60 \
-          --srate 5120000 \
+          --srate 8192000 \
           --gain 1.0 \
           --llh lat,lon,height \
           --byte
@@ -68,14 +70,16 @@ type is assigned a nominal transmit power (about 52 dBm for GEO,
 53 dBm for IGSO and 55 dBm for MEO).  Path loss is computed from the
 current slant range including a fixed 2 dB atmospheric term.  The gain
 factor multiplies this result before limiting to the 16‑bit output
-range.
+range.  The computed power is further adjusted toward the target
+C/N₀ value (45 dB‑Hz by default) so that adding more channels does not
+reduce signal strength excessively.
 
 `--noise` adds complex AWGN with the given standard deviation (in 16‑bit
 sample units).  The default is `0` (no noise).
 `--seed` specifies the random seed for both noise generation and the
 initial carrier phase of each channel. The default is `1`.
 
-`--srate` sets the I/Q sample rate in Hertz. The default is `5120000`.
+`--srate` sets the I/Q sample rate in Hertz. The default is `8192000`.
 `--byte`  forces a 25 MHz sample rate and saves an 8‑bit file containing
 only the I samples.
 
@@ -123,7 +127,7 @@ the simulation start.
 ## SDR playback
 
 The file `beidou_b1i.bin` contains interleaved **16‑bit little‑endian**
-I/Q samples written at the configured sample rate (default 5.120 MHz).
+I/Q samples written at the configured sample rate (default 8.192 MHz).
 Ensure any analysis or playback software reads the file as 16‑bit
 integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
@@ -137,7 +141,7 @@ this is typically **1561.098 MHz** – and play the samples at the same
 rate.  The following command illustrates playback with a HackRF:
 
 ```bash
-hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 5120000 -x 0
+hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 8192000 -x 0
 ```
 
 Use the `-R` option for continuous looping if needed.  Other SDRs can
@@ -153,3 +157,12 @@ PRNs 1–17 and may not align with the PRN list printed by the simulator.
 Adjust the `ChannelX.satellite` lines accordingly or set
 `Channels.in_acquisition` to the total channel count so that GNSS-SDR
 searches for the correct PRNs automatically.
+
+## v0.3.0 (2025-07-07)
+* Fix UTC→BDT +14 s
+* GEO satellites enabled
+* Added subframe 4/5 template
+* Default Fs → 8.192 MHz
+* Power scaling by target CN₀
+* Basic D2 (1 kbps) support with D1 interleaving
+
