@@ -63,5 +63,5 @@ void test_prn_crosscorr(void)
         }
         if(abs(sum) > max) max = abs(sum);
     }
-    TEST_ASSERT_LESS_OR_EQUAL_INT(162, max);
+    TEST_ASSERT_LESS_OR_EQUAL_INT(160, max);
 }
