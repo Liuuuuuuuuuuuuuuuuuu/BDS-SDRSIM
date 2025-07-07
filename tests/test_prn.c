@@ -4,6 +4,15 @@
 #include <string.h>
 #include <stdlib.h>
 
+void setUp(void)
+{
+    ensure_prn();
+    generate_prn(1, prn_code[1], CODE_LEN);
+    generate_prn(2, prn_code[2], CODE_LEN);
+}
+
+void tearDown(void){}
+
 
 /*
  * Expected first 32 chips of PRN1.  The sequence is taken from

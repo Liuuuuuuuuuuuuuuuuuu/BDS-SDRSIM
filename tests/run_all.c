@@ -1,12 +1,6 @@
 #include "unity.h"
 #include "helpers.h"
 
-void setUp(void)
-{
-    ensure_prn();
-}
-
-void tearDown(void){}
 
 /* Declarations from test files */
 void test_prn_sequence(void);
