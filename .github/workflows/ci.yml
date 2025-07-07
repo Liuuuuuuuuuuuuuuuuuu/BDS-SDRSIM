@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential lcov
+      - name: Normal Tests
+        run: make check
+      - name: Tap Fault Injection
+        run: tests/ci/fault_inject.sh tap
+      - name: CRC Fault Injection
+        run: tests/ci/fault_inject.sh crc
+      - name: Restore Source
+        run: git checkout -- .
+      - name: Tests After Restore
+        run: make check
+      - name: Generate Coverage
+        run: make coverage
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage
+          path: |
+            coverage-html
+            tests/ci/*.log
+
