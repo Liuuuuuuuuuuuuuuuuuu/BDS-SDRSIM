@@ -52,11 +52,3 @@ void test_fft_power(void)
     TEST_ASSERT_FLOAT_WITHIN(1e-3,p_time,p_freq/CODE_LEN);
 }
 
-int test_fft_main(void)
-{
-    load_rinex("tests/vectors/BRDM_sample.rnx");
-    navbits_init();
-    RUN_TEST(test_fft_dc);
-    RUN_TEST(test_fft_power);
-    return 0;
-}

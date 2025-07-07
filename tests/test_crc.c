@@ -20,10 +20,3 @@ void test_full_word(void)
     TEST_ASSERT_EQUAL_HEX32(0xbfff7f74, w);
 }
 
-int test_crc_main(void)
-{
-    RUN_TEST(test_zero_word);
-    RUN_TEST(test_one_word);
-    RUN_TEST(test_full_word);
-    return 0;
-}

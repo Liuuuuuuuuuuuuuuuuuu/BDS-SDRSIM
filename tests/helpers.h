@@ -7,6 +7,9 @@
 /* Load minimal RINEX navigation data for tests */
 int load_rinex(const char *path);
 
+/* Ensure PRN table is generated once for tests */
+void ensure_prn(void);
+
 /* Generate PRN sequence for given PRN id into buf (length CODE_LEN) */
 void generate_prn(int prn, uint8_t *buf, size_t len);
 

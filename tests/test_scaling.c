@@ -42,11 +42,3 @@ void test_dc_offset(void)
     TEST_ASSERT_INT_WITHIN(5,0,sumQ/CODE_LEN/20);
 }
 
-int test_scaling_main(void)
-{
-    load_rinex("tests/vectors/BRDM_sample.rnx");
-    navbits_init();
-    RUN_TEST(test_amplitude_and_interleave);
-    RUN_TEST(test_dc_offset);
-    return 0;
-}
