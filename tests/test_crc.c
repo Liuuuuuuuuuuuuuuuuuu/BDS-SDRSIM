@@ -20,3 +20,10 @@ void test_full_word(void)
     TEST_ASSERT_EQUAL_HEX32(0xbfff7f74, w);
 }
 
+/* Additional regression test for CRC implementation */
+void test_random_word(void)
+{
+    uint32_t w = hamming_parity(0x123456);
+    TEST_ASSERT_EQUAL_HEX32(0x82464532, w);
+}
+

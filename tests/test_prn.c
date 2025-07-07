@@ -6,9 +6,8 @@
 
 void setUp(void)
 {
+    /* Ensure the full PRN table is generated once before each test */
     ensure_prn();
-    generate_prn(1, prn_code[1], CODE_LEN);
-    generate_prn(2, prn_code[2], CODE_LEN);
 }
 
 void tearDown(void){}
@@ -73,4 +72,34 @@ void test_prn_crosscorr(void)
         if(abs(sum) > max) max = abs(sum);
     }
     TEST_ASSERT_LESS_OR_EQUAL_INT(160, max);
+}
+
+/* Specific lag values for cross-correlation between PRN1 and PRN2.
+ * These serve as a regression check against accidental changes to the
+ * G2 tap table.  Values are derived from the current implementation. */
+void test_prn_crosscorr_known_lags(void)
+{
+    const int expect[6] = { -66,-42,-26,2,-26,-26 };
+    for(int lag=0; lag<6; lag++){
+        int sum=0;
+        for(int i=0;i<CODE_LEN;i++){
+            int j=(i+lag)%CODE_LEN;
+            sum += chip_val(prn_code[1][i])*chip_val(prn_code[2][j]);
+        }
+        TEST_ASSERT_EQUAL_INT(expect[lag], sum);
+    }
+}
+
+/* Check a few sidelobe values of PRN1 autocorrelation. */
+void test_prn_autocorr_known_lags(void)
+{
+    const int expect[5] = { 22,26,-70,-42,-10 };
+    for(int lag=1; lag<=5; lag++){
+        int sum=0;
+        for(int i=0;i<CODE_LEN;i++){
+            int j=(i+lag)%CODE_LEN;
+            sum += chip_val(prn_code[1][i])*chip_val(prn_code[1][j]);
+        }
+        TEST_ASSERT_EQUAL_INT(expect[lag-1], sum);
+    }
 }
