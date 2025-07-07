@@ -15,8 +15,11 @@ prn_test: prn_test.o globals.o bch.o navbits.o channel.o rinex.o orbits.o coord.
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	       rm -f *.o bds-sim prn_test test_beidou *.bin *.gz
+	rm -f *.o bds-sim prn_test test_beidou *.bin *.gz
 	@echo "✅ 已清除中間檔與 .gz 暫存檔"
+
+check:
+	$(MAKE) -C tests all && ./tests/run_all
 
 # =====================[ 下載區 ]=====================
 # 使用範例：
