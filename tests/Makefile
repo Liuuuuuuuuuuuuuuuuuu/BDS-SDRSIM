@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-I.. -Iunity -Iext/kissfft -O2 -Wall
+CFLAGS?=-I.. -Iunity -Iext/kissfft -O2 -Wall
 
 TESTS= test_prn.o test_crc.o test_navframe.o test_chipseq.o        test_scaling.o test_fft.o helpers.o unity/unity.o        ext/kissfft/kiss_fft.o
 PROJ= ../globals.o ../bch.o ../navbits.o ../channel.o ../rinex.o       ../orbits.o ../coord.o ../path.o ../bdssim.o
