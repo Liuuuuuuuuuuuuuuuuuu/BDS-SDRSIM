@@ -133,6 +133,16 @@ static void build_subframe3(uint8_t *out, const ephemeris_t *e)
 
 /* --------------------------------- 子帧 4 ----------------------------------- */
 
+static void build_sf45_template(uint8_t *out)
+{
+    /*
+     * 每個 word 填入 30-bit 固定值 0x2AAAAAAA (= 1010... pattern)。
+     * 依官方文件，此為子幀 4/5 的預留欄位內容。
+     */
+    for(int w=2; w<=10; ++w)
+        put_word(out,(w-1)*30, 0x2AAAAAAA);
+}
+
 static void build_subframe4(uint8_t *out,int week,double sow)
 
 {
@@ -144,9 +154,7 @@ static void build_subframe4(uint8_t *out,int week,double sow)
     put_word(out,0, make_word30(info));
     uint32_t info2 = (((uint32_t)sow&0xFFF)<<13) | (week&0x1FFF);
     put_word(out,30, make_word30(info2));
-    for(int w=2; w<10; ++w)
-
-        put_word(out,w*30, make_word30(0));
+    build_sf45_template(out);
     for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
@@ -163,9 +171,7 @@ static void build_subframe5(uint8_t *out,int week,double sow)
     put_word(out,0, make_word30(info));
     uint32_t info2 = (((uint32_t)sow&0xFFF)<<13) | (week&0x1FFF);
     put_word(out,30, make_word30(info2));
-    for(int w=2; w<10; ++w)
-
-        put_word(out,w*30, make_word30(0));
+    build_sf45_template(out);
     for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
