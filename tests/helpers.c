@@ -2,13 +2,23 @@
 #include "globals.h"
 #include "bdssim.h"
 #include <string.h>
+#include <stdio.h>
 
-int load_rinex(const char *path)
+int load_rinex(const char *fname)
 {
+    char full[512];
+    snprintf(full, sizeof(full), "tests/vectors/%s", fname);
+
+    FILE *fp = fopen(full, "r");
+    if(!fp){
+        return -1; /* missing local test vector */
+    }
+    fclose(fp);
+
     sim_config_t cfg = {0};
-    strncpy(cfg.rinex_file, path, sizeof(cfg.rinex_file)-1);
-    /* PRN table is generated regardless of parse success */
-    init_simulator(&cfg);
+    strncpy(cfg.rinex_file, full, sizeof(cfg.rinex_file)-1);
+    if(!init_simulator(&cfg))
+        return -1;
     return 0;
 }
 
@@ -16,7 +26,7 @@ static int prn_ready = 0;
 void ensure_prn(void)
 {
     if(!prn_ready){
-        load_rinex("tests/vectors/BRDM_sample.rnx");
+        load_rinex("BRDM_sample.rnx");
         prn_ready = 1;
     }
 }

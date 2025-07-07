@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* Load minimal RINEX navigation data for tests */
-int load_rinex(const char *path);
+/* Load RINEX navigation file from tests/vectors/ */
+int load_rinex(const char *fname);
 
 /* Ensure PRN table is generated once for tests */
 void ensure_prn(void);
