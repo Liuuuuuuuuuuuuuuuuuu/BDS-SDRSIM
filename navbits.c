@@ -135,9 +135,12 @@ static void build_subframe3(uint8_t *out, const ephemeris_t *e)
 
 static void build_sf45_template(uint8_t *out)
 {
-    /* 固定 pattern: word 2–10 = 0xAAAAAAAA with valid BCH */
+    /*
+     * 每個 word 填入 30-bit 固定值 0x2AAAAAAA (= 1010... pattern)。
+     * 依官方文件，此為子幀 4/5 的預留欄位內容。
+     */
     for(int w=2; w<=10; ++w)
-        put_word(out,(w-1)*30, make_word30(0x2AA));
+        put_word(out,(w-1)*30, 0x2AAAAAAA);
 }
 
 static void build_subframe4(uint8_t *out,int week,double sow)

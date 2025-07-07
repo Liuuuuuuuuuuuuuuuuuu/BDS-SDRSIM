@@ -16,8 +16,6 @@
 #define OMEGA_E   7.2921150e-5
 #define FSAMP_DEF 8.192e6    /* 8.192 MHz 更貼近商用 GNSS RF 前端 */
 
-static const int geo[] ={1,2,3,4,5,59,60,61,62,63};
-static int is_geo(int p){for(int i=0;i<10;i++) if(p==geo[i]) return 1; return 0;}
 
 /* ---- Gaussian RNG (Box-Muller) ---- */
 static double gauss_rand(void)
@@ -131,7 +129,7 @@ static void update_channels_dynamic(channel_t *ch,int *n,const coord_t *u,
         if(idx>=0) new_ch[i]=ch[idx];
         else       channel_reset(&new_ch[i],cand[i].prn);
         update_channel_dynamics(&new_ch[i],cand[i].rho,cand[i].rdot,
-                                new_n,gain,target_cn0);
+                                gain,target_cn0);
     }
     for(int i=0;i<new_n;++i) ch[i]=new_ch[i];
     *n = new_n;
@@ -169,7 +167,7 @@ void generate_signal(const sim_config_t *cfg)
         double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,n_ch,cfg->gain,cfg->target_cn0);
+        update_channel_dynamics(&ch[i],rho,rdot,cfg->gain,cfg->target_cn0);
         printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
     }
 

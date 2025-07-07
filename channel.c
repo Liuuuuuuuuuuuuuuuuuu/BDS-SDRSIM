@@ -60,7 +60,7 @@ static double sat_eirp_dbm(int prn)
 /* 大氣衰減常數 (dB) */
 #define ATM_LOSS_DB    2.0
 
-double calc_amp(int prn,double rho,int n_ch,double gain,double target_cn0)
+double calc_amp(int prn,double rho,double gain,double target_cn0)
 {
     /* dB path-loss + 衛星 Tx-power → 線性功率，再正規化到 ±16384 */
     double lambda    = 299792458.0/FCARRIER;
@@ -105,8 +105,8 @@ void channel_reset(channel_t *c,int prn){
     c->code_phase = ((double)rand()/(double)RAND_MAX)*CODE_LEN;
 }
 /* 幾何→計算振幅 / 初始多普勒 */
-void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch,double gain,double target_cn0){
-    c->amp = calc_amp(c->prn,rho,n_ch,gain,target_cn0);
+void update_channel_dynamics(channel_t *c,double rho,double rdot,double gain,double target_cn0){
+    c->amp = calc_amp(c->prn,rho,gain,target_cn0);
     c->fd  = -FCARRIER*rdot/299792458.0;               /* Doppler (Hz) */
     /*
      * Positive range rate (rdot) means the satellite is moving away

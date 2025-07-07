@@ -166,3 +166,7 @@ searches for the correct PRNs automatically.
 * Power scaling by target CN₀
 * Basic D2 (1 kbps) support with D1 interleaving
 
+## v0.3.1 (unreleased)
+* Correct subframe 4/5 constant words
+* Minor API cleanup
+

@@ -6,3 +6,8 @@
 * Power scaling by target CN₀
 * Basic D2 (1 kbps) support with D1 interleaving
 
+## v0.3.1 (unreleased)
+* Subframe 4/5 words set to official 0xAAAAAAAA pattern
+* Remove unused GEO helper
+* Amplitude API no longer depends on channel count
+

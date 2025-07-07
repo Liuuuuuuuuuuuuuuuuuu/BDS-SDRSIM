@@ -27,7 +27,7 @@ typedef struct {
 
 void channel_reset(channel_t *, int prn);
 void update_channel_dynamics(channel_t *, double rho, double rdot,
-                             int n_ch, double gain, double target_cn0);
+                             double gain, double target_cn0);
 void channel_set_fs(double sample_rate);
 void gen_samples_1ms(channel_t *, int week, double sow,
                      int samp_per_ms, int16_t *I, int16_t *Q);
