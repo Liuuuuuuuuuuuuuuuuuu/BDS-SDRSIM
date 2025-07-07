@@ -60,13 +60,15 @@ static double sat_eirp_dbm(int prn)
 /* 大氣衰減常數 (dB) */
 #define ATM_LOSS_DB    2.0
 
-double calc_amp(int prn,double rho,int n_ch,double gain)
+double calc_amp(int prn,double rho,double gain,double target_cn0)
 {
+    /* dB path-loss + 衛星 Tx-power → 線性功率，再正規化到 ±16384 */
     double lambda    = 299792458.0/FCARRIER;
     double path_loss = 20.0*log10(4.0*M_PI*rho/lambda) + ATM_LOSS_DB;
-    double p_dbm     = sat_eirp_dbm(prn) - path_loss;  /* 收到的功率 */
-    double a = pow(10.0,(p_dbm-DBM_REF)/20.0);         /* 相對場幅值 */
-    a *= 16384.0 / n_ch;                               /* 16 位範圍 */
+    double p_dbm     = sat_eirp_dbm(prn) - path_loss;
+    double cn0_dbhz  = p_dbm - DBM_REF + 10.0*log10(fs);
+    double diff_db   = target_cn0 - cn0_dbhz;
+    double a         = pow(10.0,diff_db/20.0) * 16384.0;
     return gain * a;
 }
 
@@ -79,11 +81,17 @@ static const uint8_t nh20_bits[20]={
     0,0,0,0,0,1,0,0,1,1,0,1,0,1,0,0,1,1,1,0
 };
 
+/* BeiDou D2 Neumann-Hoffman 10-bit code (0=+1, 1=-1) */
+static const uint8_t nh10_bits[10]={
+    0,0,0,1,1,0,1,1,1,0
+};
+
 /* ---------- Channel helpers ---------- */
 void channel_reset(channel_t *c,int prn){
     memset(c,0,sizeof(*c));
     c->prn   = prn;
     c->sf_id = 1;                     /* start from subframe 1 */
+    c->sf_id_d2 = 1;
     if(!ca_ready){
         for(int p=1;p<=63;++p)
             for(int i=0;i<CODE_LEN;++i)
@@ -97,8 +105,8 @@ void channel_reset(channel_t *c,int prn){
     c->code_phase = ((double)rand()/(double)RAND_MAX)*CODE_LEN;
 }
 /* 幾何→計算振幅 / 初始多普勒 */
-void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch,double gain){
-    c->amp = calc_amp(c->prn,rho,n_ch,gain);
+void update_channel_dynamics(channel_t *c,double rho,double rdot,double gain,double target_cn0){
+    c->amp = calc_amp(c->prn,rho,gain,target_cn0);
     c->fd  = -FCARRIER*rdot/299792458.0;               /* Doppler (Hz) */
     /*
      * Positive range rate (rdot) means the satellite is moving away
@@ -154,5 +162,51 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
     }
     c->carr_phase = phase;
     c->code_phase = code_phase;
+}
+
+/*
+ * ======== D2 (1 kbps) support ========
+ *  - 資料速率 1 kbps，Neumann-Hoffman 10-bit overlay
+ *  - 與 D1 交錯：偶數毫秒 Tx D2，奇數毫秒 Tx D1
+ */
+void gen_samples_1ms_d2(channel_t *c, int week, double sow,
+                               int samp_per_ms, int16_t *I, int16_t *Q)
+{
+    if(c->bit_ptr_d2==0 && c->ms_count_d2==0)
+        get_subframe_bits(c->prn,c->sf_id_d2,week,sow,c->nav_bits_d2);
+
+    const double dphi = PI2*c->fd/fs;
+    const double dcode = c->code_rate/fs;
+    double code_phase = c->code_phase;
+    double phase = c->carr_phase;
+
+    for(int n=0;n<samp_per_ms;++n){
+        int chip = (int)code_phase;
+        int16_t ca = ca_wave[c->prn][chip];
+        uint8_t nh = nh10_bits[c->ms_count_d2];
+        int16_t nb = (c->nav_bits_d2[c->bit_ptr_d2]^nh)?+1:-1;
+        float co,si; fast_sincos(phase,&co,&si);
+        float s = c->amp*ca*nb;
+        I[n]=(int16_t)lrintf(s*co);
+        Q[n]=(int16_t)lrintf(s*si);
+
+        phase += dphi;
+        if(phase>=PI2)      phase-=PI2;
+        else if(phase<0.0)  phase+=PI2;
+        code_phase += dcode;
+        if(code_phase>=CODE_LEN){
+            code_phase-=CODE_LEN;
+        }
+    }
+    c->carr_phase = phase;
+    c->code_phase = code_phase;
+
+    if(++c->ms_count_d2==10){
+        c->ms_count_d2=0;
+        if(++c->bit_ptr_d2==300){
+            c->bit_ptr_d2=0;
+            c->sf_id_d2 = c->sf_id_d2%5 + 1;
+        }
+    }
 }
 

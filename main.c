@@ -30,14 +30,16 @@ int main(int argc,char *argv[])
 {
     /* 1. 預設參數 ----------------------------------- */
     sim_config_t cfg = {0};
-    /* default sample rate tuned for AD9361 clean clocking (5.120 MSps) */
-    cfg.sample_rate = 5120000;
+    /* default sample rate tuned for GNSS front-ends (8.192 MSps) */
+    cfg.sample_rate = 8192000;
     cfg.gain        = 1.0;
+    cfg.target_cn0  = 45.0;            /* dB-Hz */
     cfg.step_ms     = 1;
     cfg.duration    = 300;                /* 預設 300 秒 */
     cfg.noise_std   = 0.0;
     cfg.noise_seed  = 1;
     cfg.byte_output = false;
+    cfg.enable_d2  = false;
     bool llh_given   = false;
 
     /* 處理 "-byte" 舊習慣 */
@@ -60,12 +62,13 @@ int main(int argc,char *argv[])
         {"seed",     required_argument, 0, 'R'},
         {"srate",    required_argument, 0, 's'},
         {"byte",     no_argument,       0, 'b'},
+        {"enable-d2",no_argument,       0, 'D'},
         {"help",     no_argument,       0, 'h'},
         {0,0,0,0}
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:s:hb", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:s:hbD", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -127,6 +130,9 @@ int main(int argc,char *argv[])
             break;
         case 'b':
             cfg.byte_output = true;
+            break;
+        case 'D':
+            cfg.enable_d2 = true;
             break;
         case 'h':
             usage(argv[0]);

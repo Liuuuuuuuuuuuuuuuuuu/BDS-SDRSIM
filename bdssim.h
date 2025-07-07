@@ -44,9 +44,11 @@ typedef struct {
     uint32_t duration;         /* 模擬秒數 */
     uint32_t step_ms;          /* 幾何更新粒度 (ms) */
     double   gain;             /* 輸出增益 */
+    double   target_cn0;       /* 目標 CN0 (dB-Hz) */
     double   noise_std;        /* AWGN 標準差 (0 表示無) */
     unsigned noise_seed;       /* AWGN 亂數種子 */
     bool     byte_output;      /* 以 8-bit 檔輸出 */
+    bool     enable_d2;        /* 啟用 D2 播放 */
 } sim_config_t;
 
 /* ---------- 介面 ---------- */
