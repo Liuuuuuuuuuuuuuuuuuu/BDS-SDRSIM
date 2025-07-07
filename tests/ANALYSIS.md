@@ -19,3 +19,14 @@
 ### Next Steps
 - Add coverage for subframes 2 through 5 and explore parameterizing navbits tests.
 - Confirm whether BCH parity mask `~0x8` is required for all words.
+
+## 2025-07-07 Optimization Review
+- Validated that `setUp()` in `run_all.c` calls `ensure_prn()` so PRN tables are built before each test.
+- Confirmed there are no standalone `main()` functions in test files besides `run_all.c`.
+- Checked `test_subframe1_parity` logic and noted it recomputes BCH parity for each 30-bit word; parity bit 3 is masked pending spec clarification.
+- Verified all tests remain green with `make check`.
+
+### Next Steps
+- Extend parity checks to subframes 2–5 and compare with any published test vectors.
+- Consider property-based tests for PRN cross-correlation across multiple PRNs.
+- Review whether additional dummy bits appear in other subframes and assert accordingly.
