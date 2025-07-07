@@ -60,13 +60,15 @@ static double sat_eirp_dbm(int prn)
 /* 大氣衰減常數 (dB) */
 #define ATM_LOSS_DB    2.0
 
-double calc_amp(int prn,double rho,int n_ch,double gain)
+double calc_amp(int prn,double rho,int n_ch,double gain,double target_cn0)
 {
+    /* dB path-loss + 衛星 Tx-power → 線性功率，再正規化到 ±16384 */
     double lambda    = 299792458.0/FCARRIER;
     double path_loss = 20.0*log10(4.0*M_PI*rho/lambda) + ATM_LOSS_DB;
-    double p_dbm     = sat_eirp_dbm(prn) - path_loss;  /* 收到的功率 */
-    double a = pow(10.0,(p_dbm-DBM_REF)/20.0);         /* 相對場幅值 */
-    a *= 16384.0 / n_ch;                               /* 16 位範圍 */
+    double p_dbm     = sat_eirp_dbm(prn) - path_loss;
+    double cn0_dbhz  = p_dbm - DBM_REF + 10.0*log10(fs);
+    double diff_db   = target_cn0 - cn0_dbhz;
+    double a         = pow(10.0,diff_db/20.0) * 16384.0;
     return gain * a;
 }
 
@@ -97,8 +99,8 @@ void channel_reset(channel_t *c,int prn){
     c->code_phase = ((double)rand()/(double)RAND_MAX)*CODE_LEN;
 }
 /* 幾何→計算振幅 / 初始多普勒 */
-void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch,double gain){
-    c->amp = calc_amp(c->prn,rho,n_ch,gain);
+void update_channel_dynamics(channel_t *c,double rho,double rdot,int n_ch,double gain,double target_cn0){
+    c->amp = calc_amp(c->prn,rho,n_ch,gain,target_cn0);
     c->fd  = -FCARRIER*rdot/299792458.0;               /* Doppler (Hz) */
     /*
      * Positive range rate (rdot) means the satellite is moving away
@@ -154,5 +156,15 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
     }
     c->carr_phase = phase;
     c->code_phase = code_phase;
+}
+
+/*
+ * ======== D2 (1 kbps) support ========
+ *  - 資料速率 1 kbps，Neumann-Hoffman 10-bit overlay
+ *  - 與 D1 交錯：偶數毫秒 Tx D2，奇數毫秒 Tx D1
+ */
+static void gen_samples_1ms_d2(channel_t *ch, int16_t *buf)
+{
+    (void)ch; (void)buf; /* TODO: implement */
 }
 
