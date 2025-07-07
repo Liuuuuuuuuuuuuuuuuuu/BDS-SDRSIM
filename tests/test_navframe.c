@@ -63,3 +63,35 @@ void test_subframe1_parity(void)
         TEST_ASSERT_EQUAL_HEX16(expect, enc);
     }
 }
+
+static void navfile_checks(const char *fname)
+{
+    cleanup_simulator();
+    if(load_rinex(fname)!=0)
+        UNITY_TEST_FAIL(__LINE__, "missing RINEX test vector");
+
+    navbits_init();
+
+    int prn_found=-1;
+    for(int p=1;p<MAX_SAT;p++)
+        if(eph[p].prn){ prn_found=p; break; }
+
+    TEST_ASSERT_MESSAGE(prn_found>0, "no ephemeris loaded");
+
+    ephemeris_t *e=&eph[prn_found];
+    TEST_ASSERT_EQUAL_INT(prn_found, e->prn);
+    TEST_ASSERT_TRUE(e->toe > 0.0);
+
+    uint8_t bits[SUBFRAME_BITS];
+    get_subframe_bits(prn_found,1,0,0,bits);
+    uint32_t info=0; uint16_t enc=0;
+    for(int i=0;i<15;i++){
+        info = (info<<1) | bits[i*2];
+        enc  |= bits[i*2 + 1] << i;
+    }
+    uint16_t expect = bch_encode(info) & ~0x8;
+    TEST_ASSERT_EQUAL_HEX16(expect, enc);
+}
+
+void test_navframe_file_1760(void){ navfile_checks("BRDM00DLR_S_20251760000_01D_MN.rnx"); }
+void test_navframe_file_1770(void){ navfile_checks("BRDM00DLR_S_20251770000_01D_MN.rnx"); }
