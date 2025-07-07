@@ -12,7 +12,9 @@ time and user location, and builds the B1I navigation subframes.  Each
 enabled satellite channel spreads these bits with the appropriate PRN
 code.  The 50 bps D1 navigation message is further modulated by the
 standard 20‑bit Neumann–Hoffman sequence so that the resulting signal
-matches the BeiDou B1I specification.  Finally the channels are summed to
+matches the BeiDou B1I specification.  Optionally a 1 kbps D2 message
+using a 10‑bit Neumann–Hoffman overlay can be interleaved every other
+millisecond.  Finally the channels are summed to
 produce complex baseband samples ready for SDR playback.
 The output is ready to be transmitted by an SDR.
 
@@ -162,5 +164,5 @@ searches for the correct PRNs automatically.
 * Added subframe 4/5 template
 * Default Fs → 8.192 MHz
 * Power scaling by target CN₀
-* Preliminary D2 (1 kbps) support
+* Basic D2 (1 kbps) support with D1 interleaving
 

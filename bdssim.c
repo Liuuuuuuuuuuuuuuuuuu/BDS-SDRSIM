@@ -221,9 +221,15 @@ void generate_signal(const sim_config_t *cfg)
 
             /* 併行各通道 */
             #pragma omp parallel for
-            for(int c=0;c<n_ch;++c)
-                gen_samples_1ms(&ch[c],week,sow+step*0.001,
-                               samp_per_ms,tmpI[c],tmpQ[c]);
+            for(int c=0;c<n_ch;++c){
+                uint64_t curr_ms = ms + step;
+                if(cfg->enable_d2 && (curr_ms % 2 == 0))
+                    gen_samples_1ms_d2(&ch[c],week,sow+step*0.001,
+                                       samp_per_ms,tmpI[c],tmpQ[c]);
+                else
+                    gen_samples_1ms(&ch[c],week,sow+step*0.001,
+                                   samp_per_ms,tmpI[c],tmpQ[c]);
+            }
 
             /* 歸併 */
             for(int c=0;c<n_ch;++c)

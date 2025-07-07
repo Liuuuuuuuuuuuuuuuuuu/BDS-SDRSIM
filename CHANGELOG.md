@@ -4,5 +4,5 @@
 * Added subframe 4/5 template
 * Default Fs → 8.192 MHz
 * Power scaling by target CN₀
-* Preliminary D2 (1 kbps) support
+* Basic D2 (1 kbps) support with D1 interleaving
 

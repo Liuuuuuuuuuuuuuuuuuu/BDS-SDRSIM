@@ -81,11 +81,17 @@ static const uint8_t nh20_bits[20]={
     0,0,0,0,0,1,0,0,1,1,0,1,0,1,0,0,1,1,1,0
 };
 
+/* BeiDou D2 Neumann-Hoffman 10-bit code (0=+1, 1=-1) */
+static const uint8_t nh10_bits[10]={
+    0,0,0,1,1,0,1,1,1,0
+};
+
 /* ---------- Channel helpers ---------- */
 void channel_reset(channel_t *c,int prn){
     memset(c,0,sizeof(*c));
     c->prn   = prn;
     c->sf_id = 1;                     /* start from subframe 1 */
+    c->sf_id_d2 = 1;
     if(!ca_ready){
         for(int p=1;p<=63;++p)
             for(int i=0;i<CODE_LEN;++i)
@@ -163,8 +169,44 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
  *  - 資料速率 1 kbps，Neumann-Hoffman 10-bit overlay
  *  - 與 D1 交錯：偶數毫秒 Tx D2，奇數毫秒 Tx D1
  */
-static void gen_samples_1ms_d2(channel_t *ch, int16_t *buf)
+void gen_samples_1ms_d2(channel_t *c, int week, double sow,
+                               int samp_per_ms, int16_t *I, int16_t *Q)
 {
-    (void)ch; (void)buf; /* TODO: implement */
+    if(c->bit_ptr_d2==0 && c->ms_count_d2==0)
+        get_subframe_bits(c->prn,c->sf_id_d2,week,sow,c->nav_bits_d2);
+
+    const double dphi = PI2*c->fd/fs;
+    const double dcode = c->code_rate/fs;
+    double code_phase = c->code_phase;
+    double phase = c->carr_phase;
+
+    for(int n=0;n<samp_per_ms;++n){
+        int chip = (int)code_phase;
+        int16_t ca = ca_wave[c->prn][chip];
+        uint8_t nh = nh10_bits[c->ms_count_d2];
+        int16_t nb = (c->nav_bits_d2[c->bit_ptr_d2]^nh)?+1:-1;
+        float co,si; fast_sincos(phase,&co,&si);
+        float s = c->amp*ca*nb;
+        I[n]=(int16_t)lrintf(s*co);
+        Q[n]=(int16_t)lrintf(s*si);
+
+        phase += dphi;
+        if(phase>=PI2)      phase-=PI2;
+        else if(phase<0.0)  phase+=PI2;
+        code_phase += dcode;
+        if(code_phase>=CODE_LEN){
+            code_phase-=CODE_LEN;
+        }
+    }
+    c->carr_phase = phase;
+    c->code_phase = code_phase;
+
+    if(++c->ms_count_d2==10){
+        c->ms_count_d2=0;
+        if(++c->bit_ptr_d2==300){
+            c->bit_ptr_d2=0;
+            c->sf_id_d2 = c->sf_id_d2%5 + 1;
+        }
+    }
 }
 
