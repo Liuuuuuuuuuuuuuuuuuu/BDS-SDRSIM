@@ -49,7 +49,7 @@ void test_prn_autocorr(void)
 }
 
 /* Cross-correlation between PRN1 and PRN2 should stay below
- * about 150 chips for any lag.  This fails if the tap table or
+ * about 160 chips for any lag.  This fails if the tap table or
  * feedback logic in globals.c is modified incorrectly.
  */
 void test_prn_crosscorr(void)
