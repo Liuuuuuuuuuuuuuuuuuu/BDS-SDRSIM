@@ -22,13 +22,14 @@ check:
 	$(MAKE) -C tests all && ./tests/run_all
 		
 coverage:
+	@command -v lcov >/dev/null 2>&1 || { echo "lcov or genhtml not installed"; exit 1; }
+	@command -v genhtml >/dev/null 2>&1 || { echo "lcov or genhtml not installed"; exit 1; }
 	$(MAKE) clean
 	$(MAKE) -C tests clean
-	$(MAKE) -C tests CFLAGS="$(CFLAGS) -I.. -Iunity -Iext/kissfft --coverage -O0" all
+	$(MAKE) -C tests coverage CFLAGS="$(CFLAGS) -I.. -Iunity -Iext/kissfft"
 	./tests/run_all
 	lcov -c -d . -o coverage.info
 	genhtml coverage.info -o coverage-html
-	
 # =====================[ 下載區 ]=====================
 # 使用範例：
 #   make download-brdm20251760          (下載 2025/176 BRDM)

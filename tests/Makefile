@@ -18,4 +18,7 @@ run_all: $(TESTS) run_all.o $(PROJ)
 clean:
 	rm -f *.o run_all ../*.o
 
-.PHONY: all clean
+coverage:
+	$(MAKE) CFLAGS+="--coverage -O0" all
+
+.PHONY: all clean coverage
