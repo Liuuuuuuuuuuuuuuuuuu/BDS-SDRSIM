@@ -1,0 +1,14 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ghcr.io/liusername/beidou-ci:latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Normal Tests
+        run: make check
