@@ -40,7 +40,6 @@ typedef struct {
     int    path_type;          /* 0: static, 1:xyz,2:llh,3:nmea */
 
     /* 其他選項 */
-    uint32_t sample_rate;      /* 取樣率 (Hz) */
     uint32_t duration;         /* 模擬秒數 */
     uint32_t step_ms;          /* 幾何更新粒度 (ms) */
     double   gain;             /* 輸出增益 */
@@ -48,7 +47,7 @@ typedef struct {
     double   noise_std;        /* AWGN 標準差 (0 表示無) */
     unsigned noise_seed;       /* AWGN 亂數種子 */
     bool     byte_output;      /* 以 8-bit 檔輸出 */
-    bool     enable_d2;        /* 啟用 D2 播放 */
+    bool     enable_d2;        /* 啟用 D2 播放（與 D1 交錯） */
 } sim_config_t;
 
 /* ---------- 介面 ---------- */

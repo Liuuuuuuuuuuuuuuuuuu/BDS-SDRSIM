@@ -37,7 +37,8 @@ static void build_subframe1(uint8_t *out, const ephemeris_t *e,
     /* word1：帧同步 11 bits（11100010010） + FraID(001) + SOW[19:12] */
     uint16_t info = 0x712;            /* 11100010010 */
     info = ((info << 3)|0x1) & 0x7FF; /* +FraID=001 */
-    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
+    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0 + 6.0);
+    if(sow_int >= 604800) sow_int -= 604800;
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
 
@@ -152,7 +153,8 @@ static void build_subframe4(uint8_t *out,int week,double sow)
     uint16_t info = 0x712;            /* sync */
     info = ((info<<3)|0x4) & 0x7FF;   /* FraID=100 */
 
-    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
+    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0 + 6.0);
+    if(sow_int >= 604800) sow_int -= 604800;
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
     uint32_t info2 = ((sow_int&0xFFF)<<13) | (week&0x1FFF);
@@ -170,7 +172,8 @@ static void build_subframe5(uint8_t *out,int week,double sow)
     uint16_t info = 0x712;            /* sync */
     info = ((info<<3)|0x5) & 0x7FF;   /* FraID=101 */
 
-    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
+    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0 + 6.0);
+    if(sow_int >= 604800) sow_int -= 604800;
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
     uint32_t info2 = ((sow_int & 0xFFF)<<13) | (week&0x1FFF);
@@ -193,19 +196,20 @@ void navbits_init(void)
 }
 
 /* 根據時間取得子帧 bit 流 (300 bits) */
-void get_subframe_bits(int prn,int sf_id,int week,double sow,uint8_t *out)
+void get_subframe_bits(int prn,int sf_id,int week,double sow,
+                       double frame_len,uint8_t *out)
 {
+    double start = floor(sow/frame_len)*frame_len;
     if(sf_id==1){
-        build_subframe1(out,&eph[prn],week,sow);
+        build_subframe1(out,&eph[prn],week,start);
     }else if(sf_id==2){
         memcpy(out,sf_static[prn][0],SF_STREAM_LEN);
     }else if(sf_id==3){
         memcpy(out,sf_static[prn][1],SF_STREAM_LEN);
     }else if(sf_id==4){
-
-        build_subframe4(out,week,sow);
+        build_subframe4(out,week,start);
     }else if(sf_id==5){
-        build_subframe5(out,week,sow);
+        build_subframe5(out,week,start);
 
     }else{
         memset(out,0,SF_STREAM_LEN);

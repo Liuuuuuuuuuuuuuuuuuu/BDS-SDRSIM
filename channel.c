@@ -101,7 +101,7 @@ void channel_set_time(channel_t *c,int week,double sow)
     else if(ms >= 6000) ms = 5999;
     c->bit_ptr = ms/20;
     c->ms_count = ms%20;
-    get_subframe_bits(c->prn,c->sf_id,week,sf_start,c->nav_bits);
+    get_subframe_bits(c->prn,c->sf_id,week,sf_start,6.0,c->nav_bits);
 
     double sf_start_d2 = floor(sow/0.6)*0.6;
     c->sf_id_d2 = ((int)(sf_start_d2/0.6))%5 + 1;
@@ -110,7 +110,7 @@ void channel_set_time(channel_t *c,int week,double sow)
     else if(ms2 >= 600) ms2 = 599;
     c->bit_ptr_d2 = ms2/2;
     c->ms_count_d2 = ms2%2;
-    get_subframe_bits(c->prn,c->sf_id_d2,week,sf_start_d2,c->nav_bits_d2);
+    get_subframe_bits(c->prn,c->sf_id_d2,week,sf_start_d2,0.6,c->nav_bits_d2);
 }
 
 void channel_reset(channel_t *c,int prn,int week,double sow){
@@ -147,7 +147,7 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
                      int samp_per_ms,int16_t*I,int16_t*Q)
 {
     if(c->bit_ptr==0 && c->ms_count==0)
-        get_subframe_bits(c->prn,c->sf_id,week,sow,c->nav_bits);
+        get_subframe_bits(c->prn,c->sf_id,week,sow,6.0,c->nav_bits);
 
     /* Baseband output – only apply Doppler frequency */
     const double dphi = PI2*c->fd/fs;
@@ -189,13 +189,12 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
  * ======== D2 (500 bps) support ========
  *  - 資料速率 500 bps (2 ms per bit)
  *  - 不使用二次 Neumann-Hoffman 編碼
- *  - 與 D1 交錯：偶數毫秒 Tx D2，奇數毫秒 Tx D1
  */
 void gen_samples_1ms_d2(channel_t *c, int week, double sow,
                                int samp_per_ms, int16_t *I, int16_t *Q)
 {
     if(c->bit_ptr_d2==0 && c->ms_count_d2==0)
-        get_subframe_bits(c->prn,c->sf_id_d2,week,sow,c->nav_bits_d2);
+        get_subframe_bits(c->prn,c->sf_id_d2,week,sow,0.6,c->nav_bits_d2);
 
     const double dphi = PI2*c->fd/fs;
     const double dcode = c->code_rate/fs;
