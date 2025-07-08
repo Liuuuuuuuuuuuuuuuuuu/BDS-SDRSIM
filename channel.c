@@ -83,22 +83,47 @@ static const uint8_t nh20_bits[20]={
 
 
 /* ---------- Channel helpers ---------- */
-void channel_reset(channel_t *c,int prn){
+static void load_ca_once(void)
+{
+    if(ca_ready) return;
+    for(int p=1;p<=63;++p)
+        for(int i=0;i<CODE_LEN;++i)
+            ca_wave[p][i] = prn_code[p][i]?+1:-1;
+    ca_ready = 1;
+}
+
+void channel_set_time(channel_t *c,int week,double sow)
+{
+    double sf_start = floor(sow/6.0)*6.0;
+    c->sf_id = ((int)(sf_start/6.0))%5 + 1;
+    int ms = (int)llround((sow - sf_start)*1000.0);
+    if(ms < 0)      ms = 0;
+    else if(ms >= 6000) ms = 5999;
+    c->bit_ptr = ms/20;
+    c->ms_count = ms%20;
+    get_subframe_bits(c->prn,c->sf_id,week,sf_start,c->nav_bits);
+
+    double sf_start_d2 = floor(sow/0.6)*0.6;
+    c->sf_id_d2 = ((int)(sf_start_d2/0.6))%5 + 1;
+    int ms2 = (int)llround((sow - sf_start_d2)*1000.0);
+    if(ms2 < 0)      ms2 = 0;
+    else if(ms2 >= 600) ms2 = 599;
+    c->bit_ptr_d2 = ms2/2;
+    c->ms_count_d2 = ms2%2;
+    get_subframe_bits(c->prn,c->sf_id_d2,week,sf_start_d2,c->nav_bits_d2);
+}
+
+void channel_reset(channel_t *c,int prn,int week,double sow){
     memset(c,0,sizeof(*c));
     c->prn   = prn;
-    c->sf_id = 1;                     /* start from subframe 1 */
-    c->sf_id_d2 = 1;
-    if(!ca_ready){
-        for(int p=1;p<=63;++p)
-            for(int i=0;i<CODE_LEN;++i)
-                ca_wave[p][i] = prn_code[p][i]?+1:-1;
-        ca_ready=1;
-    }
+    load_ca_once();
 
     /* Randomise starting carrier and code phase so I/Q averages
        are well balanced even for short captures. */
     c->carr_phase = ((double)rand()/(double)RAND_MAX)*PI2;
     c->code_phase = ((double)rand()/(double)RAND_MAX)*CODE_LEN;
+
+    channel_set_time(c,week,sow);
 }
 /* 幾何→計算振幅 / 初始多普勒 */
 void update_channel_dynamics(channel_t *c,double rho,double rdot,double gain,double target_cn0){
