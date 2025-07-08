@@ -22,8 +22,7 @@ static void usage(const char *p)
     puts("  --gain amp           輸出增益 (>0)");
     puts("  --noise stddev       加入 AWGN 雜訊標準差");
     puts("  --seed n            雜訊亂數種子 (整數)");
-    puts("  --srate Hz           取樣率 (Hz)");
-    puts("  --byte               25MHz 取樣率並僅輸出 I 之 8-bit 檔");
+    puts("  --byte               輸出 I-only 之 8-bit 檔");
     puts("  --enable-d2          產生 D2 (500bps) 導航訊息");
     puts("  --help               顯示本說明\n");
 }
@@ -32,8 +31,6 @@ int main(int argc,char *argv[])
 {
     /* 1. 預設參數 ----------------------------------- */
     sim_config_t cfg = {0};
-    /* default sample rate tuned for GNSS front-ends (5.120 MSps) */
-    cfg.sample_rate = 5120000;
     cfg.gain        = 1.0;
     cfg.target_cn0  = 45.0;            /* dB-Hz */
     cfg.step_ms     = 1;
@@ -62,7 +59,6 @@ int main(int argc,char *argv[])
         {"gain",     required_argument, 0, 'g'},
         {"noise",    required_argument, 0, 'z'},
         {"seed",     required_argument, 0, 'R'},
-        {"srate",    required_argument, 0, 's'},
         {"byte",     no_argument,       0, 'b'},
         {"enable-d2",no_argument,       0, 'D'},
         {"help",     no_argument,       0, 'h'},
@@ -70,7 +66,7 @@ int main(int argc,char *argv[])
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:s:hbD", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:hbD", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -122,22 +118,6 @@ int main(int argc,char *argv[])
         case 'R':
             cfg.noise_seed = (unsigned)strtoul(optarg,NULL,0);
             break;
-        case 's': {
-            double val = atof(optarg);
-            if(val>0 && val<1000){
-                if(fabs(val-2.0)<0.2)      cfg.sample_rate = 2048000;
-                else if(fabs(val-4.0)<0.2) cfg.sample_rate = 4096000;
-                else if(fabs(val-5.0)<0.2) cfg.sample_rate = 5120000;
-                else                       cfg.sample_rate = (uint32_t)(val*1e6+0.5);
-            }else{
-                cfg.sample_rate = (uint32_t)val;
-            }
-            if(cfg.sample_rate < 100000){
-                fprintf(stderr, "--srate 無效\n");
-                return 1;
-            }
-            break;
-        }
         case 'b':
             cfg.byte_output = true;
             break;
@@ -178,8 +158,7 @@ int main(int argc,char *argv[])
         return 1;
     }
 
-    if(cfg.byte_output)
-        cfg.sample_rate = 25000000;
+
 
     /* 3. 初始化 ------------------------------------- */
     if(!init_simulator(&cfg)){
@@ -231,7 +210,7 @@ int main(int argc,char *argv[])
     printf("[cfg] PRN:");
     for(int i=0;i<n_ch;i++) printf(" %02d", ch[i].prn);
     printf("  Fs %.1fMHz  Gain %.2f\n\n",
-           cfg.sample_rate/1e6, cfg.gain);
+           5.12, cfg.gain);
 
     /* 4. 產生基帶 ----------------------------------- */
     generate_signal(&cfg);

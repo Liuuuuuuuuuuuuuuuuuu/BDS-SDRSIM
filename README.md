@@ -26,8 +26,8 @@ tool computes the user position (static or from a path file), derives
 satellite geometry and Doppler, and updates the channel state. The
 navigation message for subframes 1–5 is generated with correct
 time-of-week. Each channel spreads the bits with its PRN code and the
-samples are summed into a 16‑bit I/Q stream at a configurable sample
-rate (default 5.120 MHz).
+samples are summed into a 16‑bit I/Q stream at a fixed 5.120 MHz sample
+rate.
 
 ## Build
 
@@ -44,9 +44,9 @@ default the file is written at 5.120 MHz.  Each sample is a pair of
 16‑bit integers `(I,Q)` so be
 careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
-Using the `--byte` flag sets the sample rate to **25 MHz** and writes
-`beidou_b1i_u8.bin` containing the **8‑bit** I channel only for quick
-inspection.  The Q samples are discarded entirely.
+Using the `--byte` flag writes `beidou_b1i_u8.bin` containing the **8‑bit**
+I channel only for quick inspection.  The Q samples are discarded
+entirely.
 The legacy option `-byte` is still recognised as an alias for `--byte`.
 
 ## Usage
@@ -55,7 +55,6 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
 ./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
           --start 2025/06/25,00:00:00 \
           --duration 60 \
-          --srate 5 \
           --gain 1.0 \
           --llh lat,lon,height \
           --byte
@@ -79,11 +78,7 @@ sample units).  The default is `0` (no noise).
 `--seed` specifies the random seed for both noise generation and the
 initial carrier phase of each channel. The default is `1`.
 
-`--srate` sets the I/Q sample rate in Hertz. Values `2`, `4` and `5`
-select the common 2.048, 4.096 and 5.120 MHz rates respectively. The
-default is `5120000`.
-`--byte`  forces a 25 MHz sample rate and saves an 8‑bit file containing
-only the I samples.
+`--byte`  saves an 8‑bit file containing only the I samples.
 
 `--start` specifies the UTC start time; `--duration` is in seconds and
 `--llh` defines the user location in degrees and meters. The start time may
@@ -131,13 +126,13 @@ the simulation start.
 ## SDR playback
 
 The file `beidou_b1i.bin` contains interleaved **16‑bit little‑endian**
-I/Q samples written at the configured sample rate (default 5.120 MHz).
+I/Q samples written at a fixed 5.120 MHz sample rate.
 Ensure any analysis or playback software reads the file as 16‑bit
 integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
-When `--byte` is used, the sample rate is fixed to **25 MHz** and the
-output file `beidou_b1i_u8.bin` stores only the I samples in signed
-8‑bit format.  Only the real component is retained; Q is not saved.
+When `--byte` is used, the output file `beidou_b1i_u8.bin` stores only the
+I samples in signed 8‑bit format.  Only the real component is retained;
+Q is not saved.
 
 The signal is at baseband (zero‑IF), so tune the
 SDR’s RF centre frequency to the desired transmit frequency – for B1I

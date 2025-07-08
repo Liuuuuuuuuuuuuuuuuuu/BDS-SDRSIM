@@ -171,7 +171,7 @@ void generate_signal(const sim_config_t *cfg)
         printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
     }
 
-    double fs = cfg->sample_rate ? cfg->sample_rate : FSAMP_DEF;
+    double fs = FSAMP_DEF;
     int samp_per_ms = (int)(fs/1000.0 + 0.5);
     channel_set_fs(fs);
 

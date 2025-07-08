@@ -40,7 +40,6 @@ typedef struct {
     int    path_type;          /* 0: static, 1:xyz,2:llh,3:nmea */
 
     /* 其他選項 */
-    uint32_t sample_rate;      /* 取樣率 (Hz) */
     uint32_t duration;         /* 模擬秒數 */
     uint32_t step_ms;          /* 幾何更新粒度 (ms) */
     double   gain;             /* 輸出增益 */
