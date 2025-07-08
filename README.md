@@ -13,7 +13,7 @@ enabled satellite channel spreads these bits with the appropriate PRN
 code.  The 50 bps D1 navigation message is further modulated by the
 standard 20‑bit Neumann–Hoffman sequence so that the resulting signal
 matches the BeiDou B1I specification.  Optionally a 500 bps D2 message
-without secondary coding and can be interleaved every other millisecond.
+without secondary coding can be interleaved every other millisecond.
 Finally the channels are summed to
 produce complex baseband samples ready for SDR playback.
 The output is ready to be transmitted by an SDR.
