@@ -27,7 +27,7 @@ satellite geometry and Doppler, and updates the channel state. The
 navigation message for subframes 1–5 is generated with correct
 time-of-week. Each channel spreads the bits with its PRN code and the
 samples are summed into a 16‑bit I/Q stream at a configurable sample
-rate (default 8.192 MHz).
+rate (default 5.120 MHz).
 
 ## Build
 
@@ -40,7 +40,7 @@ the first chips of PRN codes using the bundled RINEX file.
 
 The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
 file containing interleaved **16‑bit little‑endian** I/Q samples. By
-default the file is written at 8.192 MHz.  Each sample is a pair of
+default the file is written at 5.120 MHz.  Each sample is a pair of
 16‑bit integers `(I,Q)` so be
 careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
@@ -55,7 +55,7 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
 ./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
           --start 2025/06/25,00:00:00 \
           --duration 60 \
-          --srate 8 \
+          --srate 5 \
           --gain 1.0 \
           --llh lat,lon,height \
           --byte
@@ -79,9 +79,9 @@ sample units).  The default is `0` (no noise).
 `--seed` specifies the random seed for both noise generation and the
 initial carrier phase of each channel. The default is `1`.
 
-`--srate` sets the I/Q sample rate in Hertz. Values `2`, `4` and `8`
-select the common 2.048, 4.096 and 8.192 MHz rates respectively. The
-default is `8192000`.
+`--srate` sets the I/Q sample rate in Hertz. Values `2`, `4` and `5`
+select the common 2.048, 4.096 and 5.120 MHz rates respectively. The
+default is `5120000`.
 `--byte`  forces a 25 MHz sample rate and saves an 8‑bit file containing
 only the I samples.
 
@@ -129,7 +129,7 @@ the simulation start.
 ## SDR playback
 
 The file `beidou_b1i.bin` contains interleaved **16‑bit little‑endian**
-I/Q samples written at the configured sample rate (default 8.192 MHz).
+I/Q samples written at the configured sample rate (default 5.120 MHz).
 Ensure any analysis or playback software reads the file as 16‑bit
 integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
@@ -143,7 +143,7 @@ this is typically **1561.098 MHz** – and play the samples at the same
 rate.  The following command illustrates playback with a HackRF:
 
 ```bash
-hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 8192000 -x 0
+hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 5120000 -x 0
 ```
 
 Use the `-R` option for continuous looping if needed.  Other SDRs can
@@ -164,7 +164,7 @@ searches for the correct PRNs automatically.
 * Fix UTC→BDT +14 s
 * GEO satellites enabled
 * Added subframe 4/5 template
-* Default Fs → 8.192 MHz
+* Default Fs → 5.120 MHz
 * Power scaling by target CN₀
 * Basic D2 (500 bps) support with D1 interleaving
 
