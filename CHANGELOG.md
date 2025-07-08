@@ -10,4 +10,6 @@
 * Subframe 4/5 words set to official 0xAAAAAAAA pattern
 * Remove unused GEO helper
 * Amplitude API no longer depends on channel count
+* Allow --start up to 24 h past last ephemeris
+* Improved utc_to_bdt() handling of negative offsets
 

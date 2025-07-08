@@ -194,7 +194,7 @@ int main(int argc,char *argv[])
     }
     double start_bdt = start_week*604800.0 + start_sow;
     if(start_bdt < nav_time_min - 3600.0 ||
-       start_bdt + cfg.duration > nav_time_max + 3600.0){
+       start_bdt + cfg.duration > nav_time_max + 86400.0){
         fputs("--start 超出星曆可用區間\n", stderr);
         return 1;
     }

@@ -86,7 +86,9 @@ default is `5120000`.
 only the I samples.
 
 `--start` specifies the UTC start time; `--duration` is in seconds and
-`--llh` defines the user location in degrees and meters. These static
+`--llh` defines the user location in degrees and meters. The start time may
+extend up to 24 hours past the last ephemeris in the RINEX file; the simulator
+continues using the nearest ephemeris block for interpolation. These static
 coordinates are mutually exclusive with the dynamic path options
 `--xyz`, `--llh-file` and `--nmea`.
 Run `./bds-sim --help` to see all command options. A brief configuration
