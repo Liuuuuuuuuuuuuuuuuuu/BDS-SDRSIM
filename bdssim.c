@@ -95,7 +95,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u)
     for(int i=0;i<m-1;++i) for(int j=i+1;j<m;++j)
         if(c[j].elev>c[i].elev){struct cand t=c[i];c[i]=c[j];c[j]=t;}
     *n = m<MAX_CH?m:MAX_CH;
-    for(int i=0;i<*n;++i) channel_reset(&ch[i],c[i].prn);
+    for(int i=0;i<*n;++i) channel_reset(&ch[i],c[i].prn,u->week,u->sow);
     return *n;
 }
 
@@ -127,7 +127,7 @@ static void update_channels_dynamic(channel_t *ch,int *n,const coord_t *u,
         int idx=-1;
         for(int j=0;j<*n;++j) if(ch[j].prn==cand[i].prn){ idx=j; break; }
         if(idx>=0) new_ch[i]=ch[idx];
-        else       channel_reset(&new_ch[i],cand[i].prn);
+        else       channel_reset(&new_ch[i],cand[i].prn,u->week,u->sow);
         update_channel_dynamics(&new_ch[i],cand[i].rho,cand[i].rdot,
                                 gain,target_cn0);
     }

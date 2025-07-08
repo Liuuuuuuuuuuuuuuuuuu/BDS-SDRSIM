@@ -25,7 +25,8 @@ typedef struct {
     uint8_t  nav_bits_d2[300];
 } channel_t;
 
-void channel_reset(channel_t *, int prn);
+void channel_reset(channel_t *, int prn, int week, double sow);
+void channel_set_time(channel_t *, int week, double sow);
 void update_channel_dynamics(channel_t *, double rho, double rdot,
                              double gain, double target_cn0);
 void channel_set_fs(double sample_rate);

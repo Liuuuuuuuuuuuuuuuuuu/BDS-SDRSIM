@@ -29,18 +29,20 @@ static void put_word(uint8_t *b, int pos, uint32_t w30)
 }
 
 /* --------------------------------- 子帧 1 ----------------------------------- */
-static void build_subframe1(uint8_t *out, const ephemeris_t *e, int week, double sow)
+static void build_subframe1(uint8_t *out, const ephemeris_t *e,
+                             int week, double sow)
 {
     memset(out,0,SF_STREAM_LEN);
 
     /* word1：帧同步 11 bits（11100010010） + FraID(001) + SOW[19:12] */
     uint16_t info = 0x712;            /* 11100010010 */
     info = ((info << 3)|0x1) & 0x7FF; /* +FraID=001 */
-    info = (info<<8) | ((uint32_t)sow>>12 & 0xFF);
+    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
+    info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
 
     /* word2: SOW[11:0] (12 bits) + WN (13 bits) + reserved(?) */
-    uint32_t info2 = (((uint32_t)sow&0xFFF)<<13) | (week&0x1FFF);
+    uint32_t info2 = ((sow_int & 0xFFF)<<13) | (week&0x1FFF);
     put_word(out,30, make_word30(info2));
 
     /* word3: URA 4b, health 1b, toc(17b, /8), AODC 5b(=0) */
@@ -150,9 +152,10 @@ static void build_subframe4(uint8_t *out,int week,double sow)
     uint16_t info = 0x712;            /* sync */
     info = ((info<<3)|0x4) & 0x7FF;   /* FraID=100 */
 
-    info = (info<<8) | ((uint32_t)sow>>12 & 0xFF);
+    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
+    info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
-    uint32_t info2 = (((uint32_t)sow&0xFFF)<<13) | (week&0x1FFF);
+    uint32_t info2 = ((sow_int&0xFFF)<<13) | (week&0x1FFF);
     put_word(out,30, make_word30(info2));
     build_sf45_template(out);
     for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
@@ -167,9 +170,10 @@ static void build_subframe5(uint8_t *out,int week,double sow)
     uint16_t info = 0x712;            /* sync */
     info = ((info<<3)|0x5) & 0x7FF;   /* FraID=101 */
 
-    info = (info<<8) | ((uint32_t)sow>>12 & 0xFF);
+    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
+    info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
-    uint32_t info2 = (((uint32_t)sow&0xFFF)<<13) | (week&0x1FFF);
+    uint32_t info2 = ((sow_int & 0xFFF)<<13) | (week&0x1FFF);
     put_word(out,30, make_word30(info2));
     build_sf45_template(out);
     for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
