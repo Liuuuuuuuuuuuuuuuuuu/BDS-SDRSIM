@@ -31,8 +31,8 @@ int main(int argc,char *argv[])
 {
     /* 1. 預設參數 ----------------------------------- */
     sim_config_t cfg = {0};
-    /* default sample rate tuned for GNSS front-ends (8.192 MSps) */
-    cfg.sample_rate = 8192000;
+    /* default sample rate tuned for GNSS front-ends (5.120 MSps) */
+    cfg.sample_rate = 5120000;
     cfg.gain        = 1.0;
     cfg.target_cn0  = 45.0;            /* dB-Hz */
     cfg.step_ms     = 1;
@@ -126,7 +126,7 @@ int main(int argc,char *argv[])
             if(val>0 && val<1000){
                 if(fabs(val-2.0)<0.2)      cfg.sample_rate = 2048000;
                 else if(fabs(val-4.0)<0.2) cfg.sample_rate = 4096000;
-                else if(fabs(val-8.0)<0.2) cfg.sample_rate = 8192000;
+                else if(fabs(val-5.0)<0.2) cfg.sample_rate = 5120000;
                 else                       cfg.sample_rate = (uint32_t)(val*1e6+0.5);
             }else{
                 cfg.sample_rate = (uint32_t)val;
