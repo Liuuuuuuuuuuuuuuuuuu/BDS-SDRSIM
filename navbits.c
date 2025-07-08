@@ -193,19 +193,20 @@ void navbits_init(void)
 }
 
 /* 根據時間取得子帧 bit 流 (300 bits) */
-void get_subframe_bits(int prn,int sf_id,int week,double sow,uint8_t *out)
+void get_subframe_bits(int prn,int sf_id,int week,double sow,
+                       double frame_len,uint8_t *out)
 {
+    double start = floor(sow/frame_len)*frame_len;
     if(sf_id==1){
-        build_subframe1(out,&eph[prn],week,sow);
+        build_subframe1(out,&eph[prn],week,start);
     }else if(sf_id==2){
         memcpy(out,sf_static[prn][0],SF_STREAM_LEN);
     }else if(sf_id==3){
         memcpy(out,sf_static[prn][1],SF_STREAM_LEN);
     }else if(sf_id==4){
-
-        build_subframe4(out,week,sow);
+        build_subframe4(out,week,start);
     }else if(sf_id==5){
-        build_subframe5(out,week,sow);
+        build_subframe5(out,week,start);
 
     }else{
         memset(out,0,SF_STREAM_LEN);

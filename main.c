@@ -24,6 +24,7 @@ static void usage(const char *p)
     puts("  --seed n            雜訊亂數種子 (整數)");
     puts("  --srate Hz           取樣率 (Hz)");
     puts("  --byte               25MHz 取樣率並僅輸出 I 之 8-bit 檔");
+    puts("  --enable-d2          產生 D2 (500bps) 導航訊息");
     puts("  --help               顯示本說明\n");
 }
 

@@ -18,10 +18,10 @@ typedef struct {
     uint8_t  sf_id;
     uint8_t  ms_count;      /* 0~19: ms index within data bit */
     uint8_t  nav_bits[300]; /* cached subframe bits */
-    /* ---- D2 state (1 kbps) ---- */
+    /* ---- D2 state (500 bps) ---- */
     uint16_t bit_ptr_d2;
     uint8_t  sf_id_d2;
-    uint8_t  ms_count_d2;   /* 0~9 */
+    uint8_t  ms_count_d2;   /* 0~1 */
     uint8_t  nav_bits_d2[300];
 } channel_t;
 
@@ -37,7 +37,7 @@ void gen_samples_1ms_d2(channel_t *, int week, double sow,
 
 /* === 修正：用指標而非 array declarator === */
 void get_subframe_bits(int prn, int sf_id, int week, double sow,
-                       uint8_t *out);   /* out[300] */
+                       double frame_len, uint8_t *out);   /* out[300] */
 
 #endif
 
