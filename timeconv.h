@@ -25,12 +25,15 @@ static inline int utc_to_bdt(const char *utc_str, int *week, double *sow)
     time_t t = timegm(&tm);          /* UTC → Unix epoch */
     const time_t bdt0 = 1136073600;  /* 2006-01-01 00:00:00 UTC */
     /* BDT 永遠比 UTC 快 14 秒 (ICD-B3, §3.4) */
+    const time_t week_sec = 604800;
     time_t diff = t - bdt0 + 14;
 
-    if (diff < 0) diff += 604800;    /* 粗略容錯（負值時補 1 週） */
+    long w = diff / week_sec;
+    long r = diff % week_sec;
+    if (r < 0) { r += week_sec; --w; }
 
-    *week = diff / 604800;
-    *sow  = (double)(diff % 604800);
+    *week = (int)w;
+    *sow  = (double)r;
     return 0;
 }
 #endif /* TIMECONV_H */
