@@ -23,7 +23,7 @@ static void usage(const char *p)
     puts("  --noise stddev       加入 AWGN 雜訊標準差");
     puts("  --seed n            雜訊亂數種子 (整數)");
     puts("  --byte               輸出 I-only 之 8-bit 檔");
-    puts("  --enable-d2          產生 D2 (500bps) 導航訊息");
+    puts("  --force-d2           所有 PRN 強制採用 D2 信號");
     puts("  --help               顯示本說明\n");
 }
 
@@ -38,7 +38,7 @@ int main(int argc,char *argv[])
     cfg.noise_std   = 0.0;
     cfg.noise_seed  = 1;
     cfg.byte_output = false;
-    cfg.enable_d2  = false;
+    cfg.force_d2  = false;
     bool llh_given   = false;
 
     /* 處理 "-byte" 舊習慣 */
@@ -60,7 +60,7 @@ int main(int argc,char *argv[])
         {"noise",    required_argument, 0, 'z'},
         {"seed",     required_argument, 0, 'R'},
         {"byte",     no_argument,       0, 'b'},
-        {"enable-d2",no_argument,       0, 'D'},
+        {"force-d2", no_argument,       0, 'D'},
         {"help",     no_argument,       0, 'h'},
         {0,0,0,0}
     };
@@ -122,7 +122,7 @@ int main(int argc,char *argv[])
             cfg.byte_output = true;
             break;
         case 'D':
-            cfg.enable_d2 = true;
+            cfg.force_d2 = true;
             break;
         case 'h':
             usage(argv[0]);

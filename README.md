@@ -49,6 +49,12 @@ I channel only for quick inspection.  The Q samples are discarded
 entirely.
 The legacy option `-byte` is still recognised as an alias for `--byte`.
 
+## 訊號型別
+
+- GEO PRN → D2 (500 bps, 無 NH 二次碼)
+- MEO/IGSO PRN → D1 (50 bps, 有 NH 二次碼)
+- `--force-d2` 可把所有 PRN 強制成 D2
+
 ## Usage
 
 ```

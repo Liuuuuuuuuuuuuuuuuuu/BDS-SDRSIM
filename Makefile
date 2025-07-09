@@ -11,11 +11,17 @@ bds-sim: $(OBJS)
 prn_test: prn_test.o globals.o bch.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
 	$(CC) $(CFLAGS) $^ -o $@ -lm
 
+tests/test_prn_d1d2: tests/test_prn_d1d2.o globals.o bch.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
+	$(CC) $(CFLAGS) $^ -o $@ -lm
+
+check: tests/test_prn_d1d2
+	./tests/test_prn_d1d2
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	       rm -f *.o bds-sim prn_test test_beidou *.bin *.gz
+	rm -f *.o bds-sim prn_test test_beidou tests/test_prn_d1d2 tests/test_prn_d1d2.o *.bin *.gz
 	@echo "✅ 已清除中間檔與 .gz 暫存檔"
 
 # =====================[ 下載區 ]=====================
