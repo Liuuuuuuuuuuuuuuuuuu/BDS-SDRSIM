@@ -9,7 +9,7 @@
 #define PI2        6.2831853071795864769
 #define FCARRIER   1561.098e6      /* B1I */
 #define CHIPRATE   2.046e6
-static double fs = 4.092e6;
+static double fs = 5.120e6;           /* default sample rate */
 #define DBM_REF   (-130.0)         /* ±1.0 → –130 dBm */
 
 /* ---------- 32k sin LUT ---------- */
