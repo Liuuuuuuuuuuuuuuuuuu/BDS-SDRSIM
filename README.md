@@ -18,6 +18,15 @@ Finally the channels are summed to
 produce complex baseband samples ready for SDR playback.
 The output is ready to be transmitted by an SDR.
 
+## 功能總覽
+
+程式以 `main.c` 處理命令列與基本參數，並由 `bdssim.c` 統整整個
+模擬流程。`rinex.c` 讀取星曆，`navbits.c` 依時間產生子幀位元，
+`channel.c` 依各衛星計算擴頻與都卜勒，最後由 `bdssim.c` 將所有
+通道的 I/Q 樣本累加成輸出檔。座標轉換與使用者路徑處理分別
+由 `coord.c` 與 `path.c` 負責，其間的資料透過 `ephemeris_t` 與
+`channel_t` 結構傳遞。
+
 ## Detailed System Description
 
 BDS-SDRSIM reads BeiDou ephemeris from a RINEX navigation file and
@@ -37,6 +46,9 @@ make
 
 The optional command `make prn_test` builds a small utility that prints
 the first chips of PRN codes using the bundled RINEX file.
+
+Run `make check` to build and execute the self test
+(`tests/test_prn_d1d2`).
 
 The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
 file containing interleaved **16‑bit little‑endian** I/Q samples. By
@@ -128,6 +140,14 @@ metres, or NMEA GGA sentences.
 Subframes 2 and 3 are pre‑built from ephemeris while subframes 1, 4 and
 5 are generated on demand so that the Time‑of‑Week is consistent with
 the simulation start.
+
+### Testing
+
+```
+make check
+```
+
+This builds and runs `tests/test_prn_d1d2` to verify D1/D2 generation.
 
 ## SDR playback
 
