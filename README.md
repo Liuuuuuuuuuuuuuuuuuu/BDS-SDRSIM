@@ -52,13 +52,13 @@ Run `make check` to build and execute the self test
 
 The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
 file containing interleaved **16‑bit little‑endian** I/Q samples. By
-default the file is written at 5.120 MHz.  Each sample is a pair of
+default the file is written at **5.120 MHz**.  Each sample is a pair of
 16‑bit integers `(I,Q)` so be
 careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
 Using the `--byte` flag writes `beidou_b1i_u8.bin` containing the **8‑bit**
-I channel only for quick inspection.  The Q samples are discarded
-entirely.
+I channel only, sampled at **25 MHz** for use with GNSS‑SDR.  The Q samples are
+discarded entirely.
 The legacy option `-byte` is still recognised as an alias for `--byte`.
 
 ## 訊號型別
@@ -152,12 +152,12 @@ This builds and runs `tests/test_prn_d1d2` to verify D1/D2 generation.
 ## SDR playback
 
 The file `beidou_b1i.bin` contains interleaved **16‑bit little‑endian**
-I/Q samples written at a fixed 5.120 MHz sample rate.
+I/Q samples written at a fixed **5.120 MHz** sample rate.
 Ensure any analysis or playback software reads the file as 16‑bit
 integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
 When `--byte` is used, the output file `beidou_b1i_u8.bin` stores only the
-I samples in signed 8‑bit format.  Only the real component is retained;
+I samples in signed 8‑bit format at **25 MHz**.  Only the real component is retained;
 Q is not saved.
 
 The signal is at baseband (zero‑IF), so tune the

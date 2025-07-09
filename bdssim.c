@@ -14,7 +14,8 @@
 #include "path.h"
 #include "globals.h"     /* nav_week */
 #define OMEGA_E   7.2921150e-5
-#define FSAMP_DEF 5.120e6    /* 5.120 MHz 更貼近商用 GNSS RF 前端 */
+#define FSAMP_DEF 5.120e6    /* default 5.120 MHz for 16-bit I/Q output */
+#define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
 
 
 /* ---- Gaussian RNG (Box-Muller) ---- */
@@ -159,6 +160,10 @@ void generate_signal(const sim_config_t *cfg)
 
     channel_t ch[MAX_CH]; int n_ch; select_channels(ch,&n_ch,&usr);
 
+    double fs = cfg->byte_output ? FSAMP_BYTE : FSAMP_DEF;
+    int samp_per_ms = (int)(fs/1000.0 + 0.5);
+    channel_set_fs(fs);                   /* ensure dynamics use correct Fs */
+
     double uvel[3]={-OMEGA_E*usr.xyz[1], OMEGA_E*usr.xyz[0], 0.0};
     /* 首次幾何 – 初始化振幅/NCO */
     for(int i=0;i<n_ch;++i){
@@ -170,10 +175,6 @@ void generate_signal(const sim_config_t *cfg)
         update_channel_dynamics(&ch[i],rho,rdot,cfg->gain,cfg->target_cn0);
         printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
     }
-
-    double fs = FSAMP_DEF;
-    int samp_per_ms = (int)(fs/1000.0 + 0.5);
-    channel_set_fs(fs);
 
     FILE *fp=NULL, *fp8=NULL;
     if(cfg->byte_output){
