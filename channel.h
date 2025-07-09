@@ -34,6 +34,7 @@ void gen_samples_1ms(channel_t *, int week, double sow,
                      int samp_per_ms, int16_t *I, int16_t *Q);
 void gen_samples_1ms_d2(channel_t *, int week, double sow,
                         int samp_per_ms, int16_t *I, int16_t *Q);
+int  is_d2_prn(int prn);
 
 /* === 修正：用指標而非 array declarator === */
 void get_subframe_bits(int prn, int sf_id, int week, double sow,

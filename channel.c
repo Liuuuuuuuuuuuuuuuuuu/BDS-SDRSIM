@@ -50,6 +50,11 @@ static int is_geo_prn(int prn)
     return 0;
 }
 
+int is_d2_prn(int prn)
+{
+    return is_geo_prn(prn);
+}
+
 static double sat_eirp_dbm(int prn)
 {
     if(is_geo_prn(prn))      return 52.0; /* GEO */
