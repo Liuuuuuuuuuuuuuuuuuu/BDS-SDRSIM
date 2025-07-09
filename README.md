@@ -29,7 +29,7 @@ navigation message for subframes 1–5 is generated with correct
 time-of-week. Each channel spreads the bits with its PRN code and the
 samples are summed into a 16‑bit I/Q stream at a fixed 5.120 MHz sample
 rate.
-（中文）程式讀取 RINEX 星曆後初始化各衛星通道，依序計算使用者與衛星幾何與多普勒，並產生對應的導航訊息，在 5.120u2009MHz 取樣率下輸出 16 位元 I/Q 流。
+（中文）程式讀取 RINEX 星曆後初始化各衛星通道，依序計算使用者與衛星幾何與多普勒，並產生對應的導航訊息，在 5.120 MHz 取樣率下輸出 16 位元 I/Q 流。
 
 ## Build
 
@@ -50,7 +50,7 @@ may appear to contain only zeros or `-1` values.
 Using the `--byte` flag writes `beidou_b1i_u8.bin` containing the **8‑bit**
 I channel only for quick inspection.  The Q samples are discarded
 entirely.
-（中文）`bds-sim` 會產生 `beidou_b1i.bin`，內容為交錯的 16 位元小端 I/Q 取樣，預設取樣率 5.120u2009MHz；若誤以 8 位元讀取將看到 Q 通道僅為 0 或 -1。加上 `--byte` 可輸出 8 位元 I 取樣，舊旗標 `-byte` 仍可使用。
+（中文）`bds-sim` 會產生 `beidou_b1i.bin`，內容為交錯的 16 位元小端 I/Q 取樣，預設取樣率 5.120 MHz；若誤以 8 位元讀取將看到 Q 通道僅為 0 或 -1。加上 `--byte` 可輸出 8 位元 I 取樣，舊旗標 `-byte` 仍可使用。
 The legacy option `-byte` is still recognised as an alias for `--byte`.
 
 ### Signal Types
