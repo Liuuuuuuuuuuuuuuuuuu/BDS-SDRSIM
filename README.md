@@ -1,21 +1,19 @@
 # BDS-SDRSIM
 
-This project generates synthetic BeiDou B1I baseband samples for SDR
-experiments.  Navigation data is read from a RINEX navigation file and
-converted into the binary subframe format required by receivers.
+BDS-SDRSIM generates synthetic BeiDou B1I baseband samples for
+software-defined radio experiments. It reads a RINEX navigation file,
+converts the ephemeris into standard subframes, and outputs complex
+I/Q samples ready for transmission.
 
 ## System Overview
 
-BDS‑SDRSIM parses BeiDou ephemeris from the RINEX navigation file,
-computes satellite positions and Doppler shifts for the requested start
-time and user location, and builds the B1I navigation subframes.  Each
-enabled satellite channel spreads these bits with the appropriate PRN
-code.  The 50 bps D1 navigation message is further modulated by the
-standard 20‑bit Neumann–Hoffman sequence so that the resulting signal
-matches the BeiDou B1I specification.  Optionally a 500 bps D2 message
-without secondary coding can be interleaved every other millisecond.
-Finally the channels are summed to
-produce complex baseband samples ready for SDR playback.
+BDS‑SDRSIM parses BeiDou ephemeris from the RINEX navigation file and
+computes satellite geometry and Doppler for the requested start time and
+user position. It builds the B1I navigation subframes and spreads the
+bits with the appropriate PRN code on each channel. The 50 bps D1 message
+is modulated with the 20‑bit Neumann–Hoffman sequence so that the signal
+matches the BeiDou specification. All channels are then summed to produce
+complex baseband samples for SDR playback.
 The output is ready to be transmitted by an SDR.
 
 ## Detailed System Description
@@ -49,11 +47,10 @@ I channel only for quick inspection.  The Q samples are discarded
 entirely.
 The legacy option `-byte` is still recognised as an alias for `--byte`.
 
-## 訊號型別
-
-- GEO PRN → D2 (500 bps, 無 NH 二次碼)
-- MEO/IGSO PRN → D1 (50 bps, 有 NH 二次碼)
-- `--force-d2` 可把所有 PRN 強制成 D2
+### Signal Types
+GEO PRN (1–5, 59–63) → D2 (500 bps, no NH)
+MEO/IGSO PRN (6–58) → D1 (50 bps, with NH)
+--force-d2 forces D2 on every PRN.
 
 ## Usage
 
@@ -105,10 +102,10 @@ Instead of a fixed location you may supply a 1 Hz path file. Three formats are 
 --nmea      NMEA GGA sentences
 ```
 
-Example path files are provided in the `examples/` directory. Usage:
-The files contain one position per line at a 1 Hz rate. Coordinates are
-either ECEF XYZ in metres, latitude/longitude/height in degrees and
-metres, or NMEA GGA sentences.
+Example path files are provided in the `examples/` directory. Each file
+contains one position per line at 1 Hz. Coordinates may be ECEF XYZ in
+metres, latitude/longitude/height in degrees and metres, or NMEA GGA
+sentences.
 
 ```
 ./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
@@ -169,7 +166,7 @@ searches for the correct PRNs automatically.
 * Added subframe 4/5 template
 * Default Fs → 5.120 MHz
 * Power scaling by target CN₀
-* Basic D2 (500 bps) support with D1 interleaving
+* Basic D2 (500 bps) support
 
 ## v0.3.1 (unreleased)
 * Correct subframe 4/5 constant words
