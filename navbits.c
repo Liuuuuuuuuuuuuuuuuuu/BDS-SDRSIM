@@ -30,7 +30,7 @@ static void put_word(uint8_t *b, int pos, uint32_t w30)
 
 /* --------------------------------- 子帧 1 ----------------------------------- */
 static void build_subframe1(uint8_t *out, const ephemeris_t *e,
-                             int week, double sow)
+                             int week, double sow, double frame_len)
 {
     memset(out,0,SF_STREAM_LEN);
 
@@ -43,7 +43,10 @@ static void build_subframe1(uint8_t *out, const ephemeris_t *e,
      * corresponds to the rising edge of the frame sync
      * at the beginning of the subframe.
      */
-    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
+    /* For D2 the message repeats every 0.6 s whereas D1 repeats
+       every 6 s. The time-of-week field shall therefore reflect the
+       start of the current subframe length. */
+    uint32_t sow_int = (uint32_t)(floor(sow/frame_len)*frame_len);
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
 
@@ -144,21 +147,21 @@ static void build_subframe3(uint8_t *out, const ephemeris_t *e)
 static void build_sf45_template(uint8_t *out)
 {
     /*
-     * 每個 word 填入 30-bit 固定值 0x2AAAAAAA (= 1010... pattern)。
-     * 依官方文件，此為子幀 4/5 的預留欄位內容。
+     * 每個 word 填入官方指定的固定值 0xAAAAAAAA (= 1010... pattern)。
+     * 此為子幀 4/5 的預留欄位內容。
      */
     for(int w=2; w<=10; ++w)
-        put_word(out,(w-1)*30, 0x2AAAAAAA);
+        put_word(out,(w-1)*30, 0xAAAAAAAA);
 }
 
-static void build_subframe4(uint8_t *out,int week,double sow)
+static void build_subframe4(uint8_t *out,int week,double sow,double frame_len)
 
 {
     memset(out,0,SF_STREAM_LEN);
     uint16_t info = 0x712;            /* sync */
     info = ((info<<3)|0x4) & 0x7FF;   /* FraID=100 */
 
-    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
+    uint32_t sow_int = (uint32_t)(floor(sow/frame_len)*frame_len);
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
     uint32_t info2 = ((sow_int&0xFFF)<<13) | (week&0x1FFF);
@@ -169,14 +172,14 @@ static void build_subframe4(uint8_t *out,int week,double sow)
 
 /* --------------------------------- 子帧 5 ----------------------------------- */
 
-static void build_subframe5(uint8_t *out,int week,double sow)
+static void build_subframe5(uint8_t *out,int week,double sow,double frame_len)
 
 {
     memset(out,0,SF_STREAM_LEN);
     uint16_t info = 0x712;            /* sync */
     info = ((info<<3)|0x5) & 0x7FF;   /* FraID=101 */
 
-    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
+    uint32_t sow_int = (uint32_t)(floor(sow/frame_len)*frame_len);
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
     uint32_t info2 = ((sow_int & 0xFFF)<<13) | (week&0x1FFF);
@@ -193,8 +196,8 @@ void navbits_init(void)
     for(int prn=1;prn<=63;prn++){
         build_subframe2(sf_static[prn][0], &eph[prn]);
         build_subframe3(sf_static[prn][1], &eph[prn]);
-        build_subframe4(sf_static[prn][2],0,0);
-        build_subframe5(sf_static[prn][3],0,0);
+        build_subframe4(sf_static[prn][2],0,0,6.0);
+        build_subframe5(sf_static[prn][3],0,0,6.0);
     }
 }
 
@@ -204,15 +207,15 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,
 {
     double start = floor(sow/frame_len)*frame_len;
     if(sf_id==1){
-        build_subframe1(out,&eph[prn],week,start);
+        build_subframe1(out,&eph[prn],week,start,frame_len);
     }else if(sf_id==2){
         memcpy(out,sf_static[prn][0],SF_STREAM_LEN);
     }else if(sf_id==3){
         memcpy(out,sf_static[prn][1],SF_STREAM_LEN);
     }else if(sf_id==4){
-        build_subframe4(out,week,start);
+        build_subframe4(out,week,start,frame_len);
     }else if(sf_id==5){
-        build_subframe5(out,week,start);
+        build_subframe5(out,week,start,frame_len);
 
     }else{
         memset(out,0,SF_STREAM_LEN);
