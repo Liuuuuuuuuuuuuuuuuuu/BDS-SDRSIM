@@ -108,14 +108,16 @@ void channel_set_time(channel_t *c,int week,double sow)
     c->ms_count = ms%20;
     get_subframe_bits(c->prn,c->sf_id,week,sf_start,6.0,c->nav_bits);
 
-    double sf_start_d2 = floor(sow/0.6)*0.6;
+    double sf_start_d2 = floor(sow/0.6)*0.6;      /* 每 0.6 s 一個子帧 */
+    double mf_start_d2 = floor(sow/3.0)*3.0;      /* 周内秒对齐到 3 s 主帧 */
     c->sf_id_d2 = ((int)(sf_start_d2/0.6))%5 + 1;
     int ms2 = (int)llround((sow - sf_start_d2)*1000.0);
     if(ms2 < 0)      ms2 = 0;
     else if(ms2 >= 600) ms2 = 599;
     c->bit_ptr_d2 = ms2/2;
     c->ms_count_d2 = ms2%2;
-    get_subframe_bits(c->prn,c->sf_id_d2,week,sf_start_d2,0.6,c->nav_bits_d2);
+    /* D2 的 SOW 以主帧(3 s) 的子帧1同步頭對齊 */
+    get_subframe_bits(c->prn,c->sf_id_d2,week,mf_start_d2,3.0,c->nav_bits_d2);
 }
 
 void channel_reset(channel_t *c,int prn,int week,double sow){
@@ -198,8 +200,10 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
 void gen_samples_1ms_d2(channel_t *c, int week, double sow,
                                int samp_per_ms, int16_t *I, int16_t *Q)
 {
-    if(c->bit_ptr_d2==0 && c->ms_count_d2==0)
-        get_subframe_bits(c->prn,c->sf_id_d2,week,sow,0.6,c->nav_bits_d2);
+    if(c->bit_ptr_d2==0 && c->ms_count_d2==0){
+        double mf_start_d2 = floor(sow/3.0)*3.0;
+        get_subframe_bits(c->prn,c->sf_id_d2,week,mf_start_d2,3.0,c->nav_bits_d2);
+    }
 
     const double dphi = PI2*c->fd/fs;
     const double dcode = c->code_rate/fs;
