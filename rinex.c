@@ -1,4 +1,4 @@
-/* rinex.c  –  解析 BDS RINEX3.05 NAV，僅提取 MEO/IGSO D1 需要的欄位
+/* rinex.c  –  解析 BDS RINEX3.04 NAV，僅提取 MEO/IGSO D1 需要的欄位
  *            (c) 2025  your-name
  * ------------------------------------------------------------------------ */
 
@@ -137,13 +137,11 @@ int read_rinex_nav(const char *fname)
 
         e->idot    = fld(r[4], 0, INDN);
 
-        /* row 5-field2 = URAI / field3 = SatH1 (ICD) */
-        e->ura     = ifld(r[4], 1, INDN) & 0xF;
-        e->health  = ifld(r[4], 2, INDN) & 0x1;
-
-        /* 星期計數也寫一次（部分接收機只讀 .week） */
-        int week_rnx = ifld(r[4], 2, INDN);
-        if (week_rnx > 0) e->week = week_rnx;
+        /* line 6: health, freq#, URA (BDS RINEX 3.04) */
+        e->health  = ifld(r[4], 1, INDN) & 0x1;
+        /* frequency number is currently unused */
+        (void)ifld(r[4], 2, INDN);
+        e->ura     = ifld(r[4], 3, INDN) & 0xF;
 
         double t_bdt = e->week * 604800.0 + e->toc;
         if (t_bdt < nav_time_min) nav_time_min = t_bdt;
