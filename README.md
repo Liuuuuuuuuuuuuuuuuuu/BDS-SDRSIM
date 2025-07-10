@@ -193,5 +193,6 @@ searches for the correct PRNs automatically.
 
 ## v0.3.1 (unreleased)
 * Correct subframe 4/5 constant words
+* Fix Time-of-Week handling for D2 frames
 * Minor API cleanup
 
