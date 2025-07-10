@@ -78,6 +78,13 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
           --byte
 ```
 
+Example with strict ICD checks and D1 only:
+
+```
+./bds-sim --rinex BRDM00DLR_S_20251870000_01D_MN.rnx \
+          --strict-icd --duration 120 --no-d2
+```
+
 `--gain` scales the output amplitude.  With the default gain of `1.0`
 the composite signal uses most of the 16‑bit range.  Larger values boost
 the level but may cause clipping.
