@@ -2,16 +2,16 @@
 CC      = gcc
 CFLAGS = -O2 -Wall -Wextra -fopenmp -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE
 
-OBJS = main.o globals.o bch.o navbits.o channel.o \
+OBJS = main.o globals.o bch.o nav_words.o nav_pages.o navbits.o channel.o \
        bdssim.o rinex.o orbits.o coord.o path.o
        
 bds-sim: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) -lm
 
-prn_test: prn_test.o globals.o bch.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
+prn_test: prn_test.o globals.o bch.o nav_words.o nav_pages.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
 	$(CC) $(CFLAGS) $^ -o $@ -lm
 
-tests/test_prn_d1d2: tests/test_prn_d1d2.o globals.o bch.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
+tests/test_prn_d1d2: tests/test_prn_d1d2.o globals.o bch.o nav_words.o nav_pages.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
 	$(CC) $(CFLAGS) $^ -o $@ -lm
 
 check: tests/test_prn_d1d2

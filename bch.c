@@ -15,3 +15,17 @@ uint16_t bch_encode(uint16_t d11)
 }
 
 
+
+/* Generic BCH(15,11,1) encoder returning parity bits for 22 or 26 bit payloads */
+uint32_t bch1511(uint32_t in, int payloadBits)
+{
+    if (payloadBits != 22 && payloadBits != 26)
+        return 0;
+    int parityBits = (payloadBits == 26) ? 4 : 8;
+    uint32_t reg = in << parityBits;  /* space for parity */
+    int top = payloadBits + parityBits - 1;
+    for (int i = top; i >= parityBits; --i)
+        if (reg & (1u << i))
+            reg ^= (uint32_t)G << (i - 4);
+    return reg & ((1u << parityBits) - 1);
+}
