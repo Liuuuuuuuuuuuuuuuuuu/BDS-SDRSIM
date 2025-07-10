@@ -24,8 +24,9 @@ static void build_subframe1(uint8_t *out, const ephemeris_t *e,
     memset(out,0,SF_STREAM_LEN);
 
     /* word1：帧同步 11 bits（11100010010） + FraID(001) + SOW[19:12] */
-    uint16_t info = 0x712;            /* 11100010010 */
-    info = ((info << 3)|0x1) & 0x7FF; /* +FraID=001 */
+    uint32_t info = 0x712;            /* 11-bit preamble */
+    info = (info << 4);               /* reserved bits */
+    info = (info << 3) | 0x1;         /* FraID=001 */
     /*
      * SOW should reflect the start time of this subframe.
      * According to the B1I ICD section 5.2.4.3 the value
@@ -67,9 +68,10 @@ static void build_subframe2(uint8_t *out, const ephemeris_t *e)
     memset(out,0,SF_STREAM_LEN);
 
     /* word1: FrameSync + FraID=010 + toe[15:8] */
-    uint16_t info = 0x712;            /* sync */
-    info = ((info<<3)|0x2) & 0x7FF;   /* FraID=010 */
-    info = (info<<8) | ((uint32_t)e->toe>>8 &0xFF);
+    uint32_t info = 0x712;            /* preamble */
+    info = (info << 4);               /* reserved */
+    info = (info << 3) | 0x2;         /* FraID=010 */
+    info = (info << 8) | ((uint32_t)e->toe>>8 &0xFF);
     put_word(out,0, build_word(info, 26));
 
     /* word2: toe[7:0] + √A[21:13] */
@@ -101,8 +103,9 @@ static void build_subframe3(uint8_t *out, const ephemeris_t *e)
     memset(out,0,SF_STREAM_LEN);
 
     /* word1 : sync + FraID=011 + Ω0[21:14] */
-    uint16_t info = 0x712;
-    info = ((info<<3)|0x3) & 0x7FF;
+    uint32_t info = 0x712;            /* preamble */
+    info = (info << 4);
+    info = (info << 3) | 0x3;         /* FraID=011 */
     int32_t O0_i = (int32_t)llround(e->omega0 / pow(2,-31));
     info = (info<<8) | ((O0_i>>14)&0xFF);
     put_word(out,0, build_word(info, 26));
@@ -147,8 +150,9 @@ static void build_subframe4(uint8_t *out,int week,double sow,double frame_len)
 
 {
     memset(out,0,SF_STREAM_LEN);
-    uint16_t info = 0x712;            /* sync */
-    info = ((info<<3)|0x4) & 0x7FF;   /* FraID=100 */
+    uint32_t info = 0x712;            /* preamble */
+    info = (info << 4);
+    info = (info << 3) | 0x4;         /* FraID=100 */
 
     uint32_t sow_int = (uint32_t)(floor(sow/frame_len)*frame_len);
     info = (info<<8) | ((sow_int>>12) & 0xFF);
@@ -165,8 +169,9 @@ static void build_subframe5(uint8_t *out,int week,double sow,double frame_len)
 
 {
     memset(out,0,SF_STREAM_LEN);
-    uint16_t info = 0x712;            /* sync */
-    info = ((info<<3)|0x5) & 0x7FF;   /* FraID=101 */
+    uint32_t info = 0x712;            /* preamble */
+    info = (info << 4);
+    info = (info << 3) | 0x5;         /* FraID=101 */
 
     uint32_t sow_int = (uint32_t)(floor(sow/frame_len)*frame_len);
     info = (info<<8) | ((sow_int>>12) & 0xFF);
