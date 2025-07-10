@@ -37,8 +37,13 @@ static void build_subframe1(uint8_t *out, const ephemeris_t *e,
     /* word1：帧同步 11 bits（11100010010） + FraID(001) + SOW[19:12] */
     uint16_t info = 0x712;            /* 11100010010 */
     info = ((info << 3)|0x1) & 0x7FF; /* +FraID=001 */
-    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0 + 6.0);
-    if(sow_int >= 604800) sow_int -= 604800;
+    /*
+     * SOW should reflect the start time of this subframe.
+     * According to the B1I ICD section 5.2.4.3 the value
+     * corresponds to the rising edge of the frame sync
+     * at the beginning of the subframe.
+     */
+    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
 
@@ -153,8 +158,7 @@ static void build_subframe4(uint8_t *out,int week,double sow)
     uint16_t info = 0x712;            /* sync */
     info = ((info<<3)|0x4) & 0x7FF;   /* FraID=100 */
 
-    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0 + 6.0);
-    if(sow_int >= 604800) sow_int -= 604800;
+    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
     uint32_t info2 = ((sow_int&0xFFF)<<13) | (week&0x1FFF);
@@ -172,8 +176,7 @@ static void build_subframe5(uint8_t *out,int week,double sow)
     uint16_t info = 0x712;            /* sync */
     info = ((info<<3)|0x5) & 0x7FF;   /* FraID=101 */
 
-    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0 + 6.0);
-    if(sow_int >= 604800) sow_int -= 604800;
+    uint32_t sow_int = (uint32_t)(floor(sow/6.0)*6.0);
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, make_word30(info));
     uint32_t info2 = ((sow_int & 0xFFF)<<13) | (week&0x1FFF);
