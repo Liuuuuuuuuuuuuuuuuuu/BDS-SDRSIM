@@ -20,6 +20,13 @@ typedef struct {
     double cuc, cus, cic, cis, crc, crs;
     double af0, af1, af2;
 
+    /* 其他 RINEX 欄位（暫未使用） */
+    int     iode;            /* line 2 */
+    int     freq_num;        /* BDS frequency number */
+    double  a0utc, a1utc, a2utc;   /* BDT‑UTC 偏移 */
+    double  toe_msg;         /* Transmission time of message */
+    double  reserved;        /* 末行保留值 */
+
     /* ─ 子幀 1 需要 ─ */
     int     toc;       /* 秒 (0–604799) */
     uint8_t ura;       /* 0–15 */

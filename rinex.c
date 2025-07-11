@@ -116,6 +116,7 @@ int read_rinex_nav(const char *fname)
         for (int i = 0; i < 7; ++i)
             if (!fgets(r[i], sizeof r[i], fp)) return -1;
 
+        e->iode    = ifld(r[0], 0, INDN);
         e->crs     = fld(r[0], 1, INDN);
         e->deltan  = fld(r[0], 2, INDN);
         e->M0      = fld(r[0], 3, INDN);
@@ -137,11 +138,19 @@ int read_rinex_nav(const char *fname)
 
         e->idot    = fld(r[4], 0, INDN);
 
-        /* line 6: health, freq#, URA (BDS RINEX 3.04) */
-        e->health  = ifld(r[4], 1, INDN) & 0x1;
-        /* frequency number is currently unused */
-        (void)ifld(r[4], 2, INDN);
-        e->ura     = ifld(r[4], 3, INDN) & 0xF;
+        /* line 6: health, frequency number, URA */
+        e->health   = ifld(r[4], 1, INDN) & 0x1;
+        e->freq_num = ifld(r[4], 2, INDN);
+        e->ura      = ifld(r[4], 3, INDN) & 0xF;
+
+        /* line 7: BDT-UTC offset and transmission time */
+        e->a0utc   = fld(r[5], 0, INDN);
+        e->a1utc   = fld(r[5], 1, INDN);
+        e->a2utc   = fld(r[5], 2, INDN);
+        e->toe_msg = fld(r[5], 3, INDN);
+
+        /* line 8: reserved field */
+        e->reserved = fld(r[6], 0, INDN);
 
         double t_bdt = e->week * 604800.0 + e->toc;
         if (t_bdt < nav_time_min) nav_time_min = t_bdt;
