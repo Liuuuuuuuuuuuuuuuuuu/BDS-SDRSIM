@@ -7,6 +7,37 @@
 #include "nav_words.h"
 
 extern ephemeris_t eph[MAX_SAT];
+#include "nav_pages.h"
+#include "icd_fields.h"
+
+/* Convert ephemeris_t to the simplified B1I_D1_Frame used by
+ * nav_pages.c. Only the fields actually consumed by those
+ * helpers are populated. */
+static void eph_to_frame(const ephemeris_t *e, B1I_D1_Frame *f)
+{
+    memset(f, 0, sizeof(*f));
+    f->toc      = (uint32_t)(e->toc / 8);
+    f->aodc     = e->iode & 0x1F;
+    f->urai     = e->ura & 0xF;
+    f->satH1    = e->health & 0x1;
+
+    f->a0       = (int32_t)llround(e->af0 / pow(2, -33));
+    f->a1       = (int32_t)llround(e->af1 / pow(2, -50));
+    f->a2       = (int32_t)llround(e->af2 / pow(2, -66));
+
+    f->toe      = (uint32_t)(e->toe / 8);
+    f->sqrtA    = (int32_t)llround(e->sqrtA / pow(2, -19));
+    f->e        = (int32_t)llround(e->e / pow(2, -33));
+    f->delta_n  = (int32_t)llround(e->deltan / pow(2, -43));
+    f->M0       = (int32_t)llround(e->M0 / pow(2, -31));
+
+    f->omega0   = (int32_t)llround(e->omega0 / pow(2, -31));
+    f->i0       = (int32_t)llround(e->i0 / pow(2, -31));
+    f->omega    = (int32_t)llround(e->w / pow(2, -31));
+    f->crc      = (int32_t)llround(e->crc / pow(2, -5));
+    f->idot     = (int32_t)llround(e->idot / pow(2, -43));
+    f->omegadot = (int32_t)llround(e->omegadot / pow(2, -43));
+}
 
 /* --------------------------------- 宏 & 工具 -------------------------------- */
 
@@ -253,8 +284,18 @@ static uint8_t sf_static[MAX_SAT][4][SF_STREAM_LEN]; /* subframe 2-5 */
 void navbits_init(void)
 {
     for(int prn=1;prn<=63;prn++){
-        build_subframe2(sf_static[prn][0], &eph[prn]);
-        build_subframe3(sf_static[prn][1], &eph[prn]);
+        B1I_D1_Frame frm;
+        eph_to_frame(&eph[prn], &frm);
+        uint32_t words[10];
+
+        assemble_d1_subframe2(&frm, words);
+        for(int w=0; w<10; ++w)
+            put_word(sf_static[prn][0], w*30, words[w]);
+
+        assemble_d1_subframe3(&frm, words);
+        for(int w=0; w<10; ++w)
+            put_word(sf_static[prn][1], w*30, words[w]);
+
         build_subframe4(sf_static[prn][2],0,0,6.0);
         build_subframe5(sf_static[prn][3],0,0,6.0);
     }
