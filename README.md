@@ -4,6 +4,10 @@ This project generates synthetic BeiDou B1I baseband samples for SDR
 experiments.  Navigation data is read from a RINEX navigation file and
 converted into the binary subframe format required by receivers.
 
+## Project Summary
+BDS-SDRSIM converts RINEX ephemeris into BeiDou B1I navigation frames and outputs complex baseband samples for software-defined radios. It supports both D1 and D2 messages, static or dynamic user motion and configurable power with optional AWGN. See `docs/frame_layout.md` for an overview of the D1/D2 structure.
+
+
 ## System Overview
 
 BDS‑SDRSIM parses BeiDou ephemeris from the RINEX navigation file,

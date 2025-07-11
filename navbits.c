@@ -1,4 +1,4 @@
-/* navbits.c : 產生 B1I D1 子帧 1–3 (星曆) */
+/* navbits.c : 產生 B1I D1/D2 子帧 (星曆) */
 
 #include <math.h>
 #include <string.h>
@@ -62,6 +62,38 @@ static void build_subframe1(uint8_t *out, const ephemeris_t *e,
     for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
+/* D2 subframe 1 with page number field */
+static void build_subframe1_d2(uint8_t *out,const ephemeris_t *e,
+                               int week,double sow)
+{
+    memset(out,0,SF_STREAM_LEN);
+    uint32_t sow_int = (uint32_t)(floor(sow/0.6)*0.6);
+    int frame = (int)fmod(sow_int,360.0)/3; /* 0..119 */
+    uint32_t pnum = (frame % 10) + 1;       /* 1..10 */
+
+    uint32_t info = 0x712;                  /* preamble */
+    info = (info<<4) | (pnum & 0xF);        /* PNUM1 */
+    info = (info<<3) | 0x1;                 /* FraID=001 */
+    info = (info<<8) | ((sow_int>>12)&0xFF);
+    put_word(out,0, build_word(info,26));
+
+    uint32_t info2 = ((sow_int&0xFFF)<<13) | (week&0x1FFF);
+    put_word(out,30, build_word(info2,26));
+
+    uint32_t info3 = (e->ura&0xF)<<26 | (e->health&1)<<25 | ((uint32_t)(e->toc/8)&0x1FFFF)<<8;
+    put_word(out,60, build_word(info3,26));
+
+    int32_t a0_i = (int32_t)llround(e->af0/pow(2,-33));
+    put_word(out,90, build_word((uint32_t)(a0_i & 0x3FFFFF),26));
+
+    int32_t a1_i = (int32_t)llround(e->af1/pow(2,-50));
+    int32_t a2_i = (int32_t)llround(e->af2/pow(2,-66));
+    uint32_t info5 = ((a1_i & 0xFFFF)<<11) | (a2_i & 0x7FF);
+    put_word(out,120, build_word(info5,22));
+
+    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
+}
+
 /* --------------------------------- 子帧 2 ----------------------------------- */
 static void build_subframe2(uint8_t *out, const ephemeris_t *e)
 {
@@ -93,6 +125,39 @@ static void build_subframe2(uint8_t *out, const ephemeris_t *e)
 
     /* word5: M0[20:0] 首段 */
     put_word(out,120, build_word(M0_i & 0x1FFFFF, 22));
+
+    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
+}
+
+/* D2 subframe 2 with page number field */
+static void build_subframe2_d2(uint8_t *out,const ephemeris_t *e,double sow)
+{
+    memset(out,0,SF_STREAM_LEN);
+    uint32_t sow_int = (uint32_t)(floor(sow/0.6)*0.6);
+    int frame = (int)fmod(sow_int,360.0)/3; /* 0..119 */
+    uint32_t pnum = (frame % 6) + 1;        /* 1..6 */
+
+    uint32_t info = 0x712;
+    info = (info<<4) | (pnum & 0xF);        /* PNUM2 */
+    info = (info<<3) | 0x2;                 /* FraID=010 */
+    info = (info<<8) | ((uint32_t)e->toe>>8 & 0xFF);
+    put_word(out,0, build_word(info,26));
+
+    uint32_t info2 = ((uint32_t)e->toe & 0xFF)<<13 |
+                     (uint32_t)(llround(e->sqrtA/pow(2,-19))>>13 &0x1FFF);
+    put_word(out,30, build_word(info2,26));
+
+    uint32_t sqrtA_i = (uint32_t)llround(e->sqrtA/pow(2,-19));
+    uint32_t e_i     = (uint32_t)llround(e->e/pow(2,-33));
+    uint32_t info3 = (sqrtA_i &0x1FFF)<<11 | (e_i>>11 &0x7FF);
+    put_word(out,60, build_word(info3,26));
+
+    uint32_t dn_i = (int32_t)llround(e->deltan/pow(2,-43)) & 0xFFFF;
+    uint32_t M0_i = (int32_t)llround(e->M0/pow(2,-31));
+    uint32_t info4 = (e_i &0x7FF)<<19 | dn_i<<3 | (M0_i>>21 &0x7);
+    put_word(out,90, build_word(info4,26));
+
+    put_word(out,120, build_word(M0_i & 0x1FFFFF,22));
 
     for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
@@ -200,12 +265,16 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,
                        double frame_len,uint8_t *out)
 {
     double start = floor(sow/frame_len)*frame_len;
+    int is_d2 = (frame_len < 6.0);
     if(sf_id==1){
-        build_subframe1(out,&eph[prn],week,start,frame_len);
+        if(is_d2) build_subframe1_d2(out,&eph[prn],week,start);
+        else      build_subframe1(out,&eph[prn],week,start,frame_len);
     }else if(sf_id==2){
-        memcpy(out,sf_static[prn][0],SF_STREAM_LEN);
+        if(is_d2) build_subframe2_d2(out,&eph[prn],start);
+        else memcpy(out,sf_static[prn][0],SF_STREAM_LEN);
     }else if(sf_id==3){
-        memcpy(out,sf_static[prn][1],SF_STREAM_LEN);
+        if(is_d2) memcpy(out,sf_static[prn][1],SF_STREAM_LEN);
+        else memcpy(out,sf_static[prn][1],SF_STREAM_LEN);
     }else if(sf_id==4){
         build_subframe4(out,week,start,frame_len);
     }else if(sf_id==5){
