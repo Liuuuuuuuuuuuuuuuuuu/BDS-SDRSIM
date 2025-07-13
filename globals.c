@@ -22,7 +22,7 @@ int simulator_inited = 0;
 /* ───────────── Gold 2046 產生 ───────────── */
 #define G_INIT 0x2AA
 #define MASK11 0x7FF
-static inline uint8_t fb_g1(uint16_t r){ return ((r>>10)^(r>>9)^(r>>3)^(r>>2)^(r>>1)^r)&1; }
+static inline uint8_t fb_g1(uint16_t r){ return ((r>>10)^(r>>9)^(r>>8)^(r>>7)^(r>>6)^(r>>3)^(r>>2)^r)&1; }
 static inline uint8_t fb_g2(uint16_t r){ return ((r>>10)^(r>>9)^(r>>8)^(r>>7)^(r>>6)^(r>>5)^(r>>2)^(r>>1)^r)&1; }
 static inline uint8_t tap(const uint16_t r,uint8_t t){ return (r>>(11-t))&1; }
 
