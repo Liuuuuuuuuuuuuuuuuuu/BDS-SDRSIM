@@ -49,7 +49,8 @@ make
 ```
 
 The optional command `make prn_test` builds a small utility that prints
-the first chips of PRN codes using the bundled RINEX file.
+each PRN number and the first 16 bits of its code in binary using the
+bundled RINEX file.
 
 Run `make check` to build and execute the self test
 (`tests/test_prn_d1d2`).
