@@ -2,6 +2,7 @@
 bds-sim
 prn_test
 test_beidou
+tests/test_prn_d1d2
 *.bin
 *.gz
 cookies.txt
