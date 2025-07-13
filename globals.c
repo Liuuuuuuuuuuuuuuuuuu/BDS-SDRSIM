@@ -72,8 +72,8 @@ static void cb1i_generate(int prn, uint8_t *dst)
 
         if (i < CODE_LEN) dst[i] = g1_out ^ g2_out;
 
-        g1 = lfsr_step(g1, 0x653   /* 1,5,6,7,10,11 */);
-        g2 = lfsr_step(g2, 0x1F1   /* 1,2,3,4,5,8,9,11 */);
+        g1 = lfsr_step(g1, 0x671   /* 1,5,6,7,10,11 */);
+        g2 = lfsr_step(g2, 0x59F   /* 1,2,3,4,5,8,9,11 */);
     }
 }
 
