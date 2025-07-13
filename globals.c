@@ -20,72 +20,60 @@ int    nav_week     = 0;
 int simulator_inited = 0;
 
 /* ───────────── B1I PRN 產生 ───────────── */
-#define LFSR_MASK 0x7FF          /* 11 bits */
+#define ITER 2047                     /* 先跑滿 2047，再丟掉最後 1 chip */
 
-static const int g1_taps[] = {1, 5, 6, 7, 10, 11};
-static const int g1_tap_cnt = sizeof(g1_taps) / sizeof(g1_taps[0]);
-
-static const int g2_taps[] = {1, 2, 3, 4, 5, 8, 9, 11};
-static const int g2_tap_cnt = sizeof(g2_taps) / sizeof(g2_taps[0]);
-
-static const int8_t g2_prn_taps[64][3] = {
-    { -1, -1, -1 },
-    {  1,  3, -1 }, {  1,  4, -1 }, {  1,  5, -1 }, {  1,  6, -1 },
-    {  1,  8, -1 }, {  1,  9, -1 }, {  1, 10, -1 }, {  1, 11, -1 },
-    {  2,  7, -1 }, {  3,  4, -1 }, {  3,  5, -1 }, {  3,  6, -1 },
-    {  3,  8, -1 }, {  3,  9, -1 }, {  3, 10, -1 }, {  3, 11, -1 },
-    {  4,  5, -1 }, {  4,  6, -1 }, {  4,  8, -1 }, {  4,  9, -1 },
-    {  4, 10, -1 }, {  4, 11, -1 }, {  5,  6, -1 }, {  5,  8, -1 },
-    {  5,  9, -1 }, {  5, 10, -1 }, {  5, 11, -1 }, {  6,  8, -1 },
-    {  6,  9, -1 }, {  6, 10, -1 }, {  6, 11, -1 }, {  8,  9, -1 },
-    {  8, 10, -1 }, {  8, 11, -1 }, {  9, 10, -1 }, {  9, 11, -1 },
-    { 10, 11, -1 }, {  1,  2,  7 }, {  1,  3,  4 }, {  1,  3,  6 },
-    {  1,  3,  8 }, {  1,  3, 10 }, {  1,  3, 11 }, {  1,  4,  5 },
-    {  1,  4,  9 }, {  1,  5,  6 }, {  1,  5,  8 }, {  1,  5, 10 },
-    {  1,  5, 11 }, {  1,  6,  9 }, {  1,  8,  9 }, {  1,  9, 10 },
-    {  1,  9, 11 }, {  2,  3,  7 }, {  2,  5,  7 }, {  2,  7,  9 },
-    {  3,  4,  5 }, {  3,  4,  9 }, {  3,  5,  6 }, {  3,  5,  8 },
-    {  3,  5, 10 }, {  3,  5, 11 }, {  3,  6,  9 }
+/* G2 相位抽頭表 (Table 4‑1/4‑2) */
+/* 兩抽頭→tap3=0；三抽頭→全部填入，stage 編號由 1 起算 */
+static const uint8_t g2_taps[64][3] = {
+ /*0*/ {0,0,0},
+ /*1*/ {1,3,0},{1,4,0},{1,5,0},{1,6,0},{1,8,0},
+ /*6*/ {1,9,0},{1,10,0},{1,11,0},{2,7,0},{3,4,0},
+ /*11*/{3,5,0},{3,6,0},{3,8,0},{3,9,0},{3,10,0},{3,11,0},
+ /*17*/{4,5,0},{4,6,0},{4,8,0},{4,9,0},{4,10,0},{4,11,0},
+ /*23*/{5,6,0},{5,8,0},{5,9,0},{5,10,0},{5,11,0},
+ /*28*/{6,8,0},{6,9,0},{6,10,0},{6,11,0},
+ /*32*/{8,9,0},{8,10,0},{8,11,0},
+ /*35*/{9,10,0},{9,11,0},{10,11,0},
+ /*38*/{1,2,7},{1,3,4},{1,3,6},{1,3,8},{1,3,10},
+ /*43*/{1,3,11},{1,4,5},{1,4,9},{1,5,6},{1,5,8},
+ /*48*/{1,5,10},{1,5,11},{1,6,9},{1,8,9},{1,9,10},{1,9,11},
+ /*54*/{2,3,7},{2,5,7},{2,7,9},{3,4,5},{3,4,9},
+ /*59*/{3,5,6},{3,5,8},{3,5,10},{3,5,11},{3,6,9}
 };
 
-static inline uint8_t get_stage(uint16_t state, int k)
+/* 求 11-bit 內容在 mask 位置上的 XOR parity */
+static inline uint8_t parity(uint16_t x)
 {
-    return (state >> (11 - k)) & 1u;
+    x ^= x >> 8;  x ^= x >> 4;  x ^= x >> 2;  x ^= x >> 1;
+    return x & 1;
 }
 
-static inline uint8_t parity(uint16_t state, const int *taps, int cnt)
+/* Fibonacci LFSR 單步：整串左移，回饋 bit 塞到 bit0 */
+static inline uint16_t lfsr_step(uint16_t s, uint16_t mask)
 {
-    uint8_t p = 0;
-    for (int i = 0; i < cnt; ++i) p ^= get_stage(state, taps[i]);
-    return p;
+    uint8_t fb = parity(s & mask);
+    return ((s << 1) & 0x7FE) | fb;         /* 只保留 11 位 */
 }
 
-static inline uint8_t lfsr_step(uint16_t *state, const int *fb_taps, int cnt)
-{
-    uint8_t out = (*state >> 10) & 1u;
-    uint8_t fb  = parity(*state, fb_taps, cnt);
-    *state = ((*state << 1) & LFSR_MASK) | fb;
-    return out;
-}
-
+/* 生成指定 PRN (1–63) 的 2046-chip 代碼 */
 static void cb1i_generate(int prn, uint8_t *dst)
 {
     if (prn < 1 || prn > 63) return;
 
-    uint16_t g1 = 0x2AA;
+    uint16_t g1 = 0x2AA;   /* 01010101010b */
     uint16_t g2 = 0x2AA;
-    const int8_t *sel = g2_prn_taps[prn];
+    const uint8_t *tap = g2_taps[prn];
 
-    for (int i = 0; i < CODE_LEN + 1; ++i) {
-        uint8_t g1_chip = lfsr_step(&g1, g1_taps, g1_tap_cnt);
+    for (int i = 0; i < ITER; ++i) {
+        uint8_t g1_out = (g1 >> 10) & 1;              /* stage 11 */
+        uint8_t g2_out = ((g2 >> (tap[0]-1)) & 1) ^
+                         ((g2 >> (tap[1]-1)) & 1) ^
+                         (tap[2] ? ((g2 >> (tap[2]-1)) & 1) : 0);
 
-        uint8_t g2_sel = 0;
-        for (int k = 0; k < 3 && sel[k] != -1; ++k)
-            g2_sel ^= get_stage(g2, sel[k]);
+        if (i < CODE_LEN) dst[i] = g1_out ^ g2_out;
 
-        if (i < CODE_LEN) dst[i] = g1_chip ^ g2_sel;
-
-        lfsr_step(&g2, g2_taps, g2_tap_cnt);
+        g1 = lfsr_step(g1, 0x653   /* 1,5,6,7,10,11 */);
+        g2 = lfsr_step(g2, 0x1F1   /* 1,2,3,4,5,8,9,11 */);
     }
 }
 
