@@ -126,7 +126,12 @@ static void build_subframe1_d2(uint8_t *out,const ephemeris_t *e,
 }
 
 /* --------------------------------- 子帧 2 ----------------------------------- */
-static void build_subframe2(uint8_t *out, const ephemeris_t *e)
+/*
+ * build_subframe2 and build_subframe3 are kept for reference. They are not
+ * invoked in the current code path but may be useful for future extensions.
+ * Mark them as unused to silence compiler warnings.
+ */
+__attribute__((unused)) static void build_subframe2(uint8_t *out, const ephemeris_t *e)
 {
     memset(out,0,SF_STREAM_LEN);
 
@@ -194,7 +199,7 @@ static void build_subframe2_d2(uint8_t *out,const ephemeris_t *e,double sow)
 }
 
 /* --------------------------------- 子帧 3 ----------------------------------- */
-static void build_subframe3(uint8_t *out, const ephemeris_t *e)
+__attribute__((unused)) static void build_subframe3(uint8_t *out, const ephemeris_t *e)
 {
     memset(out,0,SF_STREAM_LEN);
 
