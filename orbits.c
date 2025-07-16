@@ -41,7 +41,7 @@ static orb_t classify_orbit(const ephemeris_t *ep)
     if (A < 4.0e7) return ORB_MEO;                       /* 低於 4e7 為中軌 */
 
     /* A 落在 GEO/IGSO 區 → 用傾角判別 */
-    if (fabs(inc_deg) < 5.0) return ORB_GEO;             /* 傾角 <5° 視為 GEO */
+    if (fabs(inc_deg) < 15.0) return ORB_GEO;             /* 傾角 <15° 視為 GEO */
     return ORB_IGSO;                                     /* 其餘為 IGSO */
 }
 
