@@ -86,6 +86,11 @@ int read_rinex_nav(const char *fname)
         }
 
         ephemeris_t *e = &eph[prn];
+        if(e->prn){
+            char skip[120];
+            for(int i=0;i<7;++i) if(!fgets(skip,sizeof skip,fp)) return -1;
+            continue;                       /* keep first record only */
+        }
         memset(e, 0, sizeof(*e));
         e->prn = prn;
 

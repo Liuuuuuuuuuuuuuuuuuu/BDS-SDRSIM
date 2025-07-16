@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include "../bdssim.h"
 #include "../globals.h"
 #include "../orbits.h"
@@ -52,6 +53,7 @@ int main(void)
 
     int count = 0;          /* number of samples compared */
     double err2_sum = 0.0;  /* squared error accumulator  */
+    bool printed[MAX_SAT] = {0};
 
     while(fgets(l, sizeof l, fp))
     {
@@ -72,6 +74,14 @@ int main(void)
             int prn; double x,y,z,clk;
             if(sscanf(l+1, "C%2d %lf %lf %lf %lf", &prn,&x,&y,&z,&clk)!=5) continue;
             if(prn<1 || prn>63 || eph[prn].prn==0) continue;
+            if(!((prn>=1 && prn<=5) || (prn>=59 && prn<=63)))
+                continue; /* only GEO */
+
+            if(!printed[prn]){
+                printf("PRN%02d sqrtA=%.3f omegadot=%g\n",
+                       prn, eph[prn].sqrtA, eph[prn].omegadot);
+                printed[prn] = true;
+            }
 
             int bw; double bsow;
             gps_to_bdt(gps_w, gps_sow, &bw, &bsow);
