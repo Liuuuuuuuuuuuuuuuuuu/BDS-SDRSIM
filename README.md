@@ -207,4 +207,6 @@ searches for the correct PRNs automatically.
 * Correct subframe 4/5 constant words
 * Fix Time-of-Week handling for D2 frames
 * Minor API cleanup
+* Orbit propagation uses a unified inertial RAAN model. Results were
+  cross-checked against the provided SP3 precise orbit file.
 
