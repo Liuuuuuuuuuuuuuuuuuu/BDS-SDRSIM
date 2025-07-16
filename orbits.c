@@ -2,7 +2,7 @@
  *  orbits.c  -  BeiDou / GPS-like satellite orbit propagation
  *
  *  - 增強：自動辨識 GEO / IGSO / MEO 三種軌道型別
- *  -    GEO  : 直接在 ECEF 框架處理（不再 ECI→ECEF 旋轉）
+ *  -    GEO  : RAAN 公式含地球自轉角，亦須做 ECI→ECEF 旋轉
  *  -    IGSO : 根據星曆 Ω̇ 為 0 或 ≈ −ΩE 自動選擇 RAAN 公式
  *  -    MEO  : 保持傳統 GPS 公式 Ω = Ω0 + (Ω̇ − ΩE)·tk
  *
@@ -115,7 +115,8 @@ void calc_sat_position_velocity(int prn, int week, double sow,
             Omega = ep->omega0 + ep->omegadot * tk;
     }
     else { /* GEO */
-        Omega = ep->omega0 + ep->omegadot * tk; /* 通常 Ω̇≈0 */
+        /* BDS-ICD 公式：Ω = Ω₀ + (Ω̇ − OMEGA_E)·tk （Ω̇ ≈ 0）*/
+        Omega = ep->omega0 + (ep->omegadot - OMEGA_E) * tk;
     }
 
     /* -------- ECI (WGS-84 inertial) 座標 ----------------------- */
@@ -155,24 +156,12 @@ void calc_sat_position_velocity(int prn, int week, double sow,
         z_eci_dot = y_op_dot * sini + y_op * cosi * i_dot;
     }
 
-    /* -------- 由 ECI 轉到 ECEF (視軌道型別決定是否旋轉) -------- */
+    /* -------- 由 ECI 轉到 ECEF (全部軌道皆旋轉一次) -------- */
     const double theta = OMEGA_E * (ep->toe + tk);
     const double cosT  = cos(theta), sinT = sin(theta);
 
-    if (orb == ORB_GEO) {
-        /* GEO 已同步地球旋轉：ECI = ECEF */
-        xyz[0] = x_eci;
-        xyz[1] = y_eci;
-        xyz[2] = z_eci;
-
-        if (vel) {
-            vel[0] = x_eci_dot;
-            vel[1] = y_eci_dot;
-            vel[2] = z_eci_dot;
-        }
-    }
-    else {
-        /* MEO / IGSO：需轉一次地球自轉角 */
+    {
+        /* 全部軌道一律旋轉一次地球自轉角 */
         xyz[0] =  cosT * x_eci + sinT * y_eci;
         xyz[1] = -sinT * x_eci + cosT * y_eci;
         xyz[2] =  z_eci;
