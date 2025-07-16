@@ -89,6 +89,7 @@ bool init_simulator(sim_config_t *cfg)
 {
     if(simulator_inited) return true;
     init_prn_table();
+    memset(eph, 0, sizeof(eph));
     if(read_rinex_nav(cfg->rinex_file)!=0) return false;
     nav_week = (int)(nav_time_min/604800.0);
     simulator_inited = 1;

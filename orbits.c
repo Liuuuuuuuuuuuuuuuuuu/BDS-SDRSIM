@@ -2,8 +2,9 @@
  *  orbits.c  -  BeiDou / GPS-like satellite orbit propagation
  *
  *  - 增強：自動辨識 GEO / IGSO / MEO 三種軌道型別
- *  -    GEO/IGSO/MEO 均以慣性 RAAN (Ω0 + Ω̇·tk) 計算，再統一旋轉回
- *         ECEF。此方法可減少公式差異並避免重複扣除地球自轉角。
+ *  -    GEO  : RAAN 公式含地球自轉角，亦須做 ECI→ECEF 旋轉
+ *  -    IGSO : 根據星曆 Ω̇ 為 0 或 ≈ −ΩE 自動選擇 RAAN 公式
+ *  -    MEO  : 保持傳統 GPS 公式 Ω = Ω0 + (Ω̇ − ΩE)·tk
  *
  *  介面與輸入輸出陣列沿用舊版 calc_sat_position_velocity()
  * --------------------------------------------------------------*/
@@ -28,8 +29,6 @@ static double kepler(double M, double e)
 }
 
 /* --------------------------------------------------------------*/
-
-/* --------------------------------------------------------------*/
 /*          主要 API：回傳 ECEF 位置 xyz 與速度 vel               */
 void calc_sat_position_velocity(int prn, int week, double sow,
                                 double *xyz, double *vel)
@@ -47,8 +46,7 @@ void calc_sat_position_velocity(int prn, int week, double sow,
     /* -------- tk: 時間差 (ToE → 模擬時刻)，處理週界溢位 ------- */
     const double t_sim = week * 604800.0 + sow;
     const double t_toe = ep->week * 604800.0 + ep->toe;
-    double tk_raw = t_sim - t_toe;
-    double tk = tk_raw;
+    double tk = t_sim - t_toe;
     if (tk >  302400.0) tk -= 604800.0;
     if (tk < -302400.0) tk += 604800.0;
 
@@ -77,19 +75,21 @@ void calc_sat_position_velocity(int prn, int week, double sow,
     const double x_op = r * cos(u);
     const double y_op = r * sin(u);
 
-    /* -------- RAAN Ω(t)：統一以 ECI 公式處理 ------------------ */
-    /* ---------- RAAN Ω(t)  ── 單一公式，**不要減 Ω_E** ---------- */
-    const double Omega = ep->omega0 + ep->omegadot * tk;
+    /* -------- RAAN Ω(t)：GPS/BDS 通用公式 --------------------- */
+    const double Omega = ep->omega0 +
+                         (ep->omegadot - OMEGA_E) * tk -
+                         OMEGA_E * ep->toe;
 
+    /* -------- ECI (WGS-84 inertial) 座標 ----------------------- */
     const double cosO = cos(Omega), sinO = sin(Omega);
     const double cosi = cos(i),     sini = sin(i);
 
-    const double x_eci = x_op * cosO - y_op * cosi * sinO;
-    const double y_eci = x_op * sinO + y_op * cosi * cosO;
-    const double z_eci = y_op * sini;
+    const double x = x_op * cosO - y_op * cosi * sinO;
+    const double y = x_op * sinO + y_op * cosi * cosO;
+    const double z = y_op * sini;
 
     /* ---- 若需要速度，先在 ECI 求導 --------------------------- */
-    double x_eci_dot = 0.0, y_eci_dot = 0.0, z_eci_dot = 0.0;
+    double x_dot = 0.0, y_dot = 0.0, z_dot = 0.0;
     if (vel) {
         const double Edot   = n / (1 - ep->e * cosE);
         const double nu_dot = sqrt(1 - ep->e * ep->e) * Edot / (1 - ep->e * cosE);
@@ -102,32 +102,27 @@ void calc_sat_position_velocity(int prn, int week, double sow,
         const double i_dot   = ep->idot + 2 * (ep->cis * cos(2 * phi)
                                              - ep->cic * sin(2 * phi)) * phi_dot;
 
-        /* RAAN 以慣性系統計，故其導數直接為 omegadot */
-        const double Omega_dot = ep->omegadot;
+        const double Omega_dot = ep->omegadot - OMEGA_E;
 
         const double x_op_dot = r_dot * cos(u) - r * u_dot * sin(u);
         const double y_op_dot = r_dot * sin(u) + r * u_dot * cos(u);
 
-        x_eci_dot = (x_op_dot - y_op * cosi * Omega_dot) * cosO
-                  - (x_op * Omega_dot + y_op_dot * cosi - y_op * sini * i_dot) * sinO;
-        y_eci_dot = (x_op_dot - y_op * cosi * Omega_dot) * sinO
-                  + (x_op * Omega_dot + y_op_dot * cosi - y_op * sini * i_dot) * cosO;
-        z_eci_dot = y_op_dot * sini + y_op * cosi * i_dot;
+        x_dot = (x_op_dot - y_op * cosi * Omega_dot) * cosO
+              - (x_op * Omega_dot + y_op_dot * cosi - y_op * sini * i_dot) * sinO;
+        y_dot = (x_op_dot - y_op * cosi * Omega_dot) * sinO
+              + (x_op * Omega_dot + y_op_dot * cosi - y_op * sini * i_dot) * cosO;
+        z_dot = y_op_dot * sini + y_op * cosi * i_dot;
     }
 
-    /* ---------- 地球自轉角 θ  ── 用絕對時間 toe+tk -------------- */
-    const double theta = OMEGA_E * (ep->toe + tk);
-    const double cosT  = cos(theta), sinT = sin(theta);
-
     {
-        xyz[0] =  cosT * x_eci + sinT * y_eci;
-        xyz[1] = -sinT * x_eci + cosT * y_eci;
-        xyz[2] =  z_eci;
+        xyz[0] = x;
+        xyz[1] = y;
+        xyz[2] = z;
 
         if (vel) {
-            vel[0] =  cosT * x_eci_dot + sinT * y_eci_dot + OMEGA_E * xyz[1];
-            vel[1] = -sinT * x_eci_dot + cosT * y_eci_dot - OMEGA_E * xyz[0];
-            vel[2] =  z_eci_dot;
+            vel[0] = x_dot;
+            vel[1] = y_dot;
+            vel[2] = z_dot;
         }
     }
 }
