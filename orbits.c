@@ -28,21 +28,6 @@ static double kepler(double M, double e)
 }
 
 /* --------------------------------------------------------------*/
-/*         軌道類型列舉 & 自動分類 (GEO / IGSO / MEO)           */
-typedef enum { ORB_MEO = 0, ORB_IGSO = 1, ORB_GEO = 2 } orb_t;
-
-static orb_t classify_orbit(const ephemeris_t *ep)
-{
-    const double A        = ep->sqrtA * ep->sqrtA;       /* semi-major axis (m) */
-    const double inc_deg  = ep->i0 * (180.0 / M_PI);     /* inclination (°)     */
-
-    /* 北斗：MEO A≈26.6e6 m；IGSO/GEO A≈42.2e6 m */
-    if (A < 4.0e7) return ORB_MEO;                       /* 低於 4e7 為中軌 */
-
-    /* A 落在 GEO/IGSO 區 → 用傾角判別 */
-    if (fabs(inc_deg) < 15.0) return ORB_GEO;             /* 傾角 <15° 視為 GEO */
-    return ORB_IGSO;                                     /* 其餘為 IGSO */
-}
 
 /* --------------------------------------------------------------*/
 /*          主要 API：回傳 ECEF 位置 xyz 與速度 vel               */
@@ -58,20 +43,12 @@ void calc_sat_position_velocity(int prn, int week, double sow,
         return;
     }
 
-    /* -------- 軌道型別自動判斷 & 一次性列印 ------------------- */
-    static int printed[64] = {0};
-    const orb_t orb = classify_orbit(ep);
-    if (!printed[prn]) {
-        const char *tag = (orb == ORB_GEO)  ? "GEO"  :
-                          (orb == ORB_IGSO) ? "IGSO" : "MEO";
-        printf("[orbits] PRN C%02d classified as %s\n", prn, tag);
-        printed[prn] = 1;
-    }
 
     /* -------- tk: 時間差 (ToE → 模擬時刻)，處理週界溢位 ------- */
     const double t_sim = week * 604800.0 + sow;
     const double t_toe = ep->week * 604800.0 + ep->toe;
-    double tk = t_sim - t_toe;
+    double tk_raw = t_sim - t_toe;
+    double tk = tk_raw;
     if (tk >  302400.0) tk -= 604800.0;
     if (tk < -302400.0) tk += 604800.0;
 
@@ -101,14 +78,9 @@ void calc_sat_position_velocity(int prn, int week, double sow,
     const double y_op = r * sin(u);
 
     /* -------- RAAN Ω(t)：統一以 ECI 公式處理 ------------------ */
-    /*
-     * 先在慣性座標計算 RAAN：Ω = Ω0 + Ω̇·tk
-     * 之後再以地球自轉角 OMEGA_E·(ToE+tk) 旋回到 ECEF。
-     * 這可避免重複扣除 OMEGA_E，亦能適用於 MEO/IGSO/GEO。  
-     */
+    /* ---------- RAAN Ω(t)  ── 單一公式，**不要減 Ω_E** ---------- */
     const double Omega = ep->omega0 + ep->omegadot * tk;
 
-    /* -------- ECI (WGS-84 inertial) 座標 ----------------------- */
     const double cosO = cos(Omega), sinO = sin(Omega);
     const double cosi = cos(i),     sini = sin(i);
 
@@ -143,12 +115,11 @@ void calc_sat_position_velocity(int prn, int week, double sow,
         z_eci_dot = y_op_dot * sini + y_op * cosi * i_dot;
     }
 
-    /* -------- 由 ECI 轉到 ECEF (全部軌道皆旋轉一次) -------- */
+    /* ---------- 地球自轉角 θ  ── 用絕對時間 toe+tk -------------- */
     const double theta = OMEGA_E * (ep->toe + tk);
     const double cosT  = cos(theta), sinT = sin(theta);
 
     {
-        /* 全部軌道一律旋轉一次地球自轉角 */
         xyz[0] =  cosT * x_eci + sinT * y_eci;
         xyz[1] = -sinT * x_eci + cosT * y_eci;
         xyz[2] =  z_eci;
