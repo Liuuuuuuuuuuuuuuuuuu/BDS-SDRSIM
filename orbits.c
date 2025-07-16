@@ -2,9 +2,8 @@
  *  orbits.c  -  BeiDou / GPS-like satellite orbit propagation
  *
  *  - 增強：自動辨識 GEO / IGSO / MEO 三種軌道型別
- *  -    GEO  : RAAN 公式含地球自轉角，亦須做 ECI→ECEF 旋轉
- *  -    IGSO : 根據星曆 Ω̇ 為 0 或 ≈ −ΩE 自動選擇 RAAN 公式
- *  -    MEO  : 保持傳統 GPS 公式 Ω = Ω0 + (Ω̇ − ΩE)·tk
+ *  -    GEO/IGSO/MEO 均以慣性 RAAN (Ω0 + Ω̇·tk) 計算，再統一旋轉回
+ *         ECEF。此方法可減少公式差異並避免重複扣除地球自轉角。
  *
  *  介面與輸入輸出陣列沿用舊版 calc_sat_position_velocity()
  * --------------------------------------------------------------*/
@@ -101,23 +100,13 @@ void calc_sat_position_velocity(int prn, int week, double sow,
     const double x_op = r * cos(u);
     const double y_op = r * sin(u);
 
-    /* -------- RAAN Ω(t)：依軌道型別選公式 -------------------- */
-    double Omega;
-    if (orb == ORB_MEO) {
-        /* GPS/BDS 標準：Ω = Ω0 + (Ω̇ − ΩE)·tk */
-        Omega = ep->omega0 + (ep->omegadot - OMEGA_E) * tk;
-    }
-    else if (orb == ORB_IGSO) {
-        /* 判斷 Ω̇ 近 0 → 需手動扣 ΩE；否則 Ω̇ 已含 −ΩE */
-        if (fabs(ep->omegadot) < 1e-11)
-            Omega = ep->omega0 - OMEGA_E * tk;
-        else
-            Omega = ep->omega0 + ep->omegadot * tk;
-    }
-    else { /* GEO */
-        /* BDS-ICD 公式：Ω = Ω₀ + (Ω̇ − OMEGA_E)·tk （Ω̇ ≈ 0）*/
-        Omega = ep->omega0 + (ep->omegadot - OMEGA_E) * tk;
-    }
+    /* -------- RAAN Ω(t)：統一以 ECI 公式處理 ------------------ */
+    /*
+     * 先在慣性座標計算 RAAN：Ω = Ω0 + Ω̇·tk
+     * 之後再以地球自轉角 OMEGA_E·(ToE+tk) 旋回到 ECEF。
+     * 這可避免重複扣除 OMEGA_E，亦能適用於 MEO/IGSO/GEO。  
+     */
+    const double Omega = ep->omega0 + ep->omegadot * tk;
 
     /* -------- ECI (WGS-84 inertial) 座標 ----------------------- */
     const double cosO = cos(Omega), sinO = sin(Omega);
@@ -141,10 +130,8 @@ void calc_sat_position_velocity(int prn, int week, double sow,
         const double i_dot   = ep->idot + 2 * (ep->cis * cos(2 * phi)
                                              - ep->cic * sin(2 * phi)) * phi_dot;
 
-        const double Omega_dot =
-            (orb == ORB_MEO) ? (ep->omegadot - OMEGA_E) :
-            (orb == ORB_IGSO && fabs(ep->omegadot) < 1e-11) ? -OMEGA_E :
-            ep->omegadot;
+        /* RAAN 以慣性系統計，故其導數直接為 omegadot */
+        const double Omega_dot = ep->omegadot;
 
         const double x_op_dot = r_dot * cos(u) - r * u_dot * sin(u);
         const double y_op_dot = r_dot * sin(u) + r * u_dot * cos(u);
