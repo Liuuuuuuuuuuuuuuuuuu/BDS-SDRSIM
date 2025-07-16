@@ -25,6 +25,8 @@ typedef struct {
     int     freq_num;        /* BDS frequency number */
     double  a0utc, a1utc, a2utc;   /* BDT‑UTC 偏移 */
     double  toe_msg;         /* Transmission time of message */
+    double  tgd1, tgd2;      /* TGD1/TGD2 group delays */
+    int     aodc;            /* Age of Data, Clock */
     double  reserved;        /* 末行保留值 */
 
     /* ─ 子幀 1 需要 ─ */

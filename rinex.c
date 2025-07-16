@@ -14,11 +14,15 @@
 static double fld(const char *ln, int idx, int ind)
 {
     char buf[20];
-    memcpy(buf, &ln[ind + idx * 19], 19);
+    int pos = ind + idx * 19;
+    if ((int)strlen(ln) <= pos) return 0.0;
+    memcpy(buf, ln + pos, 19);
     buf[19] = '\0';
     for (int i = 0; i < 19; i++)
         if (buf[i] == 'D' || buf[i] == 'd') buf[i] = 'E';
-    return strtod(buf, NULL);
+    char *end;
+    double v = strtod(buf, &end);
+    return (end == buf) ? 0.0 : v;
 }
 static int ifld(const char *ln, int idx, int ind)
 {
@@ -137,20 +141,19 @@ int read_rinex_nav(const char *fname)
         e->omegadot= fld(r[3], 3, INDN);
 
         e->idot    = fld(r[4], 0, INDN);
+        e->freq_num = ifld(r[4], 1, INDN); /* reserved/freq number */
+        int week_r = ifld(r[4], 2, INDN);  /* BDS week number */
+        if (week_r) e->week = week_r;
 
-        /* line 6: health, frequency number, URA */
-        e->health   = ifld(r[4], 1, INDN) & 0x1;
-        e->freq_num = ifld(r[4], 2, INDN);
-        e->ura      = ifld(r[4], 3, INDN) & 0xF;
+        /* line 7: SV accuracy/health and TGD1/2 */
+        e->ura     = ifld(r[5], 0, INDN) & 0xF;
+        e->health  = ifld(r[5], 1, INDN) & 0x1;
+        e->tgd1    = fld(r[5], 2, INDN);
+        e->tgd2    = fld(r[5], 3, INDN);
 
-        /* line 7: BDT-UTC offset and transmission time */
-        e->a0utc   = fld(r[5], 0, INDN);
-        e->a1utc   = fld(r[5], 1, INDN);
-        e->a2utc   = fld(r[5], 2, INDN);
-        e->toe_msg = fld(r[5], 3, INDN);
-
-        /* line 8: reserved field */
-        e->reserved = fld(r[6], 0, INDN);
+        /* line 8: transmission time of message and AODC */
+        e->toe_msg = fld(r[6], 0, INDN);
+        e->aodc    = ifld(r[6], 1, INDN);
 
         double t_bdt = e->week * 604800.0 + e->toc;
         if (t_bdt < nav_time_min) nav_time_min = t_bdt;

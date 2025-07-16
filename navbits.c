@@ -17,7 +17,7 @@ static void eph_to_frame(const ephemeris_t *e, B1I_D1_Frame *f)
 {
     memset(f, 0, sizeof(*f));
     f->toc      = (uint32_t)(e->toc / 8);
-    f->aodc     = e->iode & 0x1F;
+    f->aodc     = e->aodc & 0x1F;
     f->urai     = e->ura & 0xF;
     f->satH1    = e->health & 0x1;
 
