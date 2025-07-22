@@ -29,9 +29,10 @@ static double kepler(double M, double e)
 
 /* --------------------------------------------------------------*/
 /*          主要 API：回傳 ECEF 位置 xyz 與速度 vel               */
-void eph_pos_vel_ecef(const ephemeris_t *ep, int week, double sow,
-                      double *xyz, double *vel)
+void calc_sat_position_velocity(int prn, int week, double sow,
+                                double *xyz, double *vel)
 {
+    const ephemeris_t *ep = &eph[prn];        /* 全域星曆陣列 (外部定義) */
 
     /*          輸出保底值 (PRN 不存在)                             */
     if (ep->prn == 0) {
@@ -112,23 +113,16 @@ void eph_pos_vel_ecef(const ephemeris_t *ep, int week, double sow,
         z_dot = y_op_dot * sini + y_op * cosi * i_dot;
     }
 
-    xyz[0] = x;
-    xyz[1] = y;
-    xyz[2] = z;
+    {
+        xyz[0] = x;
+        xyz[1] = y;
+        xyz[2] = z;
 
-    if (vel) {
-        vel[0] = x_dot;
-        vel[1] = y_dot;
-        vel[2] = z_dot;
+        if (vel) {
+            vel[0] = x_dot;
+            vel[1] = y_dot;
+            vel[2] = z_dot;
+        }
     }
-}
-
-/* --------------------------------------------------------------*/
-/* 主要 API：依 PRN 查表計算                                     */
-void calc_sat_position_velocity(int prn, int week, double sow,
-                                double *xyz, double *vel)
-{
-    const ephemeris_t *ep = &eph[prn];
-    eph_pos_vel_ecef(ep, week, sow, xyz, vel);
 }
 /* ---------------------------  End  ------------------------------*/
