@@ -48,7 +48,7 @@ rate.
 make
 ```
 
-The optional command `make prn_test` builds a small utility that prints
+The optional command `make tests/prn_test` builds a small utility that prints
 each PRN number and the first 16 bits of its code in binary using the
 bundled RINEX file.
 

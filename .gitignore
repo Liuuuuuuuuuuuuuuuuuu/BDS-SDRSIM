@@ -1,7 +1,7 @@
 *.o
 bds-sim
-prn_test
-test_beidou
+tests/prn_test
+tests/test_beidou
 tests/test_prn_d1d2
 tests/test_orbits
 tests/test_d2_cycles
