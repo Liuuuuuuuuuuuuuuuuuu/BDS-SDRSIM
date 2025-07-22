@@ -1,10 +1,9 @@
 /* ---------------------------------------------------------------
  *  orbits.c  -  BeiDou / GPS-like satellite orbit propagation
- *
- *  - 增強：自動辨識 GEO / IGSO / MEO 三種軌道型別
- *  -    GEO  : RAAN 公式含地球自轉角，亦須做 ECI→ECEF 旋轉
- *  -    IGSO : 根據星曆 Ω̇ 為 0 或 ≈ −ΩE 自動選擇 RAAN 公式
- *  -    MEO  : 保持傳統 GPS 公式 Ω = Ω0 + (Ω̇ − ΩE)·tk
+ *  使用標準 GPS/BDS RAAN 公式：
+ *      Ω(t) = Ω0 + (Ω̇ − ΩE)·tk − ΩE·Toe
+ *  此式適用於 BDS 的 GEO、IGSO 與 MEO 衛星，無需依軌道類型
+ *  切換不同計算方式，直接給出 ECEF 座標。
  *
  *  介面與輸入輸出陣列沿用舊版 calc_sat_position_velocity()
  * --------------------------------------------------------------*/
