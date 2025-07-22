@@ -113,16 +113,15 @@ void calc_sat_position_velocity(int prn, int week, double sow,
         z_dot = y_op_dot * sini + y_op * cosi * i_dot;
     }
 
-    {
-        xyz[0] = x;
-        xyz[1] = y;
-        xyz[2] = z;
+    xyz[0] = x;
+    xyz[1] = y;
+    xyz[2] = z;
 
-        if (vel) {
-            vel[0] = x_dot;
-            vel[1] = y_dot;
-            vel[2] = z_dot;
-        }
+    if (vel) {
+        vel[0] = x_dot;
+        vel[1] = y_dot;
+        vel[2] = z_dot;
     }
 }
+
 /* ---------------------------  End  ------------------------------*/
