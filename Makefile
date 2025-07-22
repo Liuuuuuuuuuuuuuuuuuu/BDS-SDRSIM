@@ -1,32 +1,45 @@
 # =====================[ 編譯設定 ]=====================
 CC      = gcc
-CFLAGS = -O2 -Wall -Wextra -fopenmp -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE
+CFLAGS = -I. -O2 -Wall -Wextra -fopenmp -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE
 
 OBJS = main.o globals.o bch.o nav_words.o nav_pages.o navbits.o channel.o \
-       bdssim.o rinex.o orbits.o coord.o path.o
-       
+	bdssim.o rinex.o orbits.o coord.o path.o
+	
 bds-sim: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) -lm
 
-prn_test: prn_test.o globals.o bch.o nav_words.o nav_pages.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
+tests/prn_test: tests/prn_test.o globals.o bch.o nav_words.o nav_pages.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
 	$(CC) $(CFLAGS) $^ -o $@ -lm
 
+tests/test_beidou: tests/test_beidou.c
+	$(CC) $(CFLAGS) $< -o $@
+
 tests/test_prn_d1d2: tests/test_prn_d1d2.o globals.o bch.o nav_words.o nav_pages.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
+	$(CC) $(CFLAGS) $^ -o $@ -lm
+
+tests/test_nh_prn: tests/test_nh_prn.o globals.o bch.o nav_words.o nav_pages.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
+	$(CC) $(CFLAGS) $^ -o $@ -lm
+
+tests/test_d2_cycles: tests/test_d2_cycles.o globals.o bch.o nav_words.o nav_pages.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
 	$(CC) $(CFLAGS) $^ -o $@ -lm
 
 tests/test_orbits: tests/test_orbits.o globals.o bch.o nav_words.o nav_pages.o navbits.o channel.o rinex.o orbits.o coord.o path.o bdssim.o
 	$(CC) $(CFLAGS) $^ -o $@ -lm
 
-check: tests/test_prn_d1d2
+check: tests/test_prn_d1d2 tests/test_nh_prn tests/test_d2_cycles
 	./tests/test_prn_d1d2
+	./tests/test_nh_prn
+	./tests/test_d2_cycles
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o bds-sim prn_test test_beidou \
-	       tests/test_prn_d1d2 tests/test_prn_d1d2.o \
-	       tests/test_orbits tests/test_orbits.o *.bin *.gz
+	rm -f *.o bds-sim tests/prn_test tests/test_beidou \
+	tests/test_prn_d1d2 tests/test_prn_d1d2.o \
+	tests/test_nh_prn tests/test_nh_prn.o \
+	tests/test_d2_cycles tests/test_d2_cycles.o \
+	tests/test_orbits tests/test_orbits.o *.bin *.gz
 	@echo "✅ 已清除中間檔與 .gz 暫存檔"
 
 # =====================[ 下載區 ]=====================
