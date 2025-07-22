@@ -14,18 +14,26 @@ uint16_t bch_encode(uint16_t d11)
     return (d11<<4) | (reg & 0xF);
 }
 
-
-
-/* Generic BCH(15,11,1) encoder returning parity bits for 22 or 26 bit payloads */
-uint32_t bch1511(uint32_t in, int payloadBits)
+/* 對 26 位元資料的後 11 位做 BCH，並在尾端附上 4 位校驗 */
+uint32_t bch_encode_26bit(uint32_t payload)
 {
-    if (payloadBits != 22 && payloadBits != 26)
-        return 0;
-    int parityBits = (payloadBits == 26) ? 4 : 8;
-    uint32_t reg = in << parityBits;  /* space for parity */
-    int top = payloadBits + parityBits - 1;
-    for (int i = top; i >= parityBits; --i)
-        if (reg & (1u << i))
-            reg ^= (uint32_t)G << (i - 4);
-    return reg & ((1u << parityBits) - 1);
+    payload &= 0x3FFFFFF;                 /* 26 bits */
+    uint16_t info = payload & 0x7FF;      /* 取出最後 11 位 */
+    uint16_t parity = bch_encode(info) & 0xF;
+    return (payload << 4) | parity;       /* 26 資料 + 4 校驗 */
+}
+
+/* 將 22 位元資料分成兩組 11 位做 BCH，並交錯輸出 */
+uint32_t bch_interleave_22bit(uint32_t payload)
+{
+    uint16_t high11 = (payload >> 11) & 0x7FF;
+    uint16_t low11  = payload & 0x7FF;
+    uint16_t codeA = bch_encode(high11);
+    uint16_t codeB = bch_encode(low11);
+    uint32_t result = 0;
+    for (int i = 14; i >= 0; --i) {
+        result = (result << 1) | ((codeA >> i) & 1);
+        result = (result << 1) | ((codeB >> i) & 1);
+    }
+    return result;
 }
