@@ -158,118 +158,34 @@ static void build_subframe1_d1(uint8_t *out, const ephemeris_t *e,
 }
 
 /* D2 subframe 1 with page number field */
-static void build_subframe1_d2(uint8_t *out,const ephemeris_t *e,
-                               int week,double sow)
+static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
+                               int week, double sow)
 {
-    memset(out,0,SF_STREAM_LEN);
-    uint32_t sow_int = (uint32_t)(floor(sow/0.6)*0.6);
-    int frame = (int)fmod(sow_int,360.0)/3; /* 0..119 */
-    uint32_t pnum = (frame % 10) + 1;       /* 1..10 */
-
-    uint32_t info = 0x712;                  /* preamble */
-    info = (info<<4) | (pnum & 0xF);        /* PNUM1 */
-    info = (info<<3) | 0x1;                 /* FraID=001 */
-    info = (info<<8) | ((sow_int>>12)&0xFF);
-    put_word(out,0, build_word(info,26));
-
-    uint32_t info2 = ((sow_int&0xFFF)<<13) | (week&0x1FFF);
-    put_word(out,30, build_word(info2,26));
-
-    uint32_t info3 = (e->ura&0xF)<<26 | (e->health&1)<<25 | ((uint32_t)(e->toc/8)&0x1FFFF)<<8;
-    put_word(out,60, build_word(info3,26));
-
-    int32_t a0_i = (int32_t)llround(e->af0/pow(2,-33));
-    put_word(out,90, build_word((uint32_t)(a0_i & 0x3FFFFF),26));
-
-    int32_t a1_i = (int32_t)llround(e->af1/pow(2,-50));
-    int32_t a2_i = (int32_t)llround(e->af2/pow(2,-66));
-    uint32_t info5 = ((a1_i & 0xFFFF)<<11) | (a2_i & 0x7FF);
-    put_word(out,120, build_word(info5,22));
-
-    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
+    (void)out; (void)e; (void)week; (void)sow;
 }
 
 /* --------------------------------- 子帧 2 ----------------------------------- */
 /* D2 subframe 2 with page number field */
-static void build_subframe2_d2(uint8_t *out,const ephemeris_t *e,double sow)
+static void build_subframe2_d2(uint8_t *out, const ephemeris_t *e, double sow)
 {
-    memset(out,0,SF_STREAM_LEN);
-    uint32_t sow_int = (uint32_t)(floor(sow/0.6)*0.6);
-    int frame = (int)fmod(sow_int,360.0)/3; /* 0..119 */
-    uint32_t pnum = (frame % 6) + 1;        /* 1..6 */
-
-    uint32_t info = 0x712;
-    info = (info<<4) | (pnum & 0xF);        /* PNUM2 */
-    info = (info<<3) | 0x2;                 /* FraID=010 */
-    info = (info<<8) | ((uint32_t)e->toe>>8 & 0xFF);
-    put_word(out,0, build_word(info,26));
-
-    uint32_t info2 = ((uint32_t)e->toe & 0xFF)<<13 |
-                     (uint32_t)(llround(e->sqrtA/pow(2,-19))>>13 &0x1FFF);
-    put_word(out,30, build_word(info2,26));
-
-    uint32_t sqrtA_i = (uint32_t)llround(e->sqrtA/pow(2,-19));
-    uint32_t e_i     = (uint32_t)llround(e->e/pow(2,-33));
-    uint32_t info3 = (sqrtA_i &0x1FFF)<<11 | (e_i>>11 &0x7FF);
-    put_word(out,60, build_word(info3,26));
-
-    uint32_t dn_i = (int32_t)llround(e->deltan/pow(2,-43)) & 0xFFFF;
-    uint32_t M0_i = (int32_t)llround(e->M0/pow(2,-31));
-    uint32_t info4 = (e_i &0x7FF)<<19 | dn_i<<3 | (M0_i>>21 &0x7);
-    put_word(out,90, build_word(info4,26));
-
-    put_word(out,120, build_word(M0_i & 0x1FFFFF,22));
-
-    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
+    (void)out; (void)e; (void)sow;
 }
 
 
 /* --------------------------------- 子帧 4 ----------------------------------- */
 
-static void build_sf45_template(uint8_t *out)
+static void build_subframe4_d1(uint8_t *out, int week, double sow,
+                               double frame_len)
 {
-    /*
-     * 每個 word 填入官方指定的固定值 0xAAAAAAAA (= 1010... pattern)。
-     * 此為子幀 4/5 的預留欄位內容。
-     */
-    for(int w=2; w<=10; ++w)
-        put_word(out,(w-1)*30, 0xAAAAAAAA);
-}
-
-static void build_subframe4(uint8_t *out,int week,double sow,double frame_len)
-
-{
-    memset(out,0,SF_STREAM_LEN);
-    uint32_t info = 0x712;            /* preamble */
-    info = (info << 4);
-    info = (info << 3) | 0x4;         /* FraID=100 */
-
-    uint32_t sow_int = (uint32_t)(floor(sow/frame_len)*frame_len);
-    info = (info<<8) | ((sow_int>>12) & 0xFF);
-    put_word(out,0, build_word(info, 26));
-    uint32_t info2 = ((sow_int&0xFFF)<<13) | (week&0x1FFF);
-    put_word(out,30, build_word(info2, 26));
-    build_sf45_template(out);
-    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
+    (void)out; (void)week; (void)sow; (void)frame_len;
 }
 
 /* --------------------------------- 子帧 5 ----------------------------------- */
 
-static void build_subframe5(uint8_t *out,int week,double sow,double frame_len)
-
+static void build_subframe5_d1(uint8_t *out, int week, double sow,
+                               double frame_len)
 {
-    memset(out,0,SF_STREAM_LEN);
-    uint32_t info = 0x712;            /* preamble */
-    info = (info << 4);
-    info = (info << 3) | 0x5;         /* FraID=101 */
-
-    uint32_t sow_int = (uint32_t)(floor(sow/frame_len)*frame_len);
-    info = (info<<8) | ((sow_int>>12) & 0xFF);
-    put_word(out,0, build_word(info, 26));
-    uint32_t info2 = ((sow_int & 0xFFF)<<13) | (week&0x1FFF);
-    put_word(out,30, build_word(info2, 26));
-    build_sf45_template(out);
-    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
+    (void)out; (void)week; (void)sow; (void)frame_len;
 }
 
 /* ------------------ D1 Subframe Assembly Helpers ------------------------- */
@@ -408,8 +324,8 @@ void navbits_init(void)
         for(int w=0; w<10; ++w)
             put_word(sf_static[prn][1], w*30, words[w]);
 
-        build_subframe4(sf_static[prn][2],0,0,6.0);
-        build_subframe5(sf_static[prn][3],0,0,6.0);
+        build_subframe4_d1(sf_static[prn][2],0,0,6.0);
+        build_subframe5_d1(sf_static[prn][3],0,0,6.0);
     }
 }
 
@@ -443,9 +359,9 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,
                 put_word(out, w*30, words[w]);
         }
     }else if(sf_id==4){
-        build_subframe4(out,week,start,frame_len);
+        build_subframe4_d1(out,week,start,frame_len);
     }else if(sf_id==5){
-        build_subframe5(out,week,start,frame_len);
+        build_subframe5_d1(out,week,start,frame_len);
 
     }else{
         memset(out,0,SF_STREAM_LEN);
