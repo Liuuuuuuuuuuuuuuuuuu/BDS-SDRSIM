@@ -22,7 +22,7 @@ extern ephemeris_t eph[MAX_SAT];
 /* Convert ephemeris_t to the simplified B1I_D1_Frame structure.
  * Only the fields needed for navigation message assembly are
  * populated here. */
-static void eph_to_frame(const ephemeris_t *e, B1I_D1_Frame *f)
+static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
 {
     memset(f, 0, sizeof(*f));
     f->toc      = (uint32_t)(e->toc / 8);
@@ -73,8 +73,8 @@ static void put_word(uint8_t *b, int pos, uint32_t w30)
 }
 
 /* --------------------------------- 子帧 1 ----------------------------------- */
-static void build_subframe1(uint8_t *out, const ephemeris_t *e,
-                             int week, double sow, double frame_len)
+static void build_subframe1_d1(uint8_t *out, const ephemeris_t *e,
+                               int week, double sow, double frame_len)
 {
     memset(out,0,SF_STREAM_LEN);
 
@@ -272,10 +272,10 @@ static void build_subframe5(uint8_t *out,int week,double sow,double frame_len)
     for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
-/* ------------------ D1 Subframe Assembly Helpers (sf2/sf3) ---------------- */
+/* ------------------ D1 Subframe Assembly Helpers ------------------------- */
 
 
-static void sf2(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
+static void build_subframe2_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
 {
     uint32_t p;
     /* Word1: preamble + reserved + FraID=2 + SOW[19:12] */
@@ -329,7 +329,7 @@ static void sf2(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
     w[9] = build_word(p, 22);
 }
 
-static void sf3(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
+static void build_subframe3_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
 {
     uint32_t p;
     /* Word1: preamble + reserved + FraID=3 + SOW[19:12] */
@@ -378,16 +378,16 @@ static void sf3(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
 }
 
 
-static void assemble_d1_subframe2(const B1I_D1_Frame *frm, uint32_t sow,
+static void assemble_subframe2_d1(const B1I_D1_Frame *frm, uint32_t sow,
                                   uint32_t words[10])
 {
-    if (frm) sf2(frm, sow, words); else memset(words, 0, sizeof(uint32_t) * 10);
+    if (frm) build_subframe2_d1(frm, sow, words); else memset(words, 0, sizeof(uint32_t) * 10);
 }
 
-static void assemble_d1_subframe3(const B1I_D1_Frame *frm, uint32_t sow,
+static void assemble_subframe3_d1(const B1I_D1_Frame *frm, uint32_t sow,
                                   uint32_t words[10])
 {
-    if (frm) sf3(frm, sow, words); else memset(words, 0, sizeof(uint32_t) * 10);
+    if (frm) build_subframe3_d1(frm, sow, words); else memset(words, 0, sizeof(uint32_t) * 10);
 }
 
 /* ---------------------------------------------------------------------------- */
@@ -397,14 +397,14 @@ void navbits_init(void)
 {
     for(int prn=1;prn<=63;prn++){
         B1I_D1_Frame frm;
-        eph_to_frame(&eph[prn], &frm);
+        frame_from_ephemeris(&eph[prn], &frm);
         uint32_t words[10];
 
-        assemble_d1_subframe2(&frm, 0, words);
+        assemble_subframe2_d1(&frm, 0, words);
         for(int w=0; w<10; ++w)
             put_word(sf_static[prn][0], w*30, words[w]);
 
-        assemble_d1_subframe3(&frm, 0, words);
+        assemble_subframe3_d1(&frm, 0, words);
         for(int w=0; w<10; ++w)
             put_word(sf_static[prn][1], w*30, words[w]);
 
@@ -421,14 +421,14 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,
     int is_d2 = (frame_len < 6.0);
     if(sf_id==1){
         if(is_d2) build_subframe1_d2(out,&eph[prn],week,start);
-        else      build_subframe1(out,&eph[prn],week,start,frame_len);
+        else      build_subframe1_d1(out,&eph[prn],week,start,frame_len);
     }else if(sf_id==2){
         if(is_d2) build_subframe2_d2(out,&eph[prn],start);
         else {
             B1I_D1_Frame frm;
-            eph_to_frame(&eph[prn], &frm);
+            frame_from_ephemeris(&eph[prn], &frm);
             uint32_t words[10];
-            assemble_d1_subframe2(&frm, (uint32_t)start, words);
+            assemble_subframe2_d1(&frm, (uint32_t)start, words);
             for(int w=0; w<10; ++w)
                 put_word(out, w*30, words[w]);
         }
@@ -436,9 +436,9 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,
         if(is_d2) memcpy(out,sf_static[prn][1],SF_STREAM_LEN);
         else {
             B1I_D1_Frame frm;
-            eph_to_frame(&eph[prn], &frm);
+            frame_from_ephemeris(&eph[prn], &frm);
             uint32_t words[10];
-            assemble_d1_subframe3(&frm, (uint32_t)start, words);
+            assemble_subframe3_d1(&frm, (uint32_t)start, words);
             for(int w=0; w<10; ++w)
                 put_word(out, w*30, words[w]);
         }
