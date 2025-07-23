@@ -190,45 +190,6 @@ static void build_subframe1_d2(uint8_t *out,const ephemeris_t *e,
 }
 
 /* --------------------------------- 子帧 2 ----------------------------------- */
-/*
- * build_subframe2 and build_subframe3 are kept for reference. They are not
- * invoked in the current code path but may be useful for future extensions.
- * Mark them as unused to silence compiler warnings.
- */
-__attribute__((unused)) static void build_subframe2(uint8_t *out, const ephemeris_t *e)
-{
-    memset(out,0,SF_STREAM_LEN);
-
-    /* word1: FrameSync + FraID=010 + toe[15:8] */
-    uint32_t info = 0x712;            /* preamble */
-    info = (info << 4);               /* reserved */
-    info = (info << 3) | 0x2;         /* FraID=010 */
-    info = (info << 8) | ((uint32_t)e->toe>>8 &0xFF);
-    put_word(out,0, build_word(info, 26));
-
-    /* word2: toe[7:0] + √A[21:13] */
-    uint32_t info2 = ((uint32_t)e->toe &0xFF)<<13 |
-                     (uint32_t)(llround(e->sqrtA/pow(2,-19))>>13 &0x1FFF);
-    put_word(out,30, build_word(info2, 26));
-
-    /* word3: √A[12:0] + e[21:11] */
-    uint32_t sqrtA_i = (uint32_t)llround(e->sqrtA/pow(2,-19));
-    uint32_t e_i     = (uint32_t)llround(e->e     /pow(2,-33));
-    uint32_t info3 = (sqrtA_i &0x1FFF)<<11 | (e_i>>11 &0x7FF);
-    put_word(out,60, build_word(info3, 26));
-
-    /* word4: e[10:0] + Δn(16b,+2^-43) + M0[21] */
-    uint32_t dn_i = (int32_t)llround(e->deltan/pow(2,-43)) & 0xFFFF;
-    uint32_t M0_i = (int32_t)llround(e->M0/pow(2,-31));
-    uint32_t info4 = (e_i &0x7FF)<<19 | dn_i<<3 | (M0_i>>21 &0x7);
-    put_word(out,90, build_word(info4, 26));
-
-    /* word5: M0[20:0] 首段 */
-    put_word(out,120, build_word(M0_i & 0x1FFFFF, 22));
-
-    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
-}
-
 /* D2 subframe 2 with page number field */
 static void build_subframe2_d2(uint8_t *out,const ephemeris_t *e,double sow)
 {
@@ -262,42 +223,6 @@ static void build_subframe2_d2(uint8_t *out,const ephemeris_t *e,double sow)
     for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
-/* --------------------------------- 子帧 3 ----------------------------------- */
-__attribute__((unused)) static void build_subframe3(uint8_t *out, const ephemeris_t *e)
-{
-    memset(out,0,SF_STREAM_LEN);
-
-    /* word1 : sync + FraID=011 + Ω0[21:14] */
-    uint32_t info = 0x712;            /* preamble */
-    info = (info << 4);
-    info = (info << 3) | 0x3;         /* FraID=011 */
-    int32_t O0_i = (int32_t)llround(e->omega0 / pow(2,-31));
-    info = (info<<8) | ((O0_i>>14)&0xFF);
-    put_word(out,0, build_word(info, 26));
-
-    /* word2: Ω0[13:0] + i0[21:13] */
-    int32_t i0_i = (int32_t)llround(e->i0 / pow(2,-31));
-    uint32_t info2 = ((O0_i &0x3FFF)<<13) | ((i0_i>>13)&0x1FFF);
-    put_word(out,30, build_word(info2, 26));
-
-    /* word3: i0[12:0] + ω[21:11] */
-    int32_t w_i = (int32_t)llround(e->w / pow(2,-31));
-    uint32_t info3 = ((i0_i &0x1FFF)<<11) | ((w_i>>11)&0x7FF);
-    put_word(out,60, build_word(info3, 26));
-
-    /* word4: ω[10:0] + CRC + IDOT[10] */
-    int32_t crc_i = (int32_t)llround(e->crc / pow(2,-5));       /* 18 bits */
-    int32_t idot_i= (int32_t)llround(e->idot/ pow(2,-43));      /* 14 bits → 11+3 */
-    uint32_t info4 = ((w_i &0x7FF)<<19) | ((crc_i&0x3FFFF)<<1) | ((idot_i>>10)&1);
-    put_word(out,90, build_word(info4, 26));
-
-    /* word5: IDOT[9:0] + Ω̇ dot[23:?] */
-    int32_t odot_i = (int32_t)llround(e->omegadot / pow(2,-43));/* 24 bits */
-    uint32_t info5 = ((idot_i &0x3FF)<<20) | (odot_i &0xFFFFF);
-    put_word(out,120, build_word(info5, 22));
-
-    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
-}
 
 /* --------------------------------- 子帧 4 ----------------------------------- */
 
@@ -347,41 +272,8 @@ static void build_subframe5(uint8_t *out,int week,double sow,double frame_len)
     for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
 }
 
-/* ------------------ D1 Subframe Assembly Helpers (sf1/sf2/sf3) ---------------- */
+/* ------------------ D1 Subframe Assembly Helpers (sf2/sf3) ---------------- */
 
-static void sf1(const B1I_D1_Frame *f, int week, uint32_t sow, uint32_t w[10])
-{
-    uint32_t p;
-    /* Word1: preamble + reserved + sfID + SOW[19:12] */
-    p = 0x712;             /* 11 bits */
-    p = (p << 4);          /* reserved */
-    p = (p << 3) | 1;      /* FraID */
-    p = (p << 8) | ((sow >> 12) & 0xFF);
-    w[0] = build_word(p, 26);
-
-    /* Word2: SOW[11:0] + week */
-    p = ((sow & 0xFFF) << 13) | (week & 0x1FFF);
-    w[1] = build_word(p, 26);
-
-    /* Word3: URAI, SatH1, toc, AODC */
-    p = (f->urai & 0xF) << 26;
-    p |= (f->satH1 & 0x1) << 25;
-    p |= (f->toc & 0x1FFFF) << 8;
-    p |= (f->aodc & 0x1F);
-    w[2] = build_word(p, 26);
-
-    /* Word4: a0 (24 bits signed) */
-    p = ((uint32_t)f->a0 & 0xFFFFFF);
-    w[3] = build_word(p, 26);
-
-    /* Word5: a1(22) + a2(11) */
-    p = ((uint32_t)f->a1 & 0x3FFFFF) << 11;
-    p |= ((uint32_t)f->a2 & 0x7FF);
-    w[4] = build_word(p, 22);
-
-    /* repeat words */
-    for (int i = 0; i < 5; ++i) w[i + 5] = w[i];
-}
 
 static void sf2(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
 {
@@ -485,19 +377,6 @@ static void sf3(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
     w[9] = build_word(p, 22);
 }
 
-__attribute__((unused)) static void assemble_d1_subframe(int sfid, const B1I_D1_Frame *frm,
-                                 int week, uint32_t sow, uint32_t words[10])
-{
-    memset(words, 0, sizeof(uint32_t) * 10);
-    if (!frm) return;
-
-    switch (sfid) {
-    case 1: sf1(frm, week, sow, words); break;
-    case 2: sf2(frm, sow, words);      break;
-    case 3: sf3(frm, sow, words);      break;
-    default: break;
-    }
-}
 
 static void assemble_d1_subframe2(const B1I_D1_Frame *frm, uint32_t sow,
                                   uint32_t words[10])
