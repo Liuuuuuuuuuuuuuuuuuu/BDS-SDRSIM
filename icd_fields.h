@@ -38,12 +38,5 @@ typedef struct {
     int32_t  cis;        /* 18 bits signed */
 } B1I_D1_Frame;
 
-/* D2 frame uses a similar layout but additional paging flags. Only a
- * small subset is defined here for demonstration. */
-typedef struct {
-    uint32_t sow;        /* 12 bits */
-    uint32_t page;       /* 7 bits */
-    uint32_t toc;        /* 17 bits */
-} B1I_D2_Frame;
 
 #endif /* ICD_FIELDS_H */
