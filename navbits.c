@@ -157,40 +157,6 @@ static void build_subframe1_d1(uint8_t *out, const ephemeris_t *e,
     put_word(out,270, build_word(w10,22));
 }
 
-/* D2 subframe 1 with page number field */
-static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
-                               int week, double sow)
-{
-    (void)out; (void)e; (void)week; (void)sow;
-}
-
-/* --------------------------------- 子帧 2 ----------------------------------- */
-/* D2 subframe 2 with page number field */
-static void build_subframe2_d2(uint8_t *out, const ephemeris_t *e, double sow)
-{
-    (void)out; (void)e; (void)sow;
-}
-
-
-/* --------------------------------- 子帧 4 ----------------------------------- */
-
-static void build_subframe4_d1(uint8_t *out, int week, double sow,
-                               double frame_len)
-{
-    (void)out; (void)week; (void)sow; (void)frame_len;
-}
-
-/* --------------------------------- 子帧 5 ----------------------------------- */
-
-static void build_subframe5_d1(uint8_t *out, int week, double sow,
-                               double frame_len)
-{
-    (void)out; (void)week; (void)sow; (void)frame_len;
-}
-
-/* ------------------ D1 Subframe Assembly Helpers ------------------------- */
-
-
 static void build_subframe2_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
 {
     uint32_t p;
@@ -244,7 +210,6 @@ static void build_subframe2_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[1
         ((f->toe >> 15) & 0x3);
     w[9] = build_word(p, 22);
 }
-
 static void build_subframe3_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
 {
     uint32_t p;
@@ -292,6 +257,32 @@ static void build_subframe3_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[1
     p = ((uint32_t)f->omega & 0x1FFFFF) << 1;
     w[9] = build_word(p, 22);
 }
+
+static void build_subframe4_d1(uint8_t *out, int week, double sow,
+                               double frame_len)
+{
+    (void)out; (void)week; (void)sow; (void)frame_len;
+}
+static void build_subframe5_d1(uint8_t *out, int week, double sow,
+                               double frame_len)
+{
+    (void)out; (void)week; (void)sow; (void)frame_len;
+}
+/* D2 subframe 1 with page number field */
+static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
+                               int week, double sow)
+{
+    (void)out; (void)e; (void)week; (void)sow;
+}
+/* D2 subframe 2 with page number field */
+static void build_subframe2_d2(uint8_t *out, const ephemeris_t *e, double sow)
+{
+    (void)out; (void)e; (void)sow;
+}
+
+/* ------------------ D1 Subframe Assembly Helpers ------------------------- */
+
+
 
 
 static void assemble_subframe2_d1(const B1I_D1_Frame *frm, uint32_t sow,
