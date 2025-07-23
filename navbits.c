@@ -21,6 +21,16 @@ static void eph_to_frame(const ephemeris_t *e, B1I_D1_Frame *f)
     f->urai     = e->ura & 0xF;
     f->satH1    = e->health & 0x1;
 
+    /* TGD values: 0.1 ns resolution (ICD 5.2.4.10) */
+    f->tgd1     = (int32_t)llround(e->tgd1 / 1e-10);
+    f->tgd2     = (int32_t)llround(e->tgd2 / 1e-10);
+
+    /* Ionospheric parameters not parsed – leave as zero */
+    for (int i = 0; i < 4; ++i) {
+        f->alpha[i] = 0;
+        f->beta[i]  = 0;
+    }
+
     f->a0       = (int32_t)llround(e->af0 / pow(2, -33));
     f->a1       = (int32_t)llround(e->af1 / pow(2, -50));
     f->a2       = (int32_t)llround(e->af2 / pow(2, -66));
@@ -71,26 +81,66 @@ static void build_subframe1(uint8_t *out, const ephemeris_t *e,
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, build_word(info, 26));
 
-    /* word2: SOW[11:0] (12 bits) + WN (13 bits) + reserved(?) */
-    uint32_t info2 = ((sow_int & 0xFFF)<<13) | (week&0x1FFF);
-    put_word(out,30, build_word(info2, 26));
+    /* word2: SOW[11:0] + SatH1 + AODC + URAI */
+    uint32_t w2 = ((sow_int & 0xFFF) << 10) |
+                  ((e->health & 1) << 9) |
+                  ((e->aodc & 0x1F) << 4) |
+                  (e->ura & 0xF);
+    put_word(out,30, build_word(w2,22));
 
-    /* word3: URA 4b, health 1b, toc(17b, /8), AODC 5b(=0) */
-    uint32_t info3 = (e->ura & 0xF)<<26 | (e->health&1)<<25 | ((uint32_t)(e->toc/8)&0x1FFFF)<<8;
-    put_word(out,60, build_word(info3, 26));
+    /* word3: WN + toc high 9 bits */
+    uint32_t toc_ticks = (uint32_t)(e->toc/8);
+    uint32_t w3 = ((week & 0x1FFF) << 9) |
+                  ((toc_ticks >> 8) & 0x1FF);
+    put_word(out,60, build_word(w3,22));
 
-    /* word4: af0 (dt=2^-33) 22 bits → twos-comp */
+    /* word4: toc low 8 + TGD1 + TGD2 high 4 */
+    int32_t tgd1_i = (int32_t)llround(e->tgd1/1e-10);
+    int32_t tgd2_i = (int32_t)llround(e->tgd2/1e-10);
+    uint32_t w4 = ((toc_ticks & 0xFF) << 14) |
+                  ((tgd1_i & 0x3FF) << 4) |
+                  ((tgd2_i >> 6) & 0xF);
+    put_word(out,90, build_word(w4,22));
+
+    /* word5: TGD2 low 6 + alpha0 + alpha1 */
+    uint32_t w5 = ((tgd2_i & 0x3F) << 16) |
+                  ((0 & 0xFF) << 8) |
+                  (0 & 0xFF);
+    put_word(out,120, build_word(w5,22));
+
+    /* word6: alpha2 + alpha3 + beta0 high 6 */
+    uint32_t beta0 = 0;
+    uint32_t w6 = ((0 & 0xFF) << 14) |
+                  ((0 & 0xFF) << 6) |
+                  ((beta0 >> 2) & 0x3F);
+    put_word(out,150, build_word(w6,22));
+
+    /* word7: beta0 low 2 + beta1 + beta2 + beta3 high 4 */
+    uint32_t beta1 = 0, beta2 = 0, beta3 = 0;
+    uint32_t w7 = ((beta0 & 0x3) << 20) |
+                  ((beta1 & 0xFF) << 12) |
+                  ((beta2 & 0xFF) << 4) |
+                  ((beta3 >> 4) & 0xF);
+    put_word(out,180, build_word(w7,22));
+
+    /* word8: beta3 low 4 + a2 + a0 high 7 */
     int32_t a0_i = (int32_t)llround(e->af0 / pow(2,-33));
-    put_word(out,90, build_word((uint32_t)(a0_i & 0x3FFFFF), 26));
-
-    /* word5: af1 16 bits(+2^-50)、af2 11 bits(+2^-66) */
     int32_t a1_i = (int32_t)llround(e->af1 / pow(2,-50));
     int32_t a2_i = (int32_t)llround(e->af2 / pow(2,-66));
-    uint32_t info5 = ((a1_i & 0xFFFF)<<11) | (a2_i & 0x7FF);
-    put_word(out,120, build_word(info5, 22));
+    uint32_t w8 = ((beta3 & 0xF) << 18) |
+                  ((a2_i & 0x7FF) << 7) |
+                  (((uint32_t)a0_i >> 17) & 0x7F);
+    put_word(out,210, build_word(w8,22));
 
-    /* 前 5 words 重複一次構成 10 words */
-    for(int i=0;i<HALF_SUBFRAME_BITS;i++) out[i+HALF_SUBFRAME_BITS]=out[i];
+    /* word9: a0 low 17 + a1 high 5 */
+    uint32_t w9 = ((uint32_t)a0_i & 0x1FFFF) << 5 |
+                  (((uint32_t)a1_i >> 17) & 0x1F);
+    put_word(out,240, build_word(w9,22));
+
+    /* word10: a1 low 17 + AODE */
+    uint32_t w10 = (((uint32_t)a1_i & 0x1FFFF) << 5) |
+                   (e->iode & 0x1F);
+    put_word(out,270, build_word(w10,22));
 }
 
 /* D2 subframe 1 with page number field */
