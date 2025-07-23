@@ -4,7 +4,17 @@
 #include <string.h>
 #include "navbits.h"
 #include "bch.h"
-#include "nav_words.h"
+
+/* Construct a 30-bit navigation word. "bits" is either 26 for the
+ * first word type or 22 for the remaining words. */
+static uint32_t build_word(uint32_t payload, int bits)
+{
+    if(bits == 22)
+        return bch_interleave_22bit(payload);
+    else if(bits == 26)
+        return bch_encode_26bit(payload);
+    return 0;
+}
 
 extern ephemeris_t eph[MAX_SAT];
 #include "icd_fields.h"
