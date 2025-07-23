@@ -157,6 +157,7 @@ static void build_subframe1_d1(uint8_t *out, const ephemeris_t *e,
     put_word(out,270, build_word(w10,22));
 }
 
+/* --------------------------------- 子帧 2 ----------------------------------- */
 static void build_subframe2_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
 {
     uint32_t p;
@@ -210,6 +211,7 @@ static void build_subframe2_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[1
         ((f->toe >> 15) & 0x3);
     w[9] = build_word(p, 22);
 }
+/* --------------------------------- 子帧 3 ----------------------------------- */
 static void build_subframe3_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
 {
     uint32_t p;
@@ -258,11 +260,13 @@ static void build_subframe3_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[1
     w[9] = build_word(p, 22);
 }
 
+/* --------------------------------- 子帧 4 ----------------------------------- */
 static void build_subframe4_d1(uint8_t *out, int week, double sow,
                                double frame_len)
 {
     (void)out; (void)week; (void)sow; (void)frame_len;
 }
+/* --------------------------------- 子帧 5 ----------------------------------- */
 static void build_subframe5_d1(uint8_t *out, int week, double sow,
                                double frame_len)
 {
