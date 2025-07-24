@@ -24,9 +24,9 @@ static inline int utc_to_bdt(const char *utc_str, int *week, double *sow)
 
     time_t t = timegm(&tm);          /* UTC → Unix epoch */
     const time_t bdt0 = 1136073600;  /* 2006-01-01 00:00:00 UTC */
-    /* BDT 永遠比 UTC 快 14 秒 (ICD-B3, §3.4) */
+    /* BDT 比 UTC 快 4 秒 */
     const time_t week_sec = 604800;
-    time_t diff = t - bdt0 + 14;
+    time_t diff = t - bdt0 + 4;
 
     long w = diff / week_sec;
     long r = diff % week_sec;
