@@ -153,7 +153,7 @@ static void build_subframe1_d1(uint8_t *out, const ephemeris_t *e,
 
     /* word10: a1 low 17 + AODE */
     uint32_t w10 = (((uint32_t)a1_i & 0x1FFFF) << 5) |
-                   (e->iode & 0x1F);
+                   (e->aode & 0x1F);
     put_word(out,270, build_word(w10,22));
 }
 

@@ -125,7 +125,7 @@ int read_rinex_nav(const char *fname)
         for (int i = 0; i < 7; ++i)
             if (!fgets(r[i], sizeof r[i], fp)) return -1;
 
-        e->iode    = ifld(r[0], 0, INDN);
+        e->aode    = ifld(r[0], 0, INDN);
         e->crs     = fld(r[0], 1, INDN);
         e->deltan  = fld(r[0], 2, INDN);
         e->M0      = fld(r[0], 3, INDN);
