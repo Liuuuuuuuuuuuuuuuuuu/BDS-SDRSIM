@@ -30,29 +30,6 @@ static int ifld(const char *ln, int idx, int ind)
 }
 
 /* very-tiny, zone-less timegm (UTC→UNIX)  –  只考慮閏年規則，可跨平台 */
-static time_t my_timegm(struct tm *t)
-{
-    static const int days_in_mon[12] =
-        {31,28,31,30,31,30,31,31,30,31,30,31};
-
-    int y = t->tm_year + 1900;
-    int m = t->tm_mon;
-    int d = t->tm_mday - 1;             /* 0-based */
-
-    /*  days since 1970-01-01 */
-    int days = 0;
-    for (int yr = 1970; yr < y; ++yr)
-        days += 365 + ((yr % 4 == 0 && yr % 100) || (yr % 400 == 0));
-    for (int mo = 0; mo < m; ++mo) {
-        days += days_in_mon[mo];
-        if (mo == 1 && ((y % 4 == 0 && y % 100) || (y % 400 == 0)))
-            ++days;                     /* Feb 29 */
-    }
-    days += d;
-
-    return (time_t)days * 86400
-         + t->tm_hour * 3600 + t->tm_min * 60 + t->tm_sec;
-}
 
 /* ---------- 主要解析 ---------- */
 int read_rinex_nav(const char *fname)
@@ -99,26 +76,7 @@ int read_rinex_nav(const char *fname)
         e->af1 = fld(l, 1, IND1);
         e->af2 = fld(l, 2, IND1);
 
-        int Y, M, D, h, m;
-        double s;
-        sscanf(l + 4, "%4d %2d %2d %2d %2d %lf", &Y, &M, &D, &h, &m, &s);
-
-        struct tm utc = {0};
-        utc.tm_year = Y - 1900;  utc.tm_mon  = M - 1;  utc.tm_mday = D;
-        utc.tm_hour = h;         utc.tm_min  = m;      utc.tm_sec  = (int)s;
-
-        time_t unix_t = my_timegm(&utc);
-
-        /* BDT: TAI-32.0 (leap) – 既然 RINEX 是 UTC，需加上 UTC-BDT 偏移 */
-        const time_t BDT_EPOCH = 1136073600;    /* 2006-01-01 00:00:00 UTC */
-        const int    LS_GPS_2025 = 18;          /* leap seconds 到 2025-06 */
-        const int    LS_BDT      = 0;           /* BDT 無閏秒 */
-        int bdt_off = (LS_GPS_2025 - LS_BDT);   /* 一律 18 秒 (現行) */
-
-        time_t bdt_time = unix_t + bdt_off - BDT_EPOCH;
-        e->toc = (int)(bdt_time % 604800);
-        if (e->toc < 0) e->toc += 604800;
-        e->week = (int)(bdt_time / 604800);
+        /* 先略過年月日等欄位，僅取後續週數與 TOE/SOW  */
 
         /* ── 讀後 7 行 -------------------------------------------- */
         char r[7][120];
@@ -136,6 +94,7 @@ int read_rinex_nav(const char *fname)
         e->sqrtA   = fld(r[1], 3, INDN);
 
         e->toe     = fld(r[2], 0, INDN);
+        e->toc     = (int)e->toe;          /* RINEX 無 toc 欄位，沿用 toe */
         e->cic     = fld(r[2], 1, INDN);
         e->omega0  = fld(r[2], 2, INDN);
         e->cis     = fld(r[2], 3, INDN);
@@ -148,7 +107,7 @@ int read_rinex_nav(const char *fname)
         e->idot    = fld(r[4], 0, INDN);
         e->freq_num = ifld(r[4], 1, INDN); /* reserved/freq number */
         int week_r = ifld(r[4], 2, INDN);  /* BDS week number */
-        if (week_r) e->week = week_r;
+        e->week = week_r;
 
         /* line 7: SV accuracy/health and TGD1/2 */
         e->ura     = ifld(r[5], 0, INDN) & 0xF;
@@ -160,7 +119,7 @@ int read_rinex_nav(const char *fname)
         e->toe_msg = fld(r[6], 0, INDN);
         e->aodc    = ifld(r[6], 1, INDN);
 
-        double t_bdt = e->week * 604800.0 + e->toc;
+        double t_bdt = e->week * 604800.0 + e->toe;
         if (t_bdt < nav_time_min) nav_time_min = t_bdt;
         if (t_bdt > nav_time_max) nav_time_max = t_bdt;
     }
