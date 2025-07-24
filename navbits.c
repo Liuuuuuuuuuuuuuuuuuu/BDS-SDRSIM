@@ -264,13 +264,58 @@ static void build_subframe3_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[1
 static void build_subframe4_d1(uint8_t *out, int week, double sow,
                                double frame_len)
 {
-    (void)out; (void)week; (void)sow; (void)frame_len;
+    (void)week; /* not used */
+
+    /* Subframe 4 carries almanac pages.  Actual parameters are not yet
+     * implemented, so we keep the word layout but fill the data portion
+     * with the official "10" placeholder pattern (0x2AAAAA). */
+
+    memset(out, 0, SF_STREAM_LEN);
+
+    uint32_t sow_int = (uint32_t)(floor(sow / frame_len) * frame_len);
+
+    /* word1: preamble + reserved + FraID=4 + SOW[19:12] */
+    uint32_t w = 0x712;
+    w = (w << 4);
+    w = (w << 3) | 4;
+    w = (w << 8) | ((sow_int >> 12) & 0xFF);
+    put_word(out, 0, build_word(w, 26));
+
+    /* word2: SOW[11:0] + reserved + PNUM + spare (1,0) */
+    uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) | (0 << 2) | 0x2;
+    put_word(out, 30, build_word(w2, 22));
+
+    uint32_t filler = 0x2AAAAA; /* 1010... repeated */
+    for (int i = 2; i < 10; ++i)
+        put_word(out, i * 30, build_word(filler, 22));
 }
 /* --------------------------------- 子帧 5 ----------------------------------- */
 static void build_subframe5_d1(uint8_t *out, int week, double sow,
                                double frame_len)
 {
-    (void)out; (void)week; (void)sow; (void)frame_len;
+    (void)week;
+
+    /* Identical to subframe 4 but with FraID=5.  Data words use the same
+     * placeholder pattern since almanac/UTC parameters are not generated. */
+
+    memset(out, 0, SF_STREAM_LEN);
+
+    uint32_t sow_int = (uint32_t)(floor(sow / frame_len) * frame_len);
+
+    /* word1: preamble + reserved + FraID=5 + SOW[19:12] */
+    uint32_t w = 0x712;
+    w = (w << 4);
+    w = (w << 3) | 5;
+    w = (w << 8) | ((sow_int >> 12) & 0xFF);
+    put_word(out, 0, build_word(w, 26));
+
+    /* word2: SOW[11:0] + reserved + PNUM + spare (1,0) */
+    uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) | (0 << 2) | 0x2;
+    put_word(out, 30, build_word(w2, 22));
+
+    uint32_t filler = 0x2AAAAA;
+    for (int i = 2; i < 10; ++i)
+        put_word(out, i * 30, build_word(filler, 22));
 }
 /* D2 subframe 1 with page number field */
 static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
