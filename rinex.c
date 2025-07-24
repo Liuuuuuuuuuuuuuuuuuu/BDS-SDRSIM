@@ -7,6 +7,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <math.h>
 #include "bdssim.h"
 #include "globals.h"
 
@@ -32,7 +33,7 @@ static int ifld(const char *ln, int idx, int ind)
 /* very-tiny, zone-less timegm (UTC→UNIX)  –  只考慮閏年規則，可跨平台 */
 
 /* ---------- 主要解析 ---------- */
-int read_rinex_nav(const char *fname)
+int read_rinex_nav(const char *fname, double start_bdt)
 {
     FILE *fp = fopen(fname, "r");
     if (!fp) { perror(fname);  return -1; }
@@ -48,6 +49,8 @@ int read_rinex_nav(const char *fname)
 
     nav_time_min = 1e20;
     nav_time_max = -1e20;
+    double best_diff[MAX_SAT];
+    for(int i=0;i<MAX_SAT;i++) best_diff[i]=1e20;
 
     while (fgets(l, sizeof(l), fp))
     {
@@ -62,19 +65,13 @@ int read_rinex_nav(const char *fname)
             continue;
         }
 
-        ephemeris_t *e = &eph[prn];
-        if(e->prn){
-            char skip[120];
-            for(int i=0;i<7;++i) if(!fgets(skip,sizeof skip,fp)) return -1;
-            continue;                       /* keep first record only */
-        }
-        memset(e, 0, sizeof(*e));
-        e->prn = prn;
+        ephemeris_t tmp = {0};
+        tmp.prn = prn;
 
         /* ── 1st row：af0/1/2 & UTC stamp -------------------------- */
-        e->af0 = fld(l, 0, IND1);
-        e->af1 = fld(l, 1, IND1);
-        e->af2 = fld(l, 2, IND1);
+        tmp.af0 = fld(l, 0, IND1);
+        tmp.af1 = fld(l, 1, IND1);
+        tmp.af2 = fld(l, 2, IND1);
 
         /* 先略過年月日等欄位，僅取後續週數與 TOE/SOW  */
 
@@ -83,45 +80,51 @@ int read_rinex_nav(const char *fname)
         for (int i = 0; i < 7; ++i)
             if (!fgets(r[i], sizeof r[i], fp)) return -1;
 
-        e->aode    = ifld(r[0], 0, INDN);
-        e->crs     = fld(r[0], 1, INDN);
-        e->deltan  = fld(r[0], 2, INDN);
-        e->M0      = fld(r[0], 3, INDN);
+        tmp.aode    = ifld(r[0], 0, INDN);
+        tmp.crs     = fld(r[0], 1, INDN);
+        tmp.deltan  = fld(r[0], 2, INDN);
+        tmp.M0      = fld(r[0], 3, INDN);
 
-        e->cuc     = fld(r[1], 0, INDN);
-        e->e       = fld(r[1], 1, INDN);
-        e->cus     = fld(r[1], 2, INDN);
-        e->sqrtA   = fld(r[1], 3, INDN);
+        tmp.cuc     = fld(r[1], 0, INDN);
+        tmp.e       = fld(r[1], 1, INDN);
+        tmp.cus     = fld(r[1], 2, INDN);
+        tmp.sqrtA   = fld(r[1], 3, INDN);
 
-        e->toe     = fld(r[2], 0, INDN);
-        e->toc     = (int)e->toe;          /* RINEX 無 toc 欄位，沿用 toe */
-        e->cic     = fld(r[2], 1, INDN);
-        e->omega0  = fld(r[2], 2, INDN);
-        e->cis     = fld(r[2], 3, INDN);
+        tmp.toe     = fld(r[2], 0, INDN);
+        tmp.toc     = (int)tmp.toe;          /* RINEX 無 toc 欄位，沿用 toe */
+        tmp.cic     = fld(r[2], 1, INDN);
+        tmp.omega0  = fld(r[2], 2, INDN);
+        tmp.cis     = fld(r[2], 3, INDN);
 
-        e->i0      = fld(r[3], 0, INDN);
-        e->crc     = fld(r[3], 1, INDN);
-        e->w       = fld(r[3], 2, INDN);
-        e->omegadot= fld(r[3], 3, INDN);
+        tmp.i0      = fld(r[3], 0, INDN);
+        tmp.crc     = fld(r[3], 1, INDN);
+        tmp.w       = fld(r[3], 2, INDN);
+        tmp.omegadot= fld(r[3], 3, INDN);
 
-        e->idot    = fld(r[4], 0, INDN);
-        e->freq_num = ifld(r[4], 1, INDN); /* reserved/freq number */
+        tmp.idot    = fld(r[4], 0, INDN);
+        tmp.freq_num = ifld(r[4], 1, INDN); /* reserved/freq number */
         int week_r = ifld(r[4], 2, INDN);  /* BDS week number */
-        e->week = week_r;
+        tmp.week = week_r;
 
         /* line 7: SV accuracy/health and TGD1/2 */
-        e->ura     = ifld(r[5], 0, INDN) & 0xF;
-        e->health  = ifld(r[5], 1, INDN) & 0x1;
-        e->tgd1    = fld(r[5], 2, INDN);
-        e->tgd2    = fld(r[5], 3, INDN);
+        tmp.ura     = ifld(r[5], 0, INDN) & 0xF;
+        tmp.health  = ifld(r[5], 1, INDN) & 0x1;
+        tmp.tgd1    = fld(r[5], 2, INDN);
+        tmp.tgd2    = fld(r[5], 3, INDN);
 
         /* line 8: transmission time of message and AODC */
-        e->toe_msg = fld(r[6], 0, INDN);
-        e->aodc    = ifld(r[6], 1, INDN);
+        tmp.toe_msg = fld(r[6], 0, INDN);
+        tmp.aodc    = ifld(r[6], 1, INDN);
 
-        double t_bdt = e->week * 604800.0 + e->toe;
+        double t_bdt = tmp.week * 604800.0 + tmp.toe;
         if (t_bdt < nav_time_min) nav_time_min = t_bdt;
         if (t_bdt > nav_time_max) nav_time_max = t_bdt;
+
+        double diff = fabs(t_bdt - start_bdt);
+        if(diff < best_diff[prn]){
+            best_diff[prn] = diff;
+            eph[prn] = tmp;
+        }
     }
 
     fclose(fp);

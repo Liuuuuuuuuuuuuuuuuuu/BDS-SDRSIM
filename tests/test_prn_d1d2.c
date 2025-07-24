@@ -9,7 +9,7 @@ int main(void){
     sim_config_t cfg = {0};
     snprintf(cfg.rinex_file, sizeof(cfg.rinex_file),
              "BRDM00DLR_S_20251760000_01D_MN.rnx");
-    if(!init_simulator(&cfg)){
+    if(!init_simulator(&cfg, 0.0)){
         fprintf(stderr, "init failed\n");
         return 1;
     }

@@ -86,7 +86,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u)
         double sat[3],vel[3];
         calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
         double enu[3]; ecef2enu(u,sat,enu);
-        double el=enu_elevation_deg(enu); if(el<10)continue;
+        double el=enu_elevation_deg(enu); if(el<5.0)continue;
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
@@ -113,7 +113,7 @@ static void update_channels_dynamic(channel_t *ch,int *n,const coord_t *u,
         double sat[3],vel[3];
         calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
         double enu[3]; ecef2enu(u,sat,enu);
-        double el=enu_elevation_deg(enu); if(el<10.0) continue;
+        double el=enu_elevation_deg(enu); if(el<5.0) continue;
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;

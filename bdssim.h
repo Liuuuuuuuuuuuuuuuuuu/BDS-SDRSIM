@@ -60,7 +60,7 @@ typedef struct {
 } sim_config_t;
 
 /* ---------- 介面 ---------- */
-bool  init_simulator(sim_config_t *);
+bool  init_simulator(sim_config_t *, double start_bdt);
 void  generate_signal(const sim_config_t *cfg);   /* ← 加上 const */
 void  cleanup_simulator(void);
 /* 讓 main 可以先做一次 select_channels() 取得 PRN 清單 */
