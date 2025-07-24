@@ -22,7 +22,7 @@ Superframe (12 min)
          └─ 10 Words (30 b)
 ```
 
-Subframe 1–3 carry each satellite's ephemeris and clock parameters and repeat every 30 s. Subframes 4 and 5 contain almanac pages, health data and UTC parameters. The page number (PNUM) for subframe 4/5 is located at bits 44–50.
+Subframe 1–3 carry each satellite's ephemeris and clock parameters and repeat every 30 s. Subframes 4 and 5 contain almanac pages, health data and UTC parameters. The page number (PNUM) for subframe 4/5 is located at bits 44–50. The simulator currently outputs a repeating `0x2AAAAA` pattern for these payload words to preserve the layout while omitting the actual almanac data.
 
 ## D2 Frame Layout
 
