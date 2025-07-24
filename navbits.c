@@ -45,8 +45,8 @@ static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
     f->a2       = (int32_t)llround(e->af2 / pow(2, -66));
 
     f->toe      = (uint32_t)(e->toe / 8);
-    f->sqrtA    = (int32_t)llround(e->sqrtA / pow(2, -19));
-    f->e        = (int32_t)llround(e->e / pow(2, -33));
+    f->sqrtA    = (uint32_t)llround(e->sqrtA / pow(2, -19));
+    f->e        = (uint32_t)llround(e->e / pow(2, -33));
     f->delta_n  = (int32_t)llround(e->deltan / pow(2, -43));
     f->M0       = (int32_t)llround(e->M0 / pow(2, -31));
 

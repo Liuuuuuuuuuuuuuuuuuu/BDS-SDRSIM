@@ -21,8 +21,8 @@ typedef struct {
     /* orbital parameters --------------------------------------- */
     int32_t  delta_n;    /* 16 bits signed */
     int32_t  M0;         /* 32 bits signed */
-    int32_t  e;          /* 32 bits unsigned scaled */
-    int32_t  sqrtA;      /* 32 bits unsigned scaled */
+    uint32_t e;          /* 32 bits unsigned */
+    uint32_t sqrtA;      /* 32 bits unsigned */
     int32_t  cuc;        /* 18 bits signed */
     int32_t  cus;        /* 18 bits signed */
     int32_t  crc;        /* 18 bits signed */
