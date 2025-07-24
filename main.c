@@ -160,19 +160,20 @@ int main(int argc,char *argv[])
 
 
 
-    /* 3. 初始化 ------------------------------------- */
-    if(!init_simulator(&cfg)){
-        fprintf(stderr,"初始化失敗\n");
-        return 1;
-    }
-
-    /* -- start 時間檢查：必須在星曆區間 h-1 ~ h+1 內 -- */
     int start_week; double start_sow;
     if(utc_to_bdt(cfg.time_start, &start_week, &start_sow)!=0){
         fputs("--start 格式錯誤\n", stderr);
         return 1;
     }
     double start_bdt = start_week*604800.0 + start_sow;
+
+    /* 3. 初始化 ------------------------------------- */
+    if(!init_simulator(&cfg, start_bdt)){
+        fprintf(stderr,"初始化失敗\n");
+        return 1;
+    }
+
+    /* -- start 時間檢查：必須在星曆區間 h-1 ~ h+1 內 -- */
     if(start_bdt < nav_time_min - 3600.0 ||
        start_bdt + cfg.duration > nav_time_max + 86400.0){
         fputs("--start 超出星曆可用區間\n", stderr);

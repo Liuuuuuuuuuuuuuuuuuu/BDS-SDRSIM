@@ -9,3 +9,5 @@ tests/test_d2_cycles
 *.gz
 cookies.txt
 tests/test_nh_prn
+
+tests/test_timeconv

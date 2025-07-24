@@ -85,12 +85,12 @@ static void init_prn_table(void)
 }
 
 /* ───────────── 對外 API ───────────── */
-bool init_simulator(sim_config_t *cfg)
+bool init_simulator(sim_config_t *cfg, double start_bdt)
 {
     if(simulator_inited) return true;
     init_prn_table();
     memset(eph, 0, sizeof(eph));
-    if(read_rinex_nav(cfg->rinex_file)!=0) return false;
+    if(read_rinex_nav(cfg->rinex_file, start_bdt)!=0) return false;
     nav_week = (int)(nav_time_min/604800.0);
     simulator_inited = 1;
     return true;

@@ -6,7 +6,7 @@ int main(void){
     /* Use bundled RINEX file for demonstration */
     snprintf(c.rinex_file, sizeof(c.rinex_file),
              "BRDM00DLR_S_20251760000_01D_MN.rnx");
-    init_simulator(&c);
+    init_simulator(&c, 0.0);
 
     for(int prn=1; prn<=63; ++prn){
         printf("PRN%02d:", prn);
