@@ -21,7 +21,7 @@ typedef struct {
     double af0, af1, af2;
 
     /* 其他 RINEX 欄位（暫未使用） */
-    int     iode;            /* line 2 */
+    int     aode;            /* Age of Data, Ephemeris (line 2) */
     int     freq_num;        /* BDS frequency number */
     double  a0utc, a1utc, a2utc;   /* BDT‑UTC 偏移 */
     double  toe_msg;         /* Transmission time of message */
