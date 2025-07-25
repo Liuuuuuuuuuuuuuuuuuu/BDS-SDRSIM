@@ -2,6 +2,8 @@
 #include <time.h>
 #include "timeconv.h"
 
+int utc_bdt_diff = 14;
+
 int main(int argc, char *argv[])
 {
     if (argc != 2) {
@@ -20,7 +22,8 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Invalid UTC format\n");
         return 1;
     }
-    time_t t = timegm(&tm) + 4; /* UTC -> BDT */
+    extern int utc_bdt_diff;
+    time_t t = timegm(&tm) + utc_bdt_diff; /* UTC -> BDT */
 
     struct tm bdt;
     gmtime_r(&t, &bdt);

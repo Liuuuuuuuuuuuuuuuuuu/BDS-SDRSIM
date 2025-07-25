@@ -11,6 +11,9 @@ extern int          simulator_inited;
 extern double       nav_time_min;
 extern double       nav_time_max;
 extern int          nav_week;       /* ephemeris week reference */
+extern double       iono_alpha[4];  /* ionospheric parameters */
+extern double       iono_beta[4];
+extern int          utc_bdt_diff;   /* UTC->BDT offset seconds */
 
 #endif
 
