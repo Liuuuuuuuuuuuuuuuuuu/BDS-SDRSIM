@@ -23,6 +23,7 @@ int main(void)
     char l[256];
     int bw = 0;             /* current BDT week */
     double bsow = 0.0;      /* current BDT second-of-week */
+    bool got_epoch = false; /* true once the first epoch is parsed */
 
     int count = 0;          /* number of samples compared */
     double err2_sum = 0.0;  /* squared error accumulator  */
@@ -41,14 +42,17 @@ int main(void)
                 return 1;
             }
             bsow += s - is; /* add fractional seconds */
+            if(got_epoch) break; /* second epoch -> stop */
+            got_epoch = true;
             continue;
         }
+        if(!got_epoch)
+            continue;            /* skip header before first epoch */
+
         if(l[0]=='P' && l[1]=='C'){
             int prn; double x,y,z,clk;
             if(sscanf(l+1, "C%2d %lf %lf %lf %lf", &prn,&x,&y,&z,&clk)!=5) continue;
             if(prn<1 || prn>63 || eph[prn].prn==0) continue;
-            if(!((prn>=1 && prn<=5) || (prn>=59 && prn<=63)))
-                continue; /* only GEO */
 
             if(!printed[prn]){
                 printf("PRN%02d sqrtA=%.3f omegadot=%g\n",
