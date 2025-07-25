@@ -69,8 +69,11 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
 ## 訊號型別
 
 - GEO PRN → D2 (500 bps, 無 NH 二次碼)
-- MEO/IGSO PRN → D1 (50 bps, 有 NH 二次碼)
+- IGSO/MEO PRN → D1 (50 bps, 有 NH 二次碼)
 - `--force-d2` 可把所有 PRN 強制成 D2
+
+MEO 與 IGSO 依據星曆中的 `sqrtA`(軌道半長軸平方根) 分辨。大於 6000 的視
+為與 GEO 相同的軌道高度，即 IGSO，否則為 MEO。
 
 ## Usage
 
@@ -96,7 +99,9 @@ the level but may cause clipping.
 
 The amplitude itself is derived from a simple link budget.  Each orbit
 type is assigned a nominal transmit power (about 52 dBm for GEO,
-53 dBm for IGSO and 55 dBm for MEO).  Path loss is computed from the
+53 dBm for IGSO and 55 dBm for MEO).  Orbit type is detected by
+checking `sqrtA` so that IGSO and MEO receive the proper power.
+Path loss is computed from the
 current slant range including a fixed 2 dB atmospheric term.  The gain
 factor multiplies this result before limiting to the 16‑bit output
 range.  The computed power is further adjusted toward the target
