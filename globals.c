@@ -18,7 +18,7 @@ double nav_time_max = 0.0;
 int    nav_week     = 0;
 double iono_alpha[4] = {0};
 double iono_beta[4]  = {0};
-int    utc_bdt_diff  = 14;  /* default UTC->BDT offset */
+int    utc_bdt_diff  = 4;   /* default UTC->BDT offset */
 
 int simulator_inited = 0;
 

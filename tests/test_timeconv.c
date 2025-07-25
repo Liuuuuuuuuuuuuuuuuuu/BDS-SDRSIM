@@ -2,7 +2,7 @@
 #include <time.h>
 #include "timeconv.h"
 
-int utc_bdt_diff = 14;
+int utc_bdt_diff = 4;
 
 int main(int argc, char *argv[])
 {
