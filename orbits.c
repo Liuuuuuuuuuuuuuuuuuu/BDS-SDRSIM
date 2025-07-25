@@ -1,11 +1,5 @@
 /* ---------------------------------------------------------------
- *  orbits.c  -  BeiDou / GPS-like satellite orbit propagation
- *  使用標準 GPS/BDS RAAN 公式：
- *      Ω(t) = Ω0 + (Ω̇ − ΩE)·tk − ΩE·Toe
- *  此式適用於 BDS 的 GEO、IGSO 與 MEO 衛星，無需依軌道類型
- *  切換不同計算方式，直接給出 ECEF 座標。
- *
- *  介面與輸入輸出陣列沿用舊版 calc_sat_position_velocity()
+ *  orbits.c
  * --------------------------------------------------------------*/
 
 #include <stdio.h>
