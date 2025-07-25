@@ -359,7 +359,7 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
     memset(out, 0, SF_STREAM_LEN);
 
     uint32_t sow_int = (uint32_t)(floor(sow/3.0)*3.0);
-    int pnum = calc_pnum1(sow);
+    int pnum1 = calc_pnum1(sow);
 
     /* word1: preamble + reserved + FraID=1 + SOW[19:12] */
     uint32_t w = 0x712;
@@ -370,10 +370,16 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
 
     uint32_t toc = f.toc;
 
-    switch(pnum){
-    case 1:{
+    /* Subframe 1 for D2 contains 10 pages.  Only the first five
+     * words carry data; the remaining words are zero. */
+    switch(pnum1){
+    case 1:{ /* page 1 ----------------------------------------------------
+              SOW[11:0], PNUM1, SatH1, AODC
+              URAI, WN, toc[16:12]
+              toc[11:0], TGD1
+              TGD2, reserved */
         uint32_t w2 = ((sow_int & 0xFFF) << 10) |
-                      ((pnum & 0xF) << 6) |
+                      ((pnum1 & 0xF) << 6) |
                       ((f.satH1 & 1) << 5) |
                       (f.aodc & 0x1F);
         uint32_t w3 = ((f.urai & 0xF) << 18) |
@@ -389,9 +395,10 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
         for(int i=5;i<10;++i)
             put_word(out, i*30, build_word(0,22));
         break; }
-    case 2:{
+    case 2:{ /* page 2 ----------------------------------------------------
+              alpha0..3, beta0..3 */
         uint32_t w2 = ((sow_int & 0xFFF) << 10) |
-                      ((pnum & 0xF) << 6) |
+                      ((pnum1 & 0xF) << 6) |
                       ((uint32_t)f.alpha[0] >> 2 & 0x3F);
         uint32_t w3 = ((f.alpha[0] & 0x3) << 20) |
                       ((f.alpha[1] & 0xFF) << 12) |
@@ -410,13 +417,16 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
         for(int i=5;i<10;++i)
             put_word(out,i*30,build_word(0,22));
         break; }
-    case 3:{
+    case 3:{ /* page 3 ----------------------------------------------------
+              reserved, a0 and a1 (part) */
         uint32_t w2 = ((sow_int & 0xFFF) << 10) |
-                      ((pnum & 0xF) << 6);
+                      ((pnum1 & 0xF) << 6);
         uint32_t w3 = 0;
         int32_t a0_i = f.a0;
         int32_t a1_i = f.a1;
+        /* reserved[21:12] = 0, a0 high 12 bits */
         uint32_t w4 = ((uint32_t)a0_i >> 12) & 0xFFF;
+        /* a0 low 12 bits, a1 high 4 bits, 6 reserved LSB */
         uint32_t w5 = ((uint32_t)a0_i & 0xFFF) << 10 |
                       (((uint32_t)a1_i >> 18) & 0xF) << 6;
         put_word(out,30, build_word(w2,22));
@@ -426,11 +436,12 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
         for(int i=5;i<10;++i)
             put_word(out,i*30,build_word(0,22));
         break; }
-    case 4:{
+    case 4:{ /* page 4 ----------------------------------------------------
+              a1 (remainder), a2, AODE, delta_n, Cuc high */
         int32_t a1_i = f.a1;
         int32_t a2_i = f.a2;
         uint32_t w2 = ((sow_int & 0xFFF) << 10) |
-                      ((pnum & 0xF) << 6) |
+                      ((pnum1 & 0xF) << 6) |
                       (((uint32_t)a1_i >> 12) & 0x3F);
         uint32_t w3 = ((uint32_t)a1_i & 0xFFF) << 10 |
                       (((uint32_t)a2_i >> 1) & 0x3FF);
@@ -445,9 +456,10 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
         for(int i=5;i<10;++i)
             put_word(out,i*30,build_word(0,22));
         break; }
-    case 5:{
+    case 5:{ /* page 5 ----------------------------------------------------
+              Cuc low, M0, Cus, e high */
         uint32_t w2 = ((sow_int & 0xFFF) << 10) |
-                      ((pnum & 0xF) << 6) |
+                      ((pnum1 & 0xF) << 6) |
                       ((uint32_t)f.cuc & 0xF) << 2 |
                       (((uint32_t)f.M0 >> 30) & 0x3);
         uint32_t w3 = ((uint32_t)f.M0 >> 8) & 0x3FFFFF;
@@ -462,9 +474,10 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
         for(int i=5;i<10;++i)
             put_word(out,i*30,build_word(0,22));
         break; }
-    case 6:{
+    case 6:{ /* page 6 ----------------------------------------------------
+              e remainder, sqrtA, Cic high */
         uint32_t w2 = ((sow_int & 0xFFF) << 10) |
-                      ((pnum & 0xF) << 6) |
+                      ((pnum1 & 0xF) << 6) |
                       ((f.e >> 16) & 0x3F);
         uint32_t w3 = ((f.e & 0xFFFF) << 6) |
                       ((f.sqrtA >> 26) & 0x3F);
@@ -478,9 +491,10 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
         for(int i=5;i<10;++i)
             put_word(out,i*30,build_word(0,22));
         break; }
-    case 7:{
+    case 7:{ /* page 7 ----------------------------------------------------
+              Cic remainder, Cis, toe, i0 high */
         uint32_t w2 = ((sow_int & 0xFFF) << 10) |
-                      ((pnum & 0xF) << 6) |
+                      ((pnum1 & 0xF) << 6) |
                       (((uint32_t)f.cic >> 2) & 0x3F);
         uint32_t w3 = ((uint32_t)f.cic & 0x3) << 20 |
                       ((uint32_t)f.cis & 0x3FFFF) << 2 |
@@ -495,9 +509,10 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
         for(int i=5;i<10;++i)
             put_word(out,i*30,build_word(0,22));
         break; }
-    case 8:{
+    case 8:{ /* page 8 ----------------------------------------------------
+              i0 remainder, Crc/Crs, omegadot high */
         uint32_t w2 = ((sow_int & 0xFFF) << 10) |
-                      ((pnum & 0xF) << 6) |
+                      ((pnum1 & 0xF) << 6) |
                       ((uint32_t)f.i0 >> 5 & 0x3F);
         uint32_t w3 = ((uint32_t)f.i0 & 0x1F) << 17 |
                       (((uint32_t)f.crc >> 1) & 0x1FFFF);
@@ -512,9 +527,10 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
         for(int i=5;i<10;++i)
             put_word(out,i*30,build_word(0,22));
         break; }
-    case 9:{
+    case 9:{ /* page 9 ----------------------------------------------------
+              omegadot low, omega0, omega high */
         uint32_t w2 = ((sow_int & 0xFFF) << 10) |
-                      ((pnum & 0xF) << 6) |
+                      ((pnum1 & 0xF) << 6) |
                       ((f.omegadot & 0x1F) << 1) |
                       (((uint32_t)f.omega0 >> 31) & 0x1);
         uint32_t w3 = ((uint32_t)f.omega0 >> 9) & 0x3FFFFF;
@@ -528,9 +544,10 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
         for(int i=5;i<10;++i)
             put_word(out,i*30,build_word(0,22));
         break; }
-    case 10:{
+    case 10:{ /* page 10 ---------------------------------------------------
+               omega low, IDOT */
         uint32_t w2 = ((sow_int & 0xFFF) << 10) |
-                      ((pnum & 0xF) << 6) |
+                      ((pnum1 & 0xF) << 6) |
                       ((f.omega & 0x1F) << 1) |
                       (((uint32_t)f.idot >> 13) & 0x1);
         uint32_t w3 = ((uint32_t)f.idot & 0x1FFF) << 9;
