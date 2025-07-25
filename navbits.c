@@ -5,6 +5,8 @@
 #include "navbits.h"
 #include "bch.h"
 
+static inline double rad_to_sc(double v){return v/M_PI;}
+
 /* Construct a 30-bit navigation word. "bits" is either 26 for the
  * first word type or 22 for the remaining words. */
 static uint32_t build_word(uint32_t payload, int bits)
@@ -57,20 +59,21 @@ static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
     f->toe      = (uint32_t)(e->toe / 8);
     f->sqrtA    = (uint32_t)llround(e->sqrtA / pow(2, -19));
     f->e        = (uint32_t)llround(e->e / pow(2, -33));
-    f->delta_n  = (int32_t)llround(e->deltan / pow(2, -43));
-    f->M0       = (int32_t)llround(e->M0 / pow(2, -31));
+    
+    f->delta_n  = (int32_t)llround(rad_to_sc(e->deltan) / pow(2, -43));
+    f->M0       = (int32_t)llround(rad_to_sc(e->M0) / pow(2, -31));
 
-    f->omega0   = (int32_t)llround(e->omega0 / pow(2, -31));
-    f->i0       = (int32_t)llround(e->i0 / pow(2, -31));
-    f->omega    = (int32_t)llround(e->w / pow(2, -31));
+    f->omega0   = (int32_t)llround(rad_to_sc(e->omega0) / pow(2, -31));
+    f->i0       = (int32_t)llround(rad_to_sc(e->i0) / pow(2, -31));
+    f->omega    = (int32_t)llround(rad_to_sc(e->w) / pow(2, -31));
     f->crc      = (int32_t)llround(e->crc / pow(2, -6));
     f->crs      = (int32_t)llround(e->crs / pow(2, -6));
     f->cuc      = (int32_t)llround(e->cuc / pow(2, -31));
     f->cus      = (int32_t)llround(e->cus / pow(2, -31));
     f->cic      = (int32_t)llround(e->cic / pow(2, -31));
     f->cis      = (int32_t)llround(e->cis / pow(2, -31));
-    f->idot     = (int32_t)llround(e->idot / pow(2, -43));
-    f->omegadot = (int32_t)llround(e->omegadot / pow(2, -43));
+    f->idot     = (int32_t)llround(rad_to_sc(e->idot) / pow(2, -43));
+    f->omegadot = (int32_t)llround(rad_to_sc(e->omegadot) / pow(2, -43));
 }
 
 /* --------------------------------- 宏 & 工具 -------------------------------- */
