@@ -120,7 +120,6 @@ int read_rinex_nav(const char *fname, double start_bdt)
         tmp.omegadot= fld(r[3], 3, INDN);
 
         tmp.idot    = fld(r[4], 0, INDN);
-        tmp.freq_num = ifld(r[4], 1, INDN); /* reserved/freq number */
         int week_r = ifld(r[4], 2, INDN);  /* BDS week number */
         tmp.week = week_r;
 
