@@ -22,6 +22,9 @@ extern ephemeris_t eph[MAX_SAT];
 /* Convert ephemeris_t to the simplified B1I_D1_Frame structure.
  * Only the fields needed for navigation message assembly are
  * populated here. */
+extern double iono_alpha[4];
+extern double iono_beta[4];
+
 static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
 {
     memset(f, 0, sizeof(*f));
@@ -34,10 +37,17 @@ static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
     f->tgd1     = (int32_t)llround(e->tgd1 / 1e-10);
     f->tgd2     = (int32_t)llround(e->tgd2 / 1e-10);
 
-    /* Ionospheric parameters not parsed – leave as zero */
+    /* Ionospheric parameters from header.  Each coefficient uses
+     * a different scaling factor according to the B1I ICD. */
+    static const double a_scale[4] = {
+        pow(2, -30), pow(2, -27), pow(2, -24), pow(2, -24)
+    };
+    static const double b_scale[4] = {
+        pow(2, 11), pow(2, 14), pow(2, 16), pow(2, 16)
+    };
     for (int i = 0; i < 4; ++i) {
-        f->alpha[i] = 0;
-        f->beta[i]  = 0;
+        f->alpha[i] = (int32_t)llround(iono_alpha[i] / a_scale[i]);
+        f->beta[i]  = (int32_t)llround(iono_beta[i]  / b_scale[i]);
     }
 
     f->a0       = (int32_t)llround(e->af0 / pow(2, -33));

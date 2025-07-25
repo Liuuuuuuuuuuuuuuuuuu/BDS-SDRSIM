@@ -16,6 +16,9 @@ ephemeris_t  eph[MAX_SAT];                  /* ★ 真正配置記憶體 ★ */
 double nav_time_min = 0.0;
 double nav_time_max = 0.0;
 int    nav_week     = 0;
+double iono_alpha[4] = {0};
+double iono_beta[4]  = {0};
+int    utc_bdt_diff  = 14;  /* default UTC->BDT offset */
 
 int simulator_inited = 0;
 

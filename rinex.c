@@ -40,9 +40,27 @@ int read_rinex_nav(const char *fname, double start_bdt)
 
     char l[120];
 
-    /* skip header --------------------------------------------------- */
+    /* parse header -------------------------------------------------- */
     while (fgets(l, sizeof(l), fp))
+    {
+        if(strncmp(l,"BDSA",4)==0){
+            sscanf(l+4, "%lf %lf %lf %lf", &iono_alpha[0], &iono_alpha[1],
+                   &iono_alpha[2], &iono_alpha[3]);
+            continue;
+        }
+        if(strncmp(l,"BDSB",4)==0){
+            sscanf(l+4, "%lf %lf %lf %lf", &iono_beta[0], &iono_beta[1],
+                   &iono_beta[2], &iono_beta[3]);
+            continue;
+        }
+        if(strncmp(l,"BDUT",4)==0){
+            double a0,a1; int off;
+            if(sscanf(l+4, "%lf %lf %d", &a0, &a1, &off)==3)
+                utc_bdt_diff = off;
+            continue;
+        }
         if (strstr(l, "END OF HEADER")) break;
+    }
 
     const int IND1 = 23;   /* 第一行 offset */
     const int INDN = 4;    /* 後 7 行 offset */
