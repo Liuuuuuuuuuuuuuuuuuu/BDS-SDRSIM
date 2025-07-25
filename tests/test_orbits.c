@@ -14,9 +14,9 @@ int main(void)
     if(!fp){ perror("SP3"); return 1; }
 
     char l[256];
-    int bw = 0;             /* current BDT week */
-    double bsow = 0.0;      /* current BDT second-of-week */
-    bool got_epoch = false; /* true once the first epoch is parsed */
+    int bw = 0;             /* first epoch BDT week */
+    double bsow = 0.0;      /* first epoch BDT second-of-week */
+    bool got_epoch = false; /* set once first epoch parsed */
 
     int count = 0;          /* number of samples compared */
     double err2_sum = 0.0;  /* squared error accumulator  */
@@ -34,10 +34,23 @@ int main(void)
                 fprintf(stderr, "utc_to_bdt failed\n");
                 return 1;
             }
-            bsow += s - is; /* add fractional seconds */
-            if(got_epoch) break; /* second epoch -> stop */
-            got_epoch = true;
-            continue;
+            bsow += s - is; /* fractional seconds */
+            bsow -= 14.0;    /* manual -14 s */
+            if(bsow < 0){ bsow += 604800.0; --bw; }
+            if(!got_epoch){
+                double start_bdt = bw*604800.0 + bsow;
+                sim_config_t cfg = {0};
+                snprintf(cfg.rinex_file, sizeof(cfg.rinex_file),
+                         "BRDM00DLR_S_20251760000_01D_MN.rnx");
+                if(!init_simulator(&cfg, start_bdt)){
+                    fprintf(stderr, "init failed\n");
+                    return 1;
+                }
+                got_epoch = true;
+                continue;
+            }else{
+                break; /* second epoch -> stop */
+            }
         }
         if(!got_epoch)
             continue;            /* skip header before first epoch */
