@@ -343,10 +343,211 @@ static void build_subframe5_d1(uint8_t *out, int week, double sow,
         put_word(out, i * 30, build_word(filler, 22));
 }
 /* D2 subframe 1 with page number field */
+/* Determine D2 subframe1 page number (1-10) based on the 3 s frame index */
+static int calc_pnum1(double sow)
+{
+    int frame = (int)floor(sow / 3.0); /* 3 s main frame */
+    return frame % 10 + 1;
+}
+
 static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
                                int week, double sow)
 {
-    (void)out; (void)e; (void)week; (void)sow;
+    B1I_D1_Frame f;
+    frame_from_ephemeris(e, &f);
+
+    memset(out, 0, SF_STREAM_LEN);
+
+    uint32_t sow_int = (uint32_t)(floor(sow/3.0)*3.0);
+    int pnum = calc_pnum1(sow);
+
+    /* word1: preamble + reserved + FraID=1 + SOW[19:12] */
+    uint32_t w = 0x712;
+    w = (w << 4);
+    w = (w << 3) | 1;
+    w = (w << 8) | ((sow_int >> 12) & 0xFF);
+    put_word(out, 0, build_word(w, 26));
+
+    uint32_t toc = f.toc;
+
+    switch(pnum){
+    case 1:{
+        uint32_t w2 = ((sow_int & 0xFFF) << 10) |
+                      ((pnum & 0xF) << 6) |
+                      ((f.satH1 & 1) << 5) |
+                      (f.aodc & 0x1F);
+        uint32_t w3 = ((f.urai & 0xF) << 18) |
+                      ((week & 0x1FFF) << 5) |
+                      ((toc >> 12) & 0x1F);
+        uint32_t w4 = ((toc & 0xFFF) << 10) |
+                      ((uint32_t)f.tgd1 & 0x3FF);
+        uint32_t w5 = (((uint32_t)f.tgd2 & 0x3FF) << 12);
+        put_word(out, 30,  build_word(w2,22));
+        put_word(out, 60,  build_word(w3,22));
+        put_word(out, 90,  build_word(w4,22));
+        put_word(out, 120, build_word(w5,22));
+        for(int i=5;i<10;++i)
+            put_word(out, i*30, build_word(0,22));
+        break; }
+    case 2:{
+        uint32_t w2 = ((sow_int & 0xFFF) << 10) |
+                      ((pnum & 0xF) << 6) |
+                      ((uint32_t)f.alpha[0] >> 2 & 0x3F);
+        uint32_t w3 = ((f.alpha[0] & 0x3) << 20) |
+                      ((f.alpha[1] & 0xFF) << 12) |
+                      ((f.alpha[2] & 0xFF) << 4) |
+                      (((uint32_t)f.alpha[3] >> 4) & 0xF);
+        uint32_t w4 = ((f.alpha[3] & 0xF) << 18) |
+                      ((f.beta[0] & 0xFF) << 10) |
+                      ((f.beta[1] & 0xFF) << 2) |
+                      (((uint32_t)f.beta[2] >> 6) & 0x3);
+        uint32_t w5 = ((f.beta[2] & 0x3F) << 16) |
+                      ((f.beta[3] & 0xFF) << 8);
+        put_word(out,30, build_word(w2,22));
+        put_word(out,60, build_word(w3,22));
+        put_word(out,90, build_word(w4,22));
+        put_word(out,120,build_word(w5,22));
+        for(int i=5;i<10;++i)
+            put_word(out,i*30,build_word(0,22));
+        break; }
+    case 3:{
+        uint32_t w2 = ((sow_int & 0xFFF) << 10) |
+                      ((pnum & 0xF) << 6);
+        uint32_t w3 = 0;
+        int32_t a0_i = f.a0;
+        int32_t a1_i = f.a1;
+        uint32_t w4 = ((uint32_t)a0_i >> 12) & 0xFFF;
+        uint32_t w5 = ((uint32_t)a0_i & 0xFFF) << 10 |
+                      (((uint32_t)a1_i >> 18) & 0xF) << 6;
+        put_word(out,30, build_word(w2,22));
+        put_word(out,60, build_word(w3,22));
+        put_word(out,90, build_word(w4,22));
+        put_word(out,120,build_word(w5,22));
+        for(int i=5;i<10;++i)
+            put_word(out,i*30,build_word(0,22));
+        break; }
+    case 4:{
+        int32_t a1_i = f.a1;
+        int32_t a2_i = f.a2;
+        uint32_t w2 = ((sow_int & 0xFFF) << 10) |
+                      ((pnum & 0xF) << 6) |
+                      (((uint32_t)a1_i >> 12) & 0x3F);
+        uint32_t w3 = ((uint32_t)a1_i & 0xFFF) << 10 |
+                      (((uint32_t)a2_i >> 1) & 0x3FF);
+        uint32_t w4 = ((a2_i & 0x1) << 21) |
+                      ((f.aode & 0x1F) << 16) |
+                      ((uint32_t)f.delta_n & 0xFFFF);
+        uint32_t w5 = (((uint32_t)f.cuc >> 4) & 0x3FFF) << 8;
+        put_word(out,30, build_word(w2,22));
+        put_word(out,60, build_word(w3,22));
+        put_word(out,90, build_word(w4,22));
+        put_word(out,120,build_word(w5,22));
+        for(int i=5;i<10;++i)
+            put_word(out,i*30,build_word(0,22));
+        break; }
+    case 5:{
+        uint32_t w2 = ((sow_int & 0xFFF) << 10) |
+                      ((pnum & 0xF) << 6) |
+                      ((uint32_t)f.cuc & 0xF) << 2 |
+                      (((uint32_t)f.M0 >> 30) & 0x3);
+        uint32_t w3 = ((uint32_t)f.M0 >> 8) & 0x3FFFFF;
+        uint32_t w4 = ((uint32_t)f.M0 & 0xFF) << 14 |
+                      (((uint32_t)f.cus >> 4) & 0x3FFF);
+        uint32_t w5 = ((uint32_t)f.cus & 0xF) << 18 |
+                      ((f.e >> 22) & 0x3FF) << 8;
+        put_word(out,30, build_word(w2,22));
+        put_word(out,60, build_word(w3,22));
+        put_word(out,90, build_word(w4,22));
+        put_word(out,120,build_word(w5,22));
+        for(int i=5;i<10;++i)
+            put_word(out,i*30,build_word(0,22));
+        break; }
+    case 6:{
+        uint32_t w2 = ((sow_int & 0xFFF) << 10) |
+                      ((pnum & 0xF) << 6) |
+                      ((f.e >> 16) & 0x3F);
+        uint32_t w3 = ((f.e & 0xFFFF) << 6) |
+                      ((f.sqrtA >> 26) & 0x3F);
+        uint32_t w4 = (f.sqrtA >> 4) & 0x3FFFFF;
+        uint32_t w5 = ((f.sqrtA & 0xF) << 18) |
+                      (((uint32_t)f.cic >> 8) & 0x3FF) << 8;
+        put_word(out,30, build_word(w2,22));
+        put_word(out,60, build_word(w3,22));
+        put_word(out,90, build_word(w4,22));
+        put_word(out,120,build_word(w5,22));
+        for(int i=5;i<10;++i)
+            put_word(out,i*30,build_word(0,22));
+        break; }
+    case 7:{
+        uint32_t w2 = ((sow_int & 0xFFF) << 10) |
+                      ((pnum & 0xF) << 6) |
+                      (((uint32_t)f.cic >> 2) & 0x3F);
+        uint32_t w3 = ((uint32_t)f.cic & 0x3) << 20 |
+                      ((uint32_t)f.cis & 0x3FFFF) << 2 |
+                      ((f.toe >> 15) & 0x3);
+        uint32_t w4 = ((f.toe & 0x7FFF) << 7) |
+                      (((uint32_t)f.i0 >> 25) & 0x7F);
+        uint32_t w5 = (((uint32_t)f.i0 >> 11) & 0x3FFF) << 8;
+        put_word(out,30, build_word(w2,22));
+        put_word(out,60, build_word(w3,22));
+        put_word(out,90, build_word(w4,22));
+        put_word(out,120,build_word(w5,22));
+        for(int i=5;i<10;++i)
+            put_word(out,i*30,build_word(0,22));
+        break; }
+    case 8:{
+        uint32_t w2 = ((sow_int & 0xFFF) << 10) |
+                      ((pnum & 0xF) << 6) |
+                      ((uint32_t)f.i0 >> 5 & 0x3F);
+        uint32_t w3 = ((uint32_t)f.i0 & 0x1F) << 17 |
+                      (((uint32_t)f.crc >> 1) & 0x1FFFF);
+        uint32_t w4 = ((f.crc & 0x1) << 21) |
+                      (((uint32_t)f.crs & 0x3FFFF) << 3) |
+                      (((uint32_t)f.omegadot >> 21) & 0x7);
+        uint32_t w5 = ((uint32_t)f.omegadot >> 5 & 0xFFFF) << 6;
+        put_word(out,30, build_word(w2,22));
+        put_word(out,60, build_word(w3,22));
+        put_word(out,90, build_word(w4,22));
+        put_word(out,120,build_word(w5,22));
+        for(int i=5;i<10;++i)
+            put_word(out,i*30,build_word(0,22));
+        break; }
+    case 9:{
+        uint32_t w2 = ((sow_int & 0xFFF) << 10) |
+                      ((pnum & 0xF) << 6) |
+                      ((f.omegadot & 0x1F) << 1) |
+                      (((uint32_t)f.omega0 >> 31) & 0x1);
+        uint32_t w3 = ((uint32_t)f.omega0 >> 9) & 0x3FFFFF;
+        uint32_t w4 = ((uint32_t)f.omega0 & 0x1FF) << 13 |
+                      (((uint32_t)f.omega >> 19) & 0x1FFF);
+        uint32_t w5 = (((uint32_t)f.omega >> 5) & 0x3FFF) << 8;
+        put_word(out,30, build_word(w2,22));
+        put_word(out,60, build_word(w3,22));
+        put_word(out,90, build_word(w4,22));
+        put_word(out,120,build_word(w5,22));
+        for(int i=5;i<10;++i)
+            put_word(out,i*30,build_word(0,22));
+        break; }
+    case 10:{
+        uint32_t w2 = ((sow_int & 0xFFF) << 10) |
+                      ((pnum & 0xF) << 6) |
+                      ((f.omega & 0x1F) << 1) |
+                      (((uint32_t)f.idot >> 13) & 0x1);
+        uint32_t w3 = ((uint32_t)f.idot & 0x1FFF) << 9;
+        uint32_t w4 = 0;
+        uint32_t w5 = 0;
+        put_word(out,30, build_word(w2,22));
+        put_word(out,60, build_word(w3,22));
+        put_word(out,90, build_word(w4,22));
+        put_word(out,120,build_word(w5,22));
+        for(int i=5;i<10;++i)
+            put_word(out,i*30,build_word(0,22));
+        break; }
+    default:
+        for(int i=1;i<10;++i)
+            put_word(out,i*30,build_word(0,22));
+        break;
+    }
 }
 /* D2 subframe 2 with page number field */
 static void build_subframe2_d2(uint8_t *out, const ephemeris_t *e, double sow)
