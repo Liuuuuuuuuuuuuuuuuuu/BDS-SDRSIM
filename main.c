@@ -187,7 +187,9 @@ int main(int argc,char *argv[])
     else if(cfg.path_type==2)  load_path_llh(cfg.path_file,&path);
     else if(cfg.path_type==3)  load_path_nmea(cfg.path_file,&path);
     if(cfg.path_type!=0 && path.n==0){
-        fputs("路徑檔讀取失敗\n",stderr); return 1;
+        fputs("路徑檔讀取失敗\n",stderr);
+        free_path(&path);
+        return 1;
     }
     if(cfg.path_type==0)      llh2xyz(cfg.llh,&usr);
     else {                    

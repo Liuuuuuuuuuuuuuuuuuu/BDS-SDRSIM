@@ -145,10 +145,18 @@ void generate_signal(const sim_config_t *cfg)
     if(cfg->path_type==1)       load_path_xyz(cfg->path_file,&path);
     else if(cfg->path_type==2)  load_path_llh(cfg->path_file,&path);
     else if(cfg->path_type==3)  load_path_nmea(cfg->path_file,&path);
-    if(cfg->path_type!=0 && path.n==0){fputs("path read error\n",stderr);return;}
+    if(cfg->path_type!=0 && path.n==0){
+        fputs("path read error\n",stderr);
+        free_path(&path);
+        return;
+    }
     if(cfg->path_type==0)      llh2xyz(cfg->llh,&usr);
     else { interpolate_path(&path,0.0,&usr); xyz2llh(usr.xyz,&usr); }
-    if(utc_to_bdt(cfg->time_start,&usr.week,&usr.sow)!=0){fputs("UTC format err\n",stderr);return;}
+    if(utc_to_bdt(cfg->time_start,&usr.week,&usr.sow)!=0){
+        fputs("UTC format err\n",stderr);
+        free_path(&path);
+        return;
+    }
 
     coord_t ref_llh=usr;              /* 保存經緯度作旋轉基準 */
     static_user_at(usr.week,usr.sow,&ref_llh,&usr,NULL);
@@ -179,10 +187,18 @@ void generate_signal(const sim_config_t *cfg)
     FILE *fp=NULL, *fp8=NULL;
     if(cfg->byte_output){
         fp8=fopen("beidou_b1i_u8.bin","wb");
-        if(!fp8){perror("u8"); return;}
+        if(!fp8){
+            perror("u8");
+            free_path(&path);
+            return;
+        }
     } else {
         fp=fopen("beidou_b1i.bin","wb");
-        if(!fp){perror("bin"); return;}
+        if(!fp){
+            perror("bin");
+            free_path(&path);
+            return;
+        }
     }
     int16_t tmpI[MAX_CH][samp_per_ms],tmpQ[MAX_CH][samp_per_ms];
     int32_t accI[samp_per_ms],accQ[samp_per_ms];
