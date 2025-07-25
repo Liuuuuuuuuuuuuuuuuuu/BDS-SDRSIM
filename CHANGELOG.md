@@ -12,4 +12,6 @@
 * Amplitude API no longer depends on channel count
 * Allow --start up to 24 h past last ephemeris
 * Improved utc_to_bdt() handling of negative offsets
+* Orbit classification now distinguishes IGSO and MEO by
+  checking the ephemeris `sqrtA` value
 

@@ -43,6 +43,33 @@ static inline void fast_sincos(double ph,float*co,float*si){
 
 static const int geo_prn[] = {1,2,3,4,5,59,60,61,62,63};
 
+static int is_geo_prn(int prn); /* forward */
+
+/* classify IGSO/MEO via sqrtA (semi-major axis).  BDS IGSO shares
+ * the GEO semi-major axis (~42164 km, sqrtA around 6493), whereas
+ * MEO satellites use a smaller semi-major axis (~27800 km, sqrtA
+ * around 5282).  This allows for more robust identification even if
+ * PRN assignments change. */
+int is_igso_prn(int prn)
+{
+    if(is_geo_prn(prn))
+        return 0;
+    if(prn<1 || prn>=MAX_SAT) return 0;
+    const ephemeris_t *ep=&eph[prn];
+    if(ep->prn==0) return 0;
+    return ep->sqrtA > 6000.0;  /* ~42164 km orbit */
+}
+
+int is_meo_prn(int prn)
+{
+    if(is_geo_prn(prn))
+        return 0;
+    if(prn<1 || prn>=MAX_SAT) return 0;
+    const ephemeris_t *ep=&eph[prn];
+    if(ep->prn==0) return 0;
+    return ep->sqrtA <= 6000.0; /* ~27800 km orbit */
+}
+
 static int is_geo_prn(int prn)
 {
     for(size_t i=0;i<sizeof(geo_prn)/sizeof(geo_prn[0]);++i)
@@ -57,9 +84,9 @@ int is_d2_prn(int prn)
 
 static double sat_eirp_dbm(int prn)
 {
-    if(is_geo_prn(prn))      return 52.0; /* GEO */
-    else if(prn>=6 && prn<=10) return 53.0; /* IGSO (粗略) */
-    else                      return 55.0; /* MEO  */
+    if(is_geo_prn(prn))     return 52.0; /* GEO */
+    else if(is_igso_prn(prn)) return 53.0; /* IGSO */
+    else                    return 55.0; /* MEO */
 }
 
 /* 大氣衰減常數 (dB) */
