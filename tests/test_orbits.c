@@ -35,7 +35,7 @@ int main(void)
                 return 1;
             }
             bsow += s - is; /* fractional seconds */
-            bsow -= 14.0;    /* manual -14 s */
+            bsow -= 28.0;    /* manual -14 s */
             if(bsow < 0){ bsow += 604800.0; --bw; }
             if(!got_epoch){
                 double start_bdt = bw*604800.0 + bsow;
