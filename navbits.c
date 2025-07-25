@@ -567,9 +567,60 @@ static void build_subframe1_d2(uint8_t *out, const ephemeris_t *e,
     }
 }
 /* D2 subframe 2 with page number field */
+/* ------------------ D2 Placeholder Subframes --------------------------- */
+/*
+ * D2 subframes 2–5 carry integrity and almanac information.  The simulator
+ * does not implement these messages yet.  According to the official ICD the
+ * data portion shall be filled with an alternating "1,0" pattern when no
+ * valid message is available.  Subframe 2–5 share the same layout apart from
+ * the FraID field.
+ */
+static void build_subframe_empty_d2(uint8_t *out, int fra_id, double sow)
+{
+    memset(out, 0, SF_STREAM_LEN);
+
+    uint32_t sow_int = (uint32_t)(floor(sow/3.0) * 3.0); /* main frame start */
+
+    /* word1: preamble + reserved + FraID + SOW[19:12] */
+    uint32_t w = 0x712;
+    w = (w << 4);        /* reserved */
+    w = (w << 3) | (fra_id & 0x7);
+    w = (w << 8) | ((sow_int >> 12) & 0xFF);
+    put_word(out, 0, build_word(w, 26));
+
+    /* word2: SOW[11:0] + reserved bit + 9-bit alternating pattern */
+    uint32_t filler9 = 0x155; /* 101010101b */
+    uint32_t w2 = ((sow_int & 0xFFF) << 10) | filler9;
+    put_word(out, 30, build_word(w2, 22));
+
+    /* remaining words: 22-bit alternating pattern 1010... */
+    uint32_t filler22 = 0x2AAAAA;
+    for (int i = 2; i < 10; ++i)
+        put_word(out, i * 30, build_word(filler22, 22));
+}
+
 static void build_subframe2_d2(uint8_t *out, const ephemeris_t *e, double sow)
 {
-    (void)out; (void)e; (void)sow;
+    (void)e; /* no per-satellite data used yet */
+    build_subframe_empty_d2(out, 2, sow);
+}
+
+static void build_subframe3_d2(uint8_t *out, const ephemeris_t *e, double sow)
+{
+    (void)e;
+    build_subframe_empty_d2(out, 3, sow);
+}
+
+static void build_subframe4_d2(uint8_t *out, const ephemeris_t *e, double sow)
+{
+    (void)e;
+    build_subframe_empty_d2(out, 4, sow);
+}
+
+static void build_subframe5_d2(uint8_t *out, const ephemeris_t *e, double sow)
+{
+    (void)e;
+    build_subframe_empty_d2(out, 5, sow);
 }
 
 /* ------------------ D1 Subframe Assembly Helpers ------------------------- */
@@ -636,7 +687,7 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,
                 put_word(out, w*30, words[w]);
         }
     }else if(sf_id==3){
-        if(is_d2) memcpy(out,sf_static[prn][1],SF_STREAM_LEN);
+        if(is_d2) build_subframe3_d2(out,&eph[prn],start);
         else {
             uint32_t words[10];
             assemble_subframe3_d1(pf, (uint32_t)start, words);
@@ -644,9 +695,11 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,
                 put_word(out, w*30, words[w]);
         }
     }else if(sf_id==4){
-        build_subframe4_d1(out,week,start,frame_len);
+        if(is_d2) build_subframe4_d2(out,&eph[prn],start);
+        else      build_subframe4_d1(out,week,start,frame_len);
     }else if(sf_id==5){
-        build_subframe5_d1(out,week,start,frame_len);
+        if(is_d2) build_subframe5_d2(out,&eph[prn],start);
+        else      build_subframe5_d1(out,week,start,frame_len);
 
     }else{
         memset(out,0,SF_STREAM_LEN);
