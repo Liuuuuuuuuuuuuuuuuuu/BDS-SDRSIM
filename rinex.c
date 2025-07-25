@@ -53,12 +53,6 @@ int read_rinex_nav(const char *fname, double start_bdt)
                    &iono_beta[2], &iono_beta[3]);
             continue;
         }
-        if(strncmp(l,"BDUT",4)==0){
-            double a0,a1; int off;
-            if(sscanf(l+4, "%lf %lf %d", &a0, &a1, &off)==3)
-                utc_bdt_diff = off;
-            continue;
-        }
         if (strstr(l, "END OF HEADER")) break;
     }
 

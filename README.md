@@ -196,7 +196,7 @@ Adjust the `ChannelX.satellite` lines accordingly or set
 searches for the correct PRNs automatically.
 
 ## v0.3.0 (2025-07-07)
-* Fix UTC→BDT +14 s
+* Fix UTC→BDT +4 s
 * GEO satellites enabled
 * Added subframe 4/5 template
 * Default Fs → 5.120 MHz
