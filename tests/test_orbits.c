@@ -9,13 +9,6 @@
 
 int main(void)
 {
-    sim_config_t cfg = {0};
-    snprintf(cfg.rinex_file, sizeof(cfg.rinex_file),
-             "BRDM00DLR_S_20251760000_01D_MN.rnx");
-    if(!init_simulator(&cfg, 0.0)){
-        fprintf(stderr, "init failed\n");
-        return 1;
-    }
 
     FILE *fp = fopen("GBM0MGXRAP_20251760000_01D_05M_ORB.SP3", "r");
     if(!fp){ perror("SP3"); return 1; }
@@ -81,6 +74,5 @@ int main(void)
     double rms = (count>0)? sqrt(err2_sum/count) : 0.0;
     printf("Compared %d points, RMS error = %.3f m\n", count, rms);
 
-    cleanup_simulator();
     return (rms < 10.0) ? 0 : 1; /* return error if RMS >10 m */
 }
