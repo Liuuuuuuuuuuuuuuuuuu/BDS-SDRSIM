@@ -271,6 +271,17 @@ static void build_subframe3_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[1
 }
 
 /* --------------------------------- 子帧 4 ----------------------------------- */
+/* Determine page number (PNUM) based on the current frame index.
+ * The BeiDou superframe contains 24 frames (30 s each) and subframes 4/5
+ * share the same page number within a frame.  Since the simulator does not
+ * implement actual almanac content yet, we simply cycle the value 1–24.
+ */
+static int calc_pnum(double sow, double frame_len)
+{
+    int frame = (int)floor(sow / (frame_len * 5.0));
+    return frame % 24 + 1;
+}
+
 static void build_subframe4_d1(uint8_t *out, int week, double sow,
                                double frame_len)
 {
@@ -292,7 +303,9 @@ static void build_subframe4_d1(uint8_t *out, int week, double sow,
     put_word(out, 0, build_word(w, 26));
 
     /* word2: SOW[11:0] + reserved + PNUM + spare (1,0) */
-    uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) | (0 << 2) | 0x2;
+    int pnum = calc_pnum(sow, frame_len);
+    uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) |
+                  ((pnum & 0x7F) << 2) | 0x2;
     put_word(out, 30, build_word(w2, 22));
 
     uint32_t filler = 0x2AAAAA; /* 1010... repeated */
@@ -320,7 +333,9 @@ static void build_subframe5_d1(uint8_t *out, int week, double sow,
     put_word(out, 0, build_word(w, 26));
 
     /* word2: SOW[11:0] + reserved + PNUM + spare (1,0) */
-    uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) | (0 << 2) | 0x2;
+    int pnum = calc_pnum(sow, frame_len);
+    uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) |
+                  ((pnum & 0x7F) << 2) | 0x2;
     put_word(out, 30, build_word(w2, 22));
 
     uint32_t filler = 0x2AAAAA;
