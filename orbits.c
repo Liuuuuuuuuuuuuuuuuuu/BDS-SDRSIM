@@ -80,11 +80,9 @@ void calc_sat_position_velocity(int prn, int week, double sow,
     const double y_op = r * sin(u);
 
     /* -------- RAAN Ω(t) -------------------------------------- */
-    double Omega;
-    if (is_geo_prn(prn))
-        Omega = ep->omega0 + ep->omegadot * tk - OMEGA_E * ep->toe;
-    else
-        Omega = ep->omega0 + (ep->omegadot - OMEGA_E) * tk - OMEGA_E * ep->toe;
+    /* Use unified RAAN expression for all BeiDou satellites
+     * Ω(t) = Ω₀ + (Ω̇ − Ωₑ) · tk − Ωₑ · Toe */
+    double Omega = ep->omega0 + (ep->omegadot - OMEGA_E) * tk - OMEGA_E * ep->toe;
 
     /* -------- ECI (WGS-84 inertial) 座標 ----------------------- */
     const double cosO = cos(Omega), sinO = sin(Omega);
@@ -108,9 +106,8 @@ void calc_sat_position_velocity(int prn, int week, double sow,
         const double i_dot   = ep->idot + 2 * (ep->cis * cos(2 * phi)
                                              - ep->cic * sin(2 * phi)) * phi_dot;
 
-        const double Omega_dot = is_geo_prn(prn)
-                                ? ep->omegadot
-                                : ep->omegadot - OMEGA_E;
+        /* dΩ/dt = Ω̇ − Ωₑ for all BeiDou satellites */
+        const double Omega_dot = ep->omegadot - OMEGA_E;
 
         const double x_op_dot = r_dot * cos(u) - r * u_dot * sin(u);
         const double y_op_dot = r_dot * sin(u) + r * u_dot * cos(u);

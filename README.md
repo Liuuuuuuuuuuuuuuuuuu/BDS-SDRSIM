@@ -86,11 +86,11 @@ MEO 與 IGSO 依據星曆中的 `sqrtA`(軌道半長軸平方根) 分辨。大�
           --byte
 ```
 
-Example with strict ICD checks and D1 only:
+Example forcing all satellites to use the D2 message:
 
 ```
 ./bds-sim --rinex BRDM00DLR_S_20251870000_01D_MN.rnx \
-          --strict-icd --duration 120 --no-d2
+          --force-d2 --duration 120
 ```
 
 `--gain` scales the output amplitude.  With the default gain of `1.0`
@@ -216,4 +216,9 @@ searches for the correct PRNs automatically.
   expression `Ω(t) = Ω₀ + (Ω̇ − Ωₑ)·tk − Ωₑ·Toe` for all BeiDou
   satellites. Results were cross-checked against the provided SP3
   precise orbit file.
+
+## License
+
+BDS-SDRSIM is released under the MIT License. See the [LICENSE](LICENSE)
+file for details.
 

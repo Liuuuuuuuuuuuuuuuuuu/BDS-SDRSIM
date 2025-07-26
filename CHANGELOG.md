@@ -14,4 +14,7 @@
 * Improved utc_to_bdt() handling of negative offsets
 * Orbit classification now distinguishes IGSO and MEO by
   checking the ephemeris `sqrtA` value
+* Orbit propagation now uses the unified GPS/BDS RAAN
+  expression `Ω(t)=Ω₀+(Ω̇−Ωₑ)·tk−Ωₑ·Toe` for all BeiDou
+  satellites
 
