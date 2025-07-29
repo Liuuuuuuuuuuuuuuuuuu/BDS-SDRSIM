@@ -79,7 +79,7 @@ static void static_user_at(int week,double sow,const coord_t*ref,
 
 /*----------------------------------------------------*/
 int select_channels(channel_t *ch,int *n,const coord_t*u,
-                    bool force_d2)
+                    bool geo_first)
 {
     struct cand{int prn;double elev,rho,rdot;int pri;} c[63];
     int m=0;
@@ -92,7 +92,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
-        int pri = (force_d2 && is_d2_prn(prn)) ? 1 : 0;
+        int pri = (geo_first && is_d2_prn(prn)) ? 1 : 0;
         c[m++] = (struct cand){prn,el,rho,rdot,pri};
     }
     /* sort by priority and elevation (desc) */
@@ -110,7 +110,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
 /* 更新當前可見通道（可動態加入/移除） */
 static void update_channels_dynamic(channel_t *ch,int *n,const coord_t *u,
                                     const double uvel[3],double gain,double target_cn0,
-                                    bool force_d2)
+                                    bool geo_first)
 {
     struct cand{int prn;double elev,rho,rdot;int pri;} cand[63];
     int m=0;
@@ -125,7 +125,7 @@ static void update_channels_dynamic(channel_t *ch,int *n,const coord_t *u,
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
-        int pri = (force_d2 && is_d2_prn(prn)) ? 1 : 0;
+        int pri = (geo_first && is_d2_prn(prn)) ? 1 : 0;
         cand[m++] = (struct cand){prn,el,rho,rdot,pri};
     }
     for(int i=0;i<m-1;++i) for(int j=i+1;j<m;++j){
@@ -181,7 +181,7 @@ void generate_signal(const sim_config_t *cfg)
 
     channel_t ch[MAX_CH];
     int n_ch;
-    select_channels(ch,&n_ch,&usr,cfg->force_d2);
+    select_channels(ch,&n_ch,&usr,cfg->geo_first);
 
     double fs = cfg->byte_output ? FSAMP_BYTE : FSAMP_DEF;
     int samp_per_ms = (int)(fs/1000.0 + 0.5);
@@ -244,7 +244,7 @@ void generate_signal(const sim_config_t *cfg)
         }
 
         update_channels_dynamic(ch,&n_ch,&usr,uvel,cfg->gain,
-                                cfg->target_cn0,cfg->force_d2);
+                                cfg->target_cn0,cfg->geo_first);
 
         /* --- STEP_MS 次 1ms 取樣 --- */
         for(int step=0;step<STEP_MS;++step){
@@ -253,7 +253,7 @@ void generate_signal(const sim_config_t *cfg)
             /* 併行各通道 */
             #pragma omp parallel for
             for(int c=0;c<n_ch;++c){
-                bool use_d2 = cfg->force_d2 || is_d2_prn(ch[c].prn);
+                bool use_d2 = is_d2_prn(ch[c].prn);
                 if(use_d2)
                     gen_samples_1ms_d2(&ch[c],week,sow+step*0.001,
                                        samp_per_ms,tmpI[c],tmpQ[c]);

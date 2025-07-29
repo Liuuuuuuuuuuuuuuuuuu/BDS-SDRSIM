@@ -23,7 +23,7 @@ static void usage(const char *p)
     puts("  --noise stddev       加入 AWGN 雜訊標準差");
     puts("  --seed n            雜訊亂數種子 (整數)");
     puts("  --byte               輸出 I-only 之 8-bit 檔");
-    puts("  --force-d2           所有 PRN 強制採用 D2 信號");
+    puts("  --geo-first          優先可見 GEO 衛星");
     puts("  --help               顯示本說明\n");
 }
 
@@ -38,7 +38,7 @@ int main(int argc,char *argv[])
     cfg.noise_std   = 0.0;
     cfg.noise_seed  = 1;
     cfg.byte_output = false;
-    cfg.force_d2  = false;
+    cfg.geo_first  = false;
     bool llh_given   = false;
 
     /* 處理 "-byte" 舊習慣 */
@@ -60,13 +60,13 @@ int main(int argc,char *argv[])
         {"noise",    required_argument, 0, 'z'},
         {"seed",     required_argument, 0, 'R'},
         {"byte",     no_argument,       0, 'b'},
-        {"force-d2", no_argument,       0, 'D'},
+        {"geo-first",no_argument,       0, 'G'},
         {"help",     no_argument,       0, 'h'},
         {0,0,0,0}
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:hbD", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:hbG", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -121,8 +121,8 @@ int main(int argc,char *argv[])
         case 'b':
             cfg.byte_output = true;
             break;
-        case 'D':
-            cfg.force_d2 = true;
+        case 'G':
+            cfg.geo_first = true;
             break;
         case 'h':
             usage(argv[0]);
@@ -201,7 +201,7 @@ int main(int argc,char *argv[])
 
     channel_t ch[MAX_CH];
     int n_ch;
-    select_channels(ch,&n_ch,&usr,cfg.force_d2);
+    select_channels(ch,&n_ch,&usr,cfg.geo_first);
 
     /* 印出確認訊息 (簡潔模式) */
     printf("[cfg] UTC %s  BDT W%d %.3f\n",

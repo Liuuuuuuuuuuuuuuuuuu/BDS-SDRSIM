@@ -70,8 +70,7 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
 
 - GEO PRN → D2 (500 bps, 無 NH 二次碼)
 - IGSO/MEO PRN → D1 (50 bps, 有 NH 二次碼)
-- `--force-d2` 可把所有 PRN 強制成 D2
-  此模式會在挑選模擬衛星時優先加入可見的 GEO 衛星
+- `--geo-first` 在挑選模擬衛星時會優先加入可見的 GEO 衛星
 
 MEO 與 IGSO 依據星曆中的 `sqrtA`(軌道半長軸平方根) 分辨。大於 6000 的視
 為與 GEO 相同的軌道高度，即 IGSO，否則為 MEO。
@@ -87,11 +86,11 @@ MEO 與 IGSO 依據星曆中的 `sqrtA`(軌道半長軸平方根) 分辨。大�
           --byte
 ```
 
-Example forcing all satellites to use the D2 message:
+Example prioritising visible GEO satellites:
 
 ```
 ./bds-sim --rinex BRDM00DLR_S_20251870000_01D_MN.rnx \
-          --force-d2 --duration 120
+          --geo-first --duration 120
 ```
 
 `--gain` scales the output amplitude.  With the default gain of `1.0`
