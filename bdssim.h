@@ -63,5 +63,6 @@ bool  init_simulator(sim_config_t *, double start_bdt);
 void  generate_signal(const sim_config_t *cfg);   /* ← 加上 const */
 void  cleanup_simulator(void);
 /* 讓 main 可以先做一次 select_channels() 取得 PRN 清單 */
-int  select_channels(channel_t *ch, int *n_ch, const coord_t *usr);
+int  select_channels(channel_t *ch, int *n_ch, const coord_t *usr,
+                     bool force_d2);
 #endif

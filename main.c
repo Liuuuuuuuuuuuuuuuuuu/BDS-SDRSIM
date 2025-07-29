@@ -201,7 +201,7 @@ int main(int argc,char *argv[])
 
     channel_t ch[MAX_CH];
     int n_ch;
-    select_channels(ch,&n_ch,&usr);
+    select_channels(ch,&n_ch,&usr,cfg.force_d2);
 
     /* 印出確認訊息 (簡潔模式) */
     printf("[cfg] UTC %s  BDT W%d %.3f\n",
