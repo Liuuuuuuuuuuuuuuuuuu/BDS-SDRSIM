@@ -55,7 +55,7 @@ typedef struct {
     double   noise_std;        /* AWGN 標準差 (0 表示無) */
     unsigned noise_seed;       /* AWGN 亂數種子 */
     bool     byte_output;      /* 以 8-bit 檔輸出 */
-    bool     force_d2;         /* 強制所有 PRN 使用 D2 */
+    bool     geo_first;        /* 優先可見 GEO 衛星 */
 } sim_config_t;
 
 /* ---------- 介面 ---------- */
@@ -63,5 +63,6 @@ bool  init_simulator(sim_config_t *, double start_bdt);
 void  generate_signal(const sim_config_t *cfg);   /* ← 加上 const */
 void  cleanup_simulator(void);
 /* 讓 main 可以先做一次 select_channels() 取得 PRN 清單 */
-int  select_channels(channel_t *ch, int *n_ch, const coord_t *usr);
+int  select_channels(channel_t *ch, int *n_ch, const coord_t *usr,
+                     bool geo_first);
 #endif

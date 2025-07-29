@@ -78,9 +78,11 @@ static void static_user_at(int week,double sow,const coord_t*ref,
 }
 
 /*----------------------------------------------------*/
-int select_channels(channel_t *ch,int *n,const coord_t*u)
+int select_channels(channel_t *ch,int *n,const coord_t*u,
+                    bool geo_first)
 {
-    struct cand{int prn;double elev,rho,rdot;} c[63]; int m=0;
+    struct cand{int prn;double elev,rho,rdot;int pri;} c[63];
+    int m=0;
     double uv[3]={-OMEGA_E*u->xyz[1], OMEGA_E*u->xyz[0], 0.0};
     for(int prn=1;prn<=63;++prn){
         double sat[3],vel[3];
@@ -90,11 +92,16 @@ int select_channels(channel_t *ch,int *n,const coord_t*u)
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
-        c[m++] = (struct cand){prn,el,rho,rdot};
+        int pri = (geo_first && is_d2_prn(prn)) ? 1 : 0;
+        c[m++] = (struct cand){prn,el,rho,rdot,pri};
     }
-    /* sort by elevation (desc) */
-    for(int i=0;i<m-1;++i) for(int j=i+1;j<m;++j)
-        if(c[j].elev>c[i].elev){struct cand t=c[i];c[i]=c[j];c[j]=t;}
+    /* sort by priority and elevation (desc) */
+    for(int i=0;i<m-1;++i) for(int j=i+1;j<m;++j){
+        if(c[j].pri>c[i].pri ||
+           (c[j].pri==c[i].pri && c[j].elev>c[i].elev)){
+            struct cand t=c[i];c[i]=c[j];c[j]=t;
+        }
+    }
     *n = m<MAX_CH?m:MAX_CH;
     for(int i=0;i<*n;++i) channel_reset(&ch[i],c[i].prn,u->week,u->sow);
     return *n;
@@ -102,9 +109,10 @@ int select_channels(channel_t *ch,int *n,const coord_t*u)
 
 /* 更新當前可見通道（可動態加入/移除） */
 static void update_channels_dynamic(channel_t *ch,int *n,const coord_t *u,
-                                    const double uvel[3],double gain,double target_cn0)
+                                    const double uvel[3],double gain,double target_cn0,
+                                    bool geo_first)
 {
-    struct cand{int prn;double elev,rho,rdot;} cand[63];
+    struct cand{int prn;double elev,rho,rdot;int pri;} cand[63];
     int m=0;
     double uv[3];
     if(uvel) { uv[0]=uvel[0]; uv[1]=uvel[1]; uv[2]=uvel[2]; }
@@ -117,10 +125,15 @@ static void update_channels_dynamic(channel_t *ch,int *n,const coord_t *u,
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
-        cand[m++] = (struct cand){prn,el,rho,rdot};
+        int pri = (geo_first && is_d2_prn(prn)) ? 1 : 0;
+        cand[m++] = (struct cand){prn,el,rho,rdot,pri};
     }
-    for(int i=0;i<m-1;++i) for(int j=i+1;j<m;++j)
-        if(cand[j].elev>cand[i].elev){struct cand t=cand[i];cand[i]=cand[j];cand[j]=t;}
+    for(int i=0;i<m-1;++i) for(int j=i+1;j<m;++j){
+        if(cand[j].pri>cand[i].pri ||
+           (cand[j].pri==cand[i].pri && cand[j].elev>cand[i].elev)){
+            struct cand t=cand[i];cand[i]=cand[j];cand[j]=t;
+        }
+    }
 
     int new_n = m<MAX_CH?m:MAX_CH;
     channel_t new_ch[MAX_CH];
@@ -166,7 +179,9 @@ void generate_signal(const sim_config_t *cfg)
     /* 檢查 start 時間是否與星曆 toe 接近 */
     check_ephemeris_age(usr.week, usr.sow);
 
-    channel_t ch[MAX_CH]; int n_ch; select_channels(ch,&n_ch,&usr);
+    channel_t ch[MAX_CH];
+    int n_ch;
+    select_channels(ch,&n_ch,&usr,cfg->geo_first);
 
     double fs = cfg->byte_output ? FSAMP_BYTE : FSAMP_DEF;
     int samp_per_ms = (int)(fs/1000.0 + 0.5);
@@ -228,7 +243,8 @@ void generate_signal(const sim_config_t *cfg)
             uvel[2]=(usr.xyz[2]-prev.xyz[2])/dt;
         }
 
-        update_channels_dynamic(ch,&n_ch,&usr,uvel,cfg->gain,cfg->target_cn0);
+        update_channels_dynamic(ch,&n_ch,&usr,uvel,cfg->gain,
+                                cfg->target_cn0,cfg->geo_first);
 
         /* --- STEP_MS 次 1ms 取樣 --- */
         for(int step=0;step<STEP_MS;++step){
@@ -237,7 +253,7 @@ void generate_signal(const sim_config_t *cfg)
             /* 併行各通道 */
             #pragma omp parallel for
             for(int c=0;c<n_ch;++c){
-                bool use_d2 = cfg->force_d2 || is_d2_prn(ch[c].prn);
+                bool use_d2 = is_d2_prn(ch[c].prn);
                 if(use_d2)
                     gen_samples_1ms_d2(&ch[c],week,sow+step*0.001,
                                        samp_per_ms,tmpI[c],tmpQ[c]);
