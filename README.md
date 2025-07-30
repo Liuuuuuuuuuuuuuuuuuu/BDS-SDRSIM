@@ -73,6 +73,8 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
 - GEO PRN → D2 (500 bps, 無 NH 二次碼)
 - IGSO/MEO PRN → D1 (50 bps, 有 NH 二次碼)
 - `--geo-first` 在挑選模擬衛星時會優先加入可見的 GEO 衛星
+- `--no-geo` 排除所有 GEO 衛星
+- `--prn`  可只輸出指定 PRN
 
 MEO 與 IGSO 依據星曆中的 `sqrtA`(軌道半長軸平方根) 分辨。大於 6000 的視
 為與 GEO 相同的軌道高度，即 IGSO，否則為 MEO。
@@ -93,6 +95,20 @@ Example prioritising visible GEO satellites:
 ```
 ./bds-sim --rinex BRDM00DLR_S_20251870000_01D_MN.rnx \
           --geo-first --duration 120
+```
+
+Example excluding GEO satellites:
+
+```
+./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
+          --no-geo --duration 60
+```
+
+Example generating only PRN 6:
+
+```
+./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
+          --prn 6 --duration 60
 ```
 
 `--gain` scales the output amplitude.  With the default gain of `1.0`

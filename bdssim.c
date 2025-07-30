@@ -79,12 +79,14 @@ static void static_user_at(int week,double sow,const coord_t*ref,
 
 /*----------------------------------------------------*/
 int select_channels(channel_t *ch,int *n,const coord_t*u,
-                    bool geo_first)
+                    bool geo_first,int single_prn,bool no_geo)
 {
     struct cand{int prn;double elev,rho,rdot;int pri;} c[63];
     int m=0;
     double uv[3]={-OMEGA_E*u->xyz[1], OMEGA_E*u->xyz[0], 0.0};
     for(int prn=1;prn<=63;++prn){
+        if(single_prn>0 && prn!=single_prn) continue;
+        if(no_geo && is_d2_prn(prn)) continue;
         double sat[3],vel[3];
         calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
         double enu[3]; ecef2enu(u,sat,enu);
@@ -110,7 +112,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
 /* 更新當前可見通道（可動態加入/移除） */
 static void update_channels_dynamic(channel_t *ch,int *n,const coord_t *u,
                                     const double uvel[3],double gain,double target_cn0,
-                                    bool geo_first)
+                                    bool geo_first,int single_prn,bool no_geo)
 {
     struct cand{int prn;double elev,rho,rdot;int pri;} cand[63];
     int m=0;
@@ -118,6 +120,8 @@ static void update_channels_dynamic(channel_t *ch,int *n,const coord_t *u,
     if(uvel) { uv[0]=uvel[0]; uv[1]=uvel[1]; uv[2]=uvel[2]; }
     else { uv[0]=uv[1]=uv[2]=0.0; }
     for(int prn=1;prn<=63;++prn){
+        if(single_prn>0 && prn!=single_prn) continue;
+        if(no_geo && is_d2_prn(prn)) continue;
         double sat[3],vel[3];
         calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
         double enu[3]; ecef2enu(u,sat,enu);
@@ -181,7 +185,8 @@ void generate_signal(const sim_config_t *cfg)
 
     channel_t ch[MAX_CH];
     int n_ch;
-    select_channels(ch,&n_ch,&usr,cfg->geo_first);
+    select_channels(ch,&n_ch,&usr,cfg->geo_first,
+                    cfg->single_prn,cfg->no_geo);
 
     double fs = cfg->byte_output ? FSAMP_BYTE : FSAMP_DEF;
     int samp_per_ms = (int)(fs/1000.0 + 0.5);
@@ -264,7 +269,8 @@ void generate_signal(const sim_config_t *cfg)
         }
 
         update_channels_dynamic(ch,&n_ch,&usr,uvel,cfg->gain,
-                                cfg->target_cn0,cfg->geo_first);
+                                cfg->target_cn0,cfg->geo_first,
+                                cfg->single_prn,cfg->no_geo);
 
         /* --- STEP_MS 次 1ms 取樣 --- */
         for(int step=0;step<STEP_MS;++step){
