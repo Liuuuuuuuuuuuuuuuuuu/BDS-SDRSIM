@@ -10,6 +10,9 @@
 #define FCARRIER   1561.098e6      /* B1I */
 #define CHIPRATE   2.046e6
 static double fs = 5.120e6;           /* default sample rate */
+
+/* default target CN0, overridable via CLI */
+double g_target_cn0 = 42.0;
 #define DBM_REF   (-130.0)         /* ±1.0 → –130 dBm */
 
 /* ---- Receiver antenna pattern (0° boresight) ---- */
@@ -126,6 +129,8 @@ double calc_amp(int prn,double rho,double gain,double target_cn0)
     double cn0_dbhz  = p_dbm - DBM_REF + 10.0*log10(fs);
     double diff_db   = target_cn0 - cn0_dbhz;
     double a         = pow(10.0,diff_db/20.0) * 16384.0;
+    if (a > 32760.0) a = 32760.0;   /* clip upper bound */
+    if (a < 1.0)     a = 1.0;       /* clip lower bound */
     return gain * a;
 }
 

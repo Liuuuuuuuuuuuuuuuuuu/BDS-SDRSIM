@@ -39,6 +39,9 @@ int  is_d2_prn(int prn);
 int  is_igso_prn(int prn);
 int  is_meo_prn(int prn);
 
+/* Global target CN0 (dB-Hz) */
+extern double g_target_cn0;
+
 /* === 修正：用指標而非 array declarator === */
 void get_subframe_bits(int prn, int sf_id, int week, double sow,
                        double frame_len, uint8_t *out);   /* out[300] */
