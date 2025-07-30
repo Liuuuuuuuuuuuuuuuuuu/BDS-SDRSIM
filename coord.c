@@ -1,7 +1,7 @@
 #include "coord.h"
-#include "globals.h"  /* nav_week */
-
-#define OMEGA_E 7.2921150e-5
+#include "globals.h"     /* nav_week */
+/* 地球自轉角速度 (rad/s) */
+#define OMEGA_E   7.2921150e-5
 
 /* LLH → ECEF，並把 llh/xyz 一併寫回 coord_t -------------- */
 void llh2xyz(const double llh_deg[3], coord_t *c)
@@ -69,6 +69,17 @@ double enu_elevation_deg(const double enu[3])
     const double rho = sqrt(enu[0]*enu[0] + enu[1]*enu[1] + enu[2]*enu[2]);
     if (rho == 0.0) return -90.0;   /* 防除以零 */
     return asin( enu[2] / rho ) * 180.0 / M_PI;
+}
+
+/* ECEF → ECI ------------------------------------------------------- */
+void ecef_to_eci(const double ecef[3],int week,double sow,double eci[3])
+{
+    double t = (week - nav_week)*604800.0 + sow;
+    double theta = -OMEGA_E * t;
+    double cosT = cos(theta), sinT = sin(theta);
+    eci[0] = cosT*ecef[0] - sinT*ecef[1];
+    eci[1] = sinT*ecef[0] + cosT*ecef[1];
+    eci[2] = ecef[2];
 }
 
 
