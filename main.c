@@ -8,6 +8,7 @@
 #include "timeconv.h"
 #include "globals.h"
 #include "path.h"
+#include "channel.h"        /* g_target_cn0 */
 
 /* ───────────────────────────── */
 static void usage(const char *p)
@@ -21,6 +22,7 @@ static void usage(const char *p)
     puts("  --duration sec       模擬秒數 (1-3600)");
     puts("  --gain amp           輸出增益 (>0)");
     puts("  --noise stddev       加入 AWGN 雜訊標準差");
+    puts("  -cn0 value          目標 CN0 (dB-Hz)");
     puts("  --seed n            雜訊亂數種子 (整數)");
     puts("  --byte               輸出 I-only 之 8-bit 檔");
     puts("  --geo-first          優先可見 GEO 衛星");
@@ -49,6 +51,16 @@ int main(int argc,char *argv[])
     for(int i=1;i<argc;i++){
         if(strcmp(argv[i],"-byte")==0)
             argv[i] = "--byte";
+    }
+
+    /* Handle legacy -cn0 option */
+    for(int k=1;k<argc;k++){
+        if(!strcmp(argv[k], "-cn0") && k + 1 < argc){
+            g_target_cn0 = atof(argv[k+1]);
+            for(int j=k;j+2<=argc;j++) argv[j]=argv[j+2];
+            argc -= 2;
+            k--;
+        }
     }
 
     /* 2. 解析 CLI ----------------------------------- */
