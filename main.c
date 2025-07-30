@@ -24,6 +24,8 @@ static void usage(const char *p)
     puts("  --seed n            雜訊亂數種子 (整數)");
     puts("  --byte               輸出 I-only 之 8-bit 檔");
     puts("  --geo-first          優先可見 GEO 衛星");
+    puts("  --no-geo            排除 GEO 衛星");
+    puts("  --prn N             僅模擬指定 PRN");
     puts("  --help               顯示本說明\n");
 }
 
@@ -39,6 +41,8 @@ int main(int argc,char *argv[])
     cfg.noise_seed  = 1;
     cfg.byte_output = false;
     cfg.geo_first  = false;
+    cfg.no_geo     = false;
+    cfg.single_prn = 0;
     bool llh_given   = false;
 
     /* 處理 "-byte" 舊習慣 */
@@ -61,12 +65,14 @@ int main(int argc,char *argv[])
         {"seed",     required_argument, 0, 'R'},
         {"byte",     no_argument,       0, 'b'},
         {"geo-first",no_argument,       0, 'G'},
+        {"no-geo",   no_argument,       0, 'O'},
+        {"prn",      required_argument, 0, 'p'},
         {"help",     no_argument,       0, 'h'},
         {0,0,0,0}
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:hbG", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:hbGOp:", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -124,6 +130,12 @@ int main(int argc,char *argv[])
         case 'G':
             cfg.geo_first = true;
             break;
+        case 'O':
+            cfg.no_geo = true;
+            break;
+        case 'p':
+            cfg.single_prn = atoi(optarg);
+            break;
         case 'h':
             usage(argv[0]);
             return 0;
@@ -155,6 +167,10 @@ int main(int argc,char *argv[])
        cfg.llh[1]<-180.0 || cfg.llh[1]>180.0 ||
        cfg.llh[2]<-1000.0 || cfg.llh[2]>20000.0){
         fputs("--llh 超出合理範圍\n", stderr);
+        return 1;
+    }
+    if(cfg.single_prn<0 || cfg.single_prn>63){
+        fputs("--prn 範圍 1-63\n", stderr);
         return 1;
     }
 
@@ -201,7 +217,7 @@ int main(int argc,char *argv[])
 
     channel_t ch[MAX_CH];
     int n_ch;
-    select_channels(ch,&n_ch,&usr,cfg.geo_first);
+    select_channels(ch,&n_ch,&usr,cfg.geo_first,cfg.single_prn,cfg.no_geo);
 
     /* 印出確認訊息 (簡潔模式) */
     printf("[cfg] UTC %s  BDT W%d %.3f\n",
