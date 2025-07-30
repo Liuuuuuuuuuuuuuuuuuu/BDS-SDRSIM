@@ -62,8 +62,10 @@ default the file is written at **5.120 MHz**.  Each sample is a pair of
 careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
 Using the `--byte` flag writes `beidou_b1i_u8.bin` containing the **8‑bit**
-I channel only, sampled at **25 MHz** for use with GNSS‑SDR.  The Q samples are
-discarded entirely.
+I channel only, sampled at **25 MHz** for use with GNSS‑SDR.  The samples are
+generated directly from the internal accumulator rather than converting the
+16‑bit stream.  All output values are normalised to remain within ±1 before
+quantisation so the integers never exceed the format limits.
 The legacy option `-byte` is still recognised as an alias for `--byte`.
 
 ## 訊號型別

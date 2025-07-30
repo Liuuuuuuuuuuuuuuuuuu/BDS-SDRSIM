@@ -292,6 +292,7 @@ void generate_signal(const sim_config_t *cfg)
             /* 限幅並打包成 I/Q (加入 AWGN) */
             int16_t iq[2*samp_per_ms];
             int8_t  i8[samp_per_ms];            /* byte output holds I only */
+            double  scale = 1.0/32768.0;
             for(int k=0;k<samp_per_ms;++k){
                 int32_t i=accI[k];
                 int32_t q=accQ[k];
@@ -299,15 +300,22 @@ void generate_signal(const sim_config_t *cfg)
                     i += lrint(cfg->noise_std*gauss_rand());
                     q += lrint(cfg->noise_std*gauss_rand());
                 }
-                if(i>32767)i=32767; else if(i<-32768)i=-32768;
-                if(q>32767)q=32767; else if(q<-32768)q=-32768;
-                iq[2*k]   = (int16_t)i;
-                iq[2*k+1] = (int16_t)q;
-                i8[k]     = (int8_t)(iq[2*k]/256);
-                sumI  += iq[2*k];
-                sumQ  += iq[2*k+1];
-                sumI2 += (double)iq[2*k]*iq[2*k];
-                sumQ2 += (double)iq[2*k+1]*iq[2*k+1];
+                double fi = i*scale;
+                double fq = q*scale;
+                if(fi>1.0)fi=1.0; else if(fi<-1.0)fi=-1.0;
+                if(fq>1.0)fq=1.0; else if(fq<-1.0)fq=-1.0;
+                if(fp){
+                    iq[2*k]   = (int16_t)lrint(fi*32767.0);
+                    iq[2*k+1] = (int16_t)lrint(fq*32767.0);
+                    sumI  += iq[2*k];
+                    sumQ  += iq[2*k+1];
+                    sumI2 += (double)iq[2*k]*iq[2*k];
+                    sumQ2 += (double)iq[2*k+1]*iq[2*k+1];
+                } else {
+                    i8[k] = (int8_t)lrint(fi*127.0);
+                    sumI  += i8[k];
+                    sumI2 += (double)i8[k]*i8[k];
+                }
             }
             samp_cnt += samp_per_ms;
             if(fp)
