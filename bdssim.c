@@ -233,14 +233,32 @@ void generate_signal(const sim_config_t *cfg)
         double uvel[3];
         if(cfg->path_type==0){
             static_user_at(week,sow,&ref_usr,&usr,uvel);
-        } else {
+        } else if(cfg->path_type==1){
             coord_t prev=usr;
             interpolate_path(&path, ms/1000.0, &usr);
             xyz2llh(usr.xyz,&usr);
+            usr.week=week; usr.sow=sow;
+            double prev_eci[3], cur_eci[3];
+            ecef_to_eci(prev.xyz, prev.week, prev.sow, prev_eci);
+            ecef_to_eci(usr.xyz, week, sow, cur_eci);
             double dt=STEP_MS*0.001;
-            uvel[0]=(usr.xyz[0]-prev.xyz[0])/dt;
-            uvel[1]=(usr.xyz[1]-prev.xyz[1])/dt;
-            uvel[2]=(usr.xyz[2]-prev.xyz[2])/dt;
+            uvel[0]=(cur_eci[0]-prev_eci[0])/dt;
+            uvel[1]=(cur_eci[1]-prev_eci[1])/dt;
+            uvel[2]=(cur_eci[2]-prev_eci[2])/dt;
+        } else {
+            coord_t prev=usr;
+            double llh[3];
+            interpolate_path_llh(&path, ms/1000.0, llh);
+            coord_t ref={0};
+            ref.llh[0]=llh[0]; ref.llh[1]=llh[1]; ref.llh[2]=llh[2];
+            static_user_at(week,sow,&ref,&usr,NULL);
+            double prev_eci[3], cur_eci[3];
+            ecef_to_eci(prev.xyz, prev.week, prev.sow, prev_eci);
+            ecef_to_eci(usr.xyz, week, sow, cur_eci);
+            double dt=STEP_MS*0.001;
+            uvel[0]=(cur_eci[0]-prev_eci[0])/dt;
+            uvel[1]=(cur_eci[1]-prev_eci[1])/dt;
+            uvel[2]=(cur_eci[2]-prev_eci[2])/dt;
         }
 
         update_channels_dynamic(ch,&n_ch,&usr,uvel,cfg->gain,
