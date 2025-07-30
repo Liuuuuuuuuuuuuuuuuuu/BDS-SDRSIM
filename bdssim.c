@@ -234,14 +234,9 @@ void generate_signal(const sim_config_t *cfg)
         if(cfg->path_type==0){
             static_user_at(week,sow,&ref_usr,&usr,uvel);
         } else {
-            double prev_eci[3]={usr.xyz[0], usr.xyz[1], usr.xyz[2]};
-            coord_t ecef;
-            interpolate_path(&path, ms/1000.0, &ecef);
-            xyz2llh(ecef.xyz,&ecef);
-            ecef_to_eci(week, sow, ecef.xyz, usr.xyz);
-            usr.llh[0]=ecef.llh[0];
-            usr.llh[1]=ecef.llh[1];
-            usr.llh[2]=ecef.llh[2];
+            coord_t prev=usr;
+            interpolate_path(&path, ms/1000.0, &usr);
+            xyz2llh(usr.xyz,&usr);
             usr.week=week; usr.sow=sow;
             double dt=STEP_MS*0.001;
             uvel[0]=(usr.xyz[0]-prev_eci[0])/dt;

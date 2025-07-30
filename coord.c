@@ -71,14 +71,4 @@ double enu_elevation_deg(const double enu[3])
     return asin( enu[2] / rho ) * 180.0 / M_PI;
 }
 
-/* ECEF -> ECI ------------------------------------------------------- */
-void ecef_to_eci(int week, double sow, const double ecef[3], double eci[3])
-{
-    double t = (week - nav_week) * 604800.0 + sow;
-    double theta = OMEGA_E * t;
-    double cosT = cos(theta), sinT = sin(theta);
-    eci[0] = cosT * ecef[0] - sinT * ecef[1];
-    eci[1] = sinT * ecef[0] + cosT * ecef[1];
-    eci[2] = ecef[2];
-}
 
