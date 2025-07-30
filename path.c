@@ -142,3 +142,23 @@ void interpolate_path(const path_t *path, double t, coord_t *out)
                       path->p[i + 1].xyz[k] * f;
 }
 
+void interpolate_path_llh(const path_t *path,double t,double llh[3])
+{
+    if(!path->p || path->n==0){
+        llh[0]=llh[1]=llh[2]=0.0;
+        return;
+    }
+    if(t<=0){
+        memcpy(llh,path->p[0].llh,sizeof(double)*3);
+        return;
+    }
+    int i=(int)t;
+    if(i>=path->n-1){
+        memcpy(llh,path->p[path->n-1].llh,sizeof(double)*3);
+        return;
+    }
+    double f=t-i;
+    for(int k=0;k<3;++k)
+        llh[k]=path->p[i].llh[k]*(1.0-f)+path->p[i+1].llh[k]*f;
+}
+

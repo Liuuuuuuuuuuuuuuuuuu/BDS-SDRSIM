@@ -12,5 +12,6 @@ int load_path_llh(const char *file, path_t *path);
 int load_path_nmea(const char *file, path_t *path);
 void free_path(path_t *path);
 void interpolate_path(const path_t *path,double t,coord_t *out);
+void interpolate_path_llh(const path_t *path,double t,double llh[3]);
 
 #endif
