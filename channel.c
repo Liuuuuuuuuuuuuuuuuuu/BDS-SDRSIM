@@ -12,6 +12,31 @@
 static double fs = 5.120e6;           /* default sample rate */
 #define DBM_REF   (-130.0)         /* ±1.0 → –130 dBm */
 
+/* ---- Receiver antenna pattern (0° boresight) ---- */
+static const double ant_pat_db[37]={
+    0.00,  0.00,  0.22,  0.44,  0.67,  1.11,  1.56,  2.00,  2.44,  2.89,
+    3.56,  4.22,  4.89,  5.56,  6.22,  6.89,  7.56,  8.22,  8.89,  9.78,
+   10.67, 11.56, 12.44, 13.33, 14.44, 15.56, 16.67, 17.78, 18.89, 20.00,
+   21.33, 22.67, 24.00, 25.56, 27.33, 29.33, 31.56
+};
+static double ant_pat[37];
+__attribute__((constructor)) static void init_ant_gain(void){
+    for(int i=0;i<37;i++) ant_pat[i]=pow(10.0,-ant_pat_db[i]/20.0);
+}
+
+static double antenna_gain(double elev_deg)
+{
+    int idx=(int)((90.0-elev_deg)/5.0);
+    if(idx<0) idx=0; else if(idx>36) idx=36;
+    return ant_pat[idx];
+}
+
+/* simple multipath loss model: -3 dB below 15° elevation */
+static double multipath_loss(double elev_deg)
+{
+    return (elev_deg<15.0)? pow(10.0,-3.0/20.0) : 1.0;
+}
+
 /* ---------- 32k sin LUT ---------- */
 #define LUTBITS   15
 #define LUTSIZE   (1u<<LUTBITS)
@@ -160,8 +185,13 @@ void channel_reset(channel_t *c,int prn,int week,double sow){
     channel_set_time(c,week,sow);
 }
 /* 幾何→計算振幅 / 初始多普勒 */
-void update_channel_dynamics(channel_t *c,double rho,double rdot,double gain,double target_cn0){
-    c->amp = calc_amp(c->prn,rho,gain,target_cn0);
+void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg,
+                             double gain,double target_cn0){
+    double a = calc_amp(c->prn,rho,gain,target_cn0);
+    double ant = antenna_gain(elev_deg);
+    double mp  = multipath_loss(elev_deg);
+    c->amp = a * ant * mp;
+    c->elev_deg = elev_deg;
     c->fd  = -FCARRIER*rdot/299792458.0;               /* Doppler (Hz) */
     /*
      * Positive range rate (rdot) means the satellite is moving away

@@ -21,7 +21,7 @@ int main(void)
     channel_reset(&ch, prn, nav_week, 0.0);
     ch.carr_phase = 0.0;
     ch.code_phase = 0.1; /* avoid boundary ambiguity */
-    update_channel_dynamics(&ch, 2.0e7, 0.0, 1.0, cfg.target_cn0);
+    update_channel_dynamics(&ch, 2.0e7, 0.0, 90.0, 1.0, cfg.target_cn0);
     channel_set_fs(5.12e6);
 
     int samp_per_ms = (int)(5.12e6/1000.0 + 0.5);

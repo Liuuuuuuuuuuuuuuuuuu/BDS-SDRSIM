@@ -143,7 +143,7 @@ static void update_channels_dynamic(channel_t *ch,int *n,const coord_t *u,
         if(idx>=0) new_ch[i]=ch[idx];
         else       channel_reset(&new_ch[i],cand[i].prn,u->week,u->sow);
         update_channel_dynamics(&new_ch[i],cand[i].rho,cand[i].rdot,
-                                gain,target_cn0);
+                                cand[i].elev,gain,target_cn0);
     }
     for(int i=0;i<new_n;++i) ch[i]=new_ch[i];
     *n = new_n;
@@ -192,10 +192,12 @@ void generate_signal(const sim_config_t *cfg)
     for(int i=0;i<n_ch;++i){
         double sat[3],vel[3];
         calc_sat_position_velocity(ch[i].prn,usr.week,usr.sow,sat,vel);
+        double enu[3]; ecef2enu(&usr,sat,enu);
+        double el=enu_elevation_deg(enu);
         double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,cfg->gain,cfg->target_cn0);
+        update_channel_dynamics(&ch[i],rho,rdot,el,cfg->gain,cfg->target_cn0);
         printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
     }
 
