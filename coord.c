@@ -1,4 +1,7 @@
 #include "coord.h"
+#include "globals.h"  /* nav_week */
+
+#define OMEGA_E 7.2921150e-5
 
 /* LLH → ECEF，並把 llh/xyz 一併寫回 coord_t -------------- */
 void llh2xyz(const double llh_deg[3], coord_t *c)

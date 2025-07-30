@@ -239,9 +239,9 @@ void generate_signal(const sim_config_t *cfg)
             xyz2llh(usr.xyz,&usr);
             usr.week=week; usr.sow=sow;
             double dt=STEP_MS*0.001;
-            uvel[0]=(usr.xyz[0]-prev.xyz[0])/dt;
-            uvel[1]=(usr.xyz[1]-prev.xyz[1])/dt;
-            uvel[2]=(usr.xyz[2]-prev.xyz[2])/dt;
+            uvel[0]=(usr.xyz[0]-prev_eci[0])/dt;
+            uvel[1]=(usr.xyz[1]-prev_eci[1])/dt;
+            uvel[2]=(usr.xyz[2]-prev_eci[2])/dt;
         }
 
         update_channels_dynamic(ch,&n_ch,&usr,uvel,cfg->gain,
