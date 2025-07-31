@@ -9,7 +9,7 @@
 #define PI2        6.2831853071795864769
 #define FCARRIER   1561.098e6      /* B1I */
 #define CHIPRATE   2.046e6
-static double fs = 5.120e6;           /* default sample rate */
+static double fs = FS_OUTPUT_HZ;           /* default sample rate */
 
 /* default target CN0, overridable via CLI */
 double g_target_cn0 = 42.0;
@@ -128,7 +128,7 @@ double calc_amp(int prn,double rho,double gain,double target_cn0)
     double p_dbm     = sat_eirp_dbm(prn) - path_loss;
     double cn0_dbhz  = p_dbm - DBM_REF + 10.0*log10(fs);
     double diff_db   = target_cn0 - cn0_dbhz;
-    double a         = pow(10.0,diff_db/20.0) * 16384.0;
+    double a         = pow(10.0,diff_db/20.0) * 16384.0 * HEADROOM_RATIO;
     if (a > 32760.0) a = 32760.0;   /* clip upper bound */
     if (a < 1.0)     a = 1.0;       /* clip lower bound */
     return gain * a;
@@ -164,6 +164,9 @@ void channel_set_time(channel_t *c,int week,double sow)
     c->bit_ptr = ms/20;
     c->ms_count = ms%20;
     get_subframe_bits(c->prn,c->sf_id,week,sf_start,6.0,c->nav_bits);
+    if(ms == 0){
+        c->code_phase = 0.0; /* PRN 2046 chip 從頭開始 */
+    }
 
     double sf_start_d2 = floor(sow/0.6)*0.6;      /* 每 0.6 s 一個子帧 */
     double mf_start_d2 = floor(sow/3.0)*3.0;      /* 周内秒对齐到 3 s 主帧 */
