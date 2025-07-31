@@ -11,6 +11,23 @@
 #include <unistd.h>
 #endif
 #include "gpssim.h"
+#include "globals.h"
+
+/* ========= 振幅計算與 int16 飽和保護 ========= */
+static inline double calc_amp(double cn0_dBHz, int visible_sv_cnt)
+{
+    /* 45 dB-Hz 為名目基準；除以 √N_sat 可避免多星疊加飽和 */
+    double base_amp = pow(10.0, (cn0_dBHz - 45.0) / 20.0);
+    double amp      = base_amp / sqrt((double)visible_sv_cnt);
+    return amp * HEADROOM_RATIO;          /* 留 2 dB 餘量 */
+}
+
+static inline int16_t saturate_int16(double x)
+{
+    if (x >  32760.0) return  32760;
+    if (x < -32760.0) return -32760;
+    return (int16_t)llround(x);
+}
 
 int sinTable512[] = {
 	   2,   5,   8,  11,  14,  17,  20,  23,  26,  29,  32,  35,  38,  41,  44,  47,
