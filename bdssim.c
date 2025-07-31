@@ -14,7 +14,7 @@
 #include "path.h"
 #include "globals.h"     /* nav_week */
 #define OMEGA_E   7.2921150e-5
-#define FSAMP_DEF FS_OUTPUT_HZ    /* default 6.144 MHz for 16-bit I/Q output */
+#define FSAMP_DEF 5.120e6    /* default 5.120 MHz for 16-bit I/Q output */
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
 
 
@@ -31,14 +31,6 @@ static double gauss_rand(void)
     next=r*sin(theta);
     have=1;
     return r*cos(theta);
-}
-
-/* ========= 振幅計算與 int16 飽和保護 ========= */
-static inline int16_t saturate_int16(double x)
-{
-    if (x >  32760.0) return  32760;
-    if (x < -32760.0) return -32760;
-    return (int16_t)llround(x);
 }
 
 /* ---- 檢查模擬起始時間與星曆 toe 差距是否過大 ---- */
@@ -125,7 +117,6 @@ static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
     if(uvel){ uv[0]=uvel[0]; uv[1]=uvel[1]; uv[2]=uvel[2]; }
     else     { uv[0]=uv[1]=uv[2]=0.0; }
 
-    double amp_scale = 1.0 / sqrt((double)n);
     for(int i=0;i<n;++i){
         int prn = ch[i].prn;
         double sat[3], vel[3];
@@ -135,7 +126,7 @@ static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,el,gain*amp_scale,target_cn0);
+        update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0);
         if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
     }
 }
@@ -297,8 +288,8 @@ void generate_signal(const sim_config_t *cfg)
                 if(fi>1.0)fi=1.0; else if(fi<-1.0)fi=-1.0;
                 if(fq>1.0)fq=1.0; else if(fq<-1.0)fq=-1.0;
                 if(fp){
-                    iq[2*k]   = saturate_int16(fi*32767.0);
-                    iq[2*k+1] = saturate_int16(fq*32767.0);
+                    iq[2*k]   = (int16_t)lrint(fi*32767.0);
+                    iq[2*k+1] = (int16_t)lrint(fq*32767.0);
                     sumI  += iq[2*k];
                     sumQ  += iq[2*k+1];
                     sumI2 += (double)iq[2*k]*iq[2*k];

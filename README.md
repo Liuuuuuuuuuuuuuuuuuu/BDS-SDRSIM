@@ -39,7 +39,7 @@ tool computes the user position (static or from a path file), derives
 satellite geometry and Doppler, and updates the channel state. The
 navigation message for subframes 1–5 is generated with correct
 time-of-week. Each channel spreads the bits with its PRN code and the
-samples are summed into a 16‑bit I/Q stream at a fixed 6.144 MHz sample
+samples are summed into a 16‑bit I/Q stream at a fixed 5.120 MHz sample
 rate.
 
 ## Build
@@ -57,7 +57,7 @@ Run `make check` to build and execute the self test
 
 The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
 file containing interleaved **16‑bit little‑endian** I/Q samples. By
-default the file is written at **6.144 MHz**.  Each sample is a pair of
+default the file is written at **5.120 MHz**.  Each sample is a pair of
 16‑bit integers `(I,Q)` so be
 careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
@@ -187,7 +187,7 @@ This builds and runs `tests/test_prn_d1d2` to verify D1/D2 generation.
 ## SDR playback
 
 The file `beidou_b1i.bin` contains interleaved **16‑bit little‑endian**
-I/Q samples written at a fixed **6.144 MHz** sample rate.
+I/Q samples written at a fixed **5.120 MHz** sample rate.
 Ensure any analysis or playback software reads the file as 16‑bit
 integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
@@ -222,7 +222,7 @@ searches for the correct PRNs automatically.
 * Fix UTC→BDT +4 s
 * GEO satellites enabled
 * Added subframe 4/5 template
-* Default Fs → 6.144 MHz
+* Default Fs → 5.120 MHz
 * Power scaling by target CN₀
 * Basic D2 (500 bps) support with D1 interleaving
 
