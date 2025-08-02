@@ -256,6 +256,12 @@ void generate_signal(const sim_config_t *cfg)
                 printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
             }
         }
+        if (cfg->path_type != 0) {
+            for (int i = 0; i < n_ch; ++i) {
+                ch[i].fd = 0.0;
+                ch[i].fd_dot = 0.0;
+            }
+        }
 
         /* --- STEP_MS 次 1ms 取樣 --- */
         for(int step=0;step<STEP_MS;++step){
