@@ -8,8 +8,11 @@
 #define FS_OUTPUT_HZ      6144000.0   /* 6.144 MHz = 2.046 MHz × 3 */
 #define CN0_TARGET_DBHZ   42.0        /* 40–45 dB-Hz 常用 */
 #define HEADROOM_RATIO    0.80        /* 約 -2 dB 頭房，防飽和 */
-#define GEO_IGSO_BOOST_DB 5.8         /* GEO/IGSO 與 MEO 距離補償 */
 #define AMP_SMOOTH_TC_MS  1000        /* 振幅平滑時間常數 */
+/* Per-orbit-class amplitude offsets (dB) */
+#define GAIN_MEO_DB    0.0
+#define GAIN_IGSO_DB  +1.5
+#define GAIN_GEO_DB   -3.0
 
 /* 由 globals.c 定義 */
 extern uint8_t      prn_code[MAX_SAT][CODE_LEN];

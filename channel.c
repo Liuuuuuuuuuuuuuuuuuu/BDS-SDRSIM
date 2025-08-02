@@ -90,7 +90,14 @@ static inline double amp_from_cn0(double cn0_dBHz, int n_visible)
 
 static inline double orbit_gain_amp(int prn)
 {
-    return is_meo_prn(prn) ? 1.0 : pow(10.0, GEO_IGSO_BOOST_DB/20.0);
+    double dB = 0.0;
+    if (is_meo_prn(prn))
+        dB = GAIN_MEO_DB;
+    else if (is_igso_prn(prn))
+        dB = GAIN_IGSO_DB;
+    else /* GEO */
+        dB = GAIN_GEO_DB;
+    return pow(10.0, dB/20.0);
 }
 
 /* 指數平滑振幅，避免 AM 旁帶 */
