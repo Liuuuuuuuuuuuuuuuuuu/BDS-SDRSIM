@@ -17,22 +17,6 @@
 #define FSAMP_DEF FS_OUTPUT_HZ    /* default 6.144 MHz for 16-bit I/Q output */
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
 
-
-/* ---- Gaussian RNG (Box-Muller) ---- */
-static double gauss_rand(void)
-{
-    static int have=0; static double next=0.0;
-    if(have){ have=0; return next; }
-    /* avoid log(0) by ensuring 0<u1<1 */
-    double u1=((double)rand()+1.0)/((double)RAND_MAX+2.0);
-    double u2=((double)rand()+1.0)/((double)RAND_MAX+2.0);
-    double r=sqrt(-2.0*log(u1));
-    double theta=2.0*M_PI*u2;
-    next=r*sin(theta);
-    have=1;
-    return r*cos(theta);
-}
-
 /* ========= 振幅計算與 int16 飽和保護 ========= */
 static inline int16_t saturate_int16(double x)
 {
@@ -144,8 +128,8 @@ void generate_signal(const sim_config_t *cfg)
 {
     coord_t usr={0};
     path_t path={0};
-    /* Initialise RNG for noise generation and random channel phase */
-    srand(cfg->noise_seed);
+    /* Initialise RNG for random channel phase */
+    srand(cfg->seed);
     if(cfg->path_type==1)       load_path_xyz(cfg->path_file,&path);
     else if(cfg->path_type==2)  load_path_llh(cfg->path_file,&path);
     else if(cfg->path_type==3)  load_path_nmea(cfg->path_file,&path);
@@ -281,17 +265,13 @@ void generate_signal(const sim_config_t *cfg)
                     accQ[k]+=tmpQ[c][k];
                 }
 
-            /* 限幅並打包成 I/Q (加入 AWGN) */
+            /* 限幅並打包成 I/Q */
             int16_t iq[2*samp_per_ms];
             int8_t  i8[samp_per_ms];            /* byte output holds I only */
             double  scale = 1.0/32768.0;
             for(int k=0;k<samp_per_ms;++k){
                 int32_t i=accI[k];
                 int32_t q=accQ[k];
-                if(cfg->noise_std>0.0){
-                    i += lrint(cfg->noise_std*gauss_rand());
-                    q += lrint(cfg->noise_std*gauss_rand());
-                }
                 double fi = i*scale;
                 double fq = q*scale;
                 if(fi>1.0)fi=1.0; else if(fi<-1.0)fi=-1.0;
