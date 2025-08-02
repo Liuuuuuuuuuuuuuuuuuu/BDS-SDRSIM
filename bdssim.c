@@ -103,15 +103,13 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
     return *n;
 }
 
-/* 更新通道但保留原始 PRN，不做重新選擇 */
-static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
-                                  const double uvel[3],double gain,double target_cn0,
-                                  int step_ms)
-{
-    double uv[3];
-    if(uvel){ uv[0]=uvel[0]; uv[1]=uvel[1]; uv[2]=uvel[2]; }
-    else     { uv[0]=uv[1]=uv[2]=0.0; }
 
+/* 依照使用者軌跡更新通道，使用目前與下一步的幾何資訊 */
+static void update_channels_path(channel_t *ch,int n,const coord_t *u,
+                                 const double uvel[3],const coord_t *u_next,
+                                 const double uvel_next[3],double gain,
+                                 double target_cn0,int step_ms)
+{
     double dt = step_ms * 0.001; /* seconds */
 
     for(int i=0;i<n;++i){
@@ -122,29 +120,26 @@ static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
         double el = enu_elevation_deg(enu);
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
+        double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
         update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
         if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
 
-        /* predict next dynamics for linear interpolation */
-        double u_next[3]={u->xyz[0]+uv[0]*dt,
-                          u->xyz[1]+uv[1]*dt,
-                          u->xyz[2]+uv[2]*dt};
-        double sat2[3], vel2[3];
+        /* predict next dynamics using next position/velocity */
         double t_abs = u->week*604800.0 + u->sow + dt;
         int week2 = (int)(t_abs/604800.0);
         double sow2 = t_abs - week2*604800.0;
+        double sat2[3], vel2[3];
         calc_sat_position_velocity(prn,week2,sow2,sat2,vel2);
-        double dx2=sat2[0]-u_next[0], dy2=sat2[1]-u_next[1], dz2=sat2[2]-u_next[2];
+        double dx2=sat2[0]-u_next->xyz[0], dy2=sat2[1]-u_next->xyz[1], dz2=sat2[2]-u_next->xyz[2];
         double rho2=hypot(hypot(dx2,dy2),dz2);
-        double rdot2=(dx2*(vel2[0]-uv[0]) + dy2*(vel2[1]-uv[1]) + dz2*(vel2[2]-uv[2]))/rho2;
-        coord_t u2={0};
-        xyz2llh(u_next,&u2);
-        double enu2[3]; ecef2enu(&u2,sat2,enu2);
+        double rdot2=(dx2*(vel2[0]-uvel_next[0]) +
+                      dy2*(vel2[1]-uvel_next[1]) +
+                      dz2*(vel2[2]-uvel_next[2]))/rho2;
+        double enu2[3]; ecef2enu(u_next,sat2,enu2);
         double el2 = enu_elevation_deg(enu2);
         double fd2 = -FCARRIER*rdot2/299792458.0;
         double cr2 = CHIPRATE*(1.0 - rdot2/299792458.0);
-        double A2 = predict_next_amp(&ch[i], el2, gain, target_cn0, n, step_ms);
+        double A2 = predict_next_amp(&ch[i], rho2, el2, gain, target_cn0, n, step_ms);
         if(el2 < 5.0) A2 = 0.0;
         ch[i].fd_dot = (fd2 - ch[i].fd) / dt;
         ch[i].code_rate_dot = (cr2 - ch[i].code_rate) / dt;
@@ -223,44 +218,56 @@ void generate_signal(const sim_config_t *cfg)
         int week = (int)(t_abs/604800.0);
         double sow = t_abs - week*604800.0;
 
-        double uvel[3];
+        double dt = STEP_MS * 0.001;
+        double uvel[3], uvel_next[3];
+        coord_t usr_next={0};
         if(cfg->path_type==0){
             static_user_at(week,sow,&ref_usr,&usr,uvel);
+            static_user_at(week,sow+dt,&ref_usr,&usr_next,NULL);
+            uvel_next[0]=uvel[0]; uvel_next[1]=uvel[1]; uvel_next[2]=uvel[2];
+            update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
+                                 cfg->gain,g_target_cn0,STEP_MS);
         } else if(cfg->path_type==1){
-            coord_t prev=usr;
-            interpolate_path(&path, ms/1000.0, &usr);
-            xyz2llh(usr.xyz,&usr);
-            usr.week=week; usr.sow=sow;
-            double dt=STEP_MS*0.001;
-            uvel[0]=(usr.xyz[0]-prev.xyz[0])/dt;
-            uvel[1]=(usr.xyz[1]-prev.xyz[1])/dt;
-            uvel[2]=(usr.xyz[2]-prev.xyz[2])/dt;
+            coord_t u0,u1,u2;
+            interpolate_path(&path, ms/1000.0, &u0);
+            interpolate_path(&path, (ms+STEP_MS)/1000.0, &u1);
+            interpolate_path(&path, (ms+2*STEP_MS)/1000.0, &u2);
+            xyz2llh(u0.xyz,&usr); usr.week=week; usr.sow=sow;
+            xyz2llh(u1.xyz,&usr_next);
+            xyz2llh(u2.xyz,&u2);
+            uvel[0]=(u1.xyz[0]-u0.xyz[0])/dt;
+            uvel[1]=(u1.xyz[1]-u0.xyz[1])/dt;
+            uvel[2]=(u1.xyz[2]-u0.xyz[2])/dt;
+            uvel_next[0]=(u2.xyz[0]-u1.xyz[0])/dt;
+            uvel_next[1]=(u2.xyz[1]-u1.xyz[1])/dt;
+            uvel_next[2]=(u2.xyz[2]-u1.xyz[2])/dt;
+            update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
+                                 cfg->gain,g_target_cn0,STEP_MS);
         } else {
-            coord_t prev=usr;
-            double llh[3];
-            interpolate_path_llh(&path, ms/1000.0, llh);
-            coord_t ref={0};
-            ref.llh[0]=llh[0]; ref.llh[1]=llh[1]; ref.llh[2]=llh[2];
-            static_user_at(week,sow,&ref,&usr,NULL);
-            double dt=STEP_MS*0.001;
-            uvel[0]=(usr.xyz[0]-prev.xyz[0])/dt;
-            uvel[1]=(usr.xyz[1]-prev.xyz[1])/dt;
-            uvel[2]=(usr.xyz[2]-prev.xyz[2])/dt;
+            double llh0[3], llh1[3], llh2[3];
+            interpolate_path_llh(&path, ms/1000.0, llh0);
+            interpolate_path_llh(&path, (ms+STEP_MS)/1000.0, llh1);
+            interpolate_path_llh(&path, (ms+2*STEP_MS)/1000.0, llh2);
+            coord_t ref0={0}, ref1={0}, ref2={0};
+            ref0.llh[0]=llh0[0]; ref0.llh[1]=llh0[1]; ref0.llh[2]=llh0[2];
+            ref1.llh[0]=llh1[0]; ref1.llh[1]=llh1[1]; ref1.llh[2]=llh1[2];
+            ref2.llh[0]=llh2[0]; ref2.llh[1]=llh2[1]; ref2.llh[2]=llh2[2];
+            static_user_at(week,sow,&ref0,&usr,NULL);
+            static_user_at(week,sow+dt,&ref1,&usr_next,NULL);
+            coord_t usr2; static_user_at(week,sow+2*dt,&ref2,&usr2,NULL);
+            uvel[0]=(usr_next.xyz[0]-usr.xyz[0])/dt;
+            uvel[1]=(usr_next.xyz[1]-usr.xyz[1])/dt;
+            uvel[2]=(usr_next.xyz[2]-usr.xyz[2])/dt;
+            uvel_next[0]=(usr2.xyz[0]-usr_next.xyz[0])/dt;
+            uvel_next[1]=(usr2.xyz[1]-usr_next.xyz[1])/dt;
+            uvel_next[2]=(usr2.xyz[2]-usr_next.xyz[2])/dt;
+            update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
+                                 cfg->gain,g_target_cn0,STEP_MS);
         }
-
-        update_channels_fixed(ch,n_ch,&usr,uvel,
-                              cfg->gain,g_target_cn0,STEP_MS);
         if(ms==0){
             for(int i=0;i<n_ch;++i){
                 double rdot = -ch[i].fd*299792458.0/FCARRIER;
                 printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
-            }
-        }
-        if (cfg->path_type != 0) {
-            for (int i = 0; i < n_ch; ++i) {
-                ch[i].fd = 0.0;
-                ch[i].fd_dot = 0.0;
-                ch[i].carr_phase = 0.0;
             }
         }
 

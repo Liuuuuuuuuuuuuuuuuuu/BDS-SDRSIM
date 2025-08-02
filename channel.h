@@ -43,8 +43,8 @@ void gen_samples_1ms_d2(channel_t *, int week, double sow,
 int  is_d2_prn(int prn);
 int  is_igso_prn(int prn);
 int  is_meo_prn(int prn);
-double predict_next_amp(const channel_t *c,double elev_deg_next,double gain,
-                        double target_cn0,int n_visible,double dt_ms);
+double predict_next_amp(const channel_t *c,double rho_next,double elev_deg_next,
+                        double gain,double target_cn0,int n_visible,double dt_ms);
 
 /* Global target CN0 (dB-Hz) */
 extern double g_target_cn0;
