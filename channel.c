@@ -103,10 +103,9 @@ static inline double orbit_gain_amp(int prn)
     return pow(10.0, dB/20.0);
 }
 
-/* 指數平滑振幅，避免 AM 旁帶 */
+/* 以呼叫間隔 Δt_s 計算的指數平滑：alpha = 1 - exp(-Δt/τ) */
 static inline double smooth_amp_dt(double A_prev, double A_new, double dt_s)
 {
-    /* alpha = 1 - exp(-Δt/τ) */
     double alpha = 1.0 - exp(-dt_s / (AMP_SMOOTH_TC_MS * 1e-3));
     return A_prev + alpha * (A_new - A_prev);
 }
@@ -187,12 +186,12 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg
     double s = sin(elev_deg * (M_PI/180.0));
     if (s < 0.0) s = 0.0;
     double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
-    c->amp = smooth_amp_dt(c->amp, A_new, 0.1);  /* 10 Hz */
+    c->amp = smooth_amp_dt(c->amp, A_new, 0.1);  /* 10 Hz 呼叫 → Δt = 0.1 s */
     c->elev_deg = elev_deg;
     /* Instantaneous Doppler and code rate */
     c->fd        = -FCARRIER*rdot/299792458.0;         /* Doppler (Hz) */
     c->code_rate = CHIPRATE*(1.0 - rdot/299792458.0);  /* Code rate (Hz) */
-    /* Initialize instantaneous state used by 10 Hz interpolation */
+    /* 初始化 10 Hz 內插狀態（若採 10 Hz 模式，之後由 update_channel_dynamics_10hz 覆寫） */
     c->f_inst = c->fd;
     c->fdot   = 0.0;
     c->R_inst = c->code_rate;
@@ -227,7 +226,7 @@ void update_channel_dynamics_10hz(channel_t *c, int week, double sow,
     double base = amp_from_cn0(target_cn0, n_visible);
     double s = sin(el0 * (M_PI/180.0)); if (s < 0.0) s = 0.0;
     double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
-    c->amp = smooth_amp_dt(c->amp, A_new, 0.1);  /* 10 Hz */
+    c->amp = smooth_amp_dt(c->amp, A_new, 0.1);  /* 10 Hz 呼叫 → Δt = 0.1 s */
     c->elev_deg = el0;
 
     /* 3) 設定 10 Hz 內插用的即時量與斜率 */
@@ -243,7 +242,9 @@ void update_channel_dynamics_10hz(channel_t *c, int week, double sow,
     c->fd        = fd0;
     c->code_rate = R0;
 #ifdef DEBUG_DUMP_PHASE
-    if (fabs(fmod(sow, 1.0)) < 1e-6) {
+    /* 每整秒 dump 一次：各通道應有不同的 fd 與 phase */
+    double sow_int;
+    if (modf(sow, &sow_int) == 0.0) {
         fprintf(stderr,
                 "[dbg] PRN%02d fd=%.1fHz R=%.1f cps phase=%.3frad\n",
                 c->prn, c->f_inst, c->R_inst, c->carr_phase);
@@ -329,7 +330,7 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
 
-        /* 只用連續內插 */
+        /* NCO：只用連續內插 */
         f_inst += c->fdot * dt;
         phase  += (float)(PI2 * f_inst * dt);
         if(phase>=PI2)      phase-=PI2;
