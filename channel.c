@@ -235,11 +235,11 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
 
-        phase += PI2*fd/fs;
+        phase += PI2*(fd + 0.5*dfd)/fs;
         fd += dfd;
         if(phase>=PI2)      phase-=PI2;
         else if(phase<0.0)  phase+=PI2;
-        code_phase += code_rate/fs;
+        code_phase += (code_rate + 0.5*dcode_rate)/fs;
         code_rate += dcode_rate;
         amp += damp;
         if(code_phase>=CODE_LEN){
@@ -291,11 +291,11 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
 
-        phase += PI2*fd/fs;
+        phase += PI2*(fd + 0.5*dfd)/fs;
         fd += dfd;
         if(phase>=PI2)      phase-=PI2;
         else if(phase<0.0)  phase+=PI2;
-        code_phase += code_rate/fs;
+        code_phase += (code_rate + 0.5*dcode_rate)/fs;
         code_rate += dcode_rate;
         amp += damp;
         if(code_phase>=CODE_LEN){
