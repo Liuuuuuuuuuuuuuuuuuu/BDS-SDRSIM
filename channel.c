@@ -82,7 +82,8 @@ int is_d2_prn(int prn)
 /* ---- gps-sdr-sim 風格的振幅模型 ---- */
 static inline double amp_from_cn0(double cn0_dBHz, int n_visible)
 {
-    double base = pow(10.0, (cn0_dBHz - 45.0) / 20.0);
+    /* 以 gps-sdr-sim 作法：45 dB-Hz 為名目，轉線性後放大到 int16 尺度（~16384） */
+    double base = pow(10.0, (cn0_dBHz - 45.0) / 20.0) * 16384.0;
     if (n_visible < 1) n_visible = 1;
     return (base / sqrt((double)n_visible)) * HEADROOM_RATIO;
 }
@@ -95,7 +96,10 @@ static inline double orbit_gain_amp(int prn)
 /* 指數平滑振幅，避免 AM 旁帶 */
 static inline double smooth_amp(double A_prev, double A_new)
 {
-    double alpha = 1.0 - exp(-1.0 / (AMP_SMOOTH_TC_MS * 1e-3 * fs));
+    /* Called every 1 ms, so dt = 1 ms; use time constant in milliseconds */
+    double alpha = 1.0 - exp(-1.0 / AMP_SMOOTH_TC_MS);
+    if (A_prev == 0.0)
+        return A_new;                  /* avoid long ramp at start */
     return A_prev + alpha * (A_new - A_prev);
 }
 

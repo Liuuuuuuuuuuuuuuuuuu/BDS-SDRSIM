@@ -268,25 +268,22 @@ void generate_signal(const sim_config_t *cfg)
             /* 限幅並打包成 I/Q */
             int16_t iq[2*samp_per_ms];
             int8_t  i8[samp_per_ms];            /* byte output holds I only */
-            double  scale = 1.0/32768.0;
             for(int k=0;k<samp_per_ms;++k){
                 int32_t i=accI[k];
                 int32_t q=accQ[k];
-                double fi = i*scale;
-                double fq = q*scale;
-                if(fi>1.0)fi=1.0; else if(fi<-1.0)fi=-1.0;
-                if(fq>1.0)fq=1.0; else if(fq<-1.0)fq=-1.0;
                 if(fp){
-                    if (fi>=0.999969 || fi<=-0.999969 || fq>=0.999969 || fq<=-0.999969) clip_cnt++;
-                    tot_cnt++;
-                    iq[2*k]   = saturate_int16(fi*32767.0);
-                    iq[2*k+1] = saturate_int16(fq*32767.0);
+                    if(i>32760 || i<-32760) clip_cnt++;
+                    if(q>32760 || q<-32760) clip_cnt++;
+                    tot_cnt += 2;
+                    iq[2*k]   = saturate_int16((double)i);
+                    iq[2*k+1] = saturate_int16((double)q);
                     sumI  += iq[2*k];
                     sumQ  += iq[2*k+1];
                     sumI2 += (double)iq[2*k]*iq[2*k];
                     sumQ2 += (double)iq[2*k+1]*iq[2*k+1];
                 } else {
-                    i8[k] = (int8_t)lrint(fi*127.0);
+                    if (i>127) i=127; else if (i<-128) i=-128;
+                    i8[k] = (int8_t)i;
                     sumI  += i8[k];
                     sumI2 += (double)i8[k]*i8[k];
                 }
