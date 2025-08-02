@@ -31,7 +31,10 @@ static double antenna_gain(double elev_deg)
 {
     int idx=(int)((90.0-elev_deg)/5.0);
     if(idx<0) idx=0; else if(idx>36) idx=36;
-    return ant_pat[idx];
+    /* 建議先把接收端天線圖改成「最多 -6 dB」的溫和版本做驗證 */
+    double g = ant_pat[idx];
+    if (g < pow(10.0,-6.0/20.0)) g = pow(10.0,-6.0/20.0);
+    return g;
 }
 
 /* simple multipath loss model: -3 dB below 15° elevation */
@@ -129,7 +132,8 @@ double calc_amp(int prn,double rho,double gain,double target_cn0)
     double cn0_dbhz  = p_dbm - DBM_REF + 10.0*log10(fs);
     double diff_db   = target_cn0 - cn0_dbhz;
     double a         = pow(10.0,diff_db/20.0) * 16384.0 * HEADROOM_RATIO;
-    if (a > 32760.0) a = 32760.0;   /* clip upper bound */
+    /* 單星硬帽：確保單星 cos/sin 相乘後仍不會觸頂 */
+    if (a > 20000.0) a = 20000.0;
     if (a < 1.0)     a = 1.0;       /* clip lower bound */
     return gain * a;
 }
@@ -165,7 +169,10 @@ void channel_set_time(channel_t *c,int week,double sow)
     c->ms_count = ms%20;
     get_subframe_bits(c->prn,c->sf_id,week,sf_start,6.0,c->nav_bits);
     if(ms == 0){
-        c->code_phase = 0.0; /* PRN 2046 chip 從頭開始 */
+        /* 在子幀邊界，強制對齊三個時序：PRN、NH20、NAV */
+        c->code_phase = 0.0;     /* 1 ms PRN 2046 chips 從頭開始 */
+        c->ms_count   = 0;       /* NH20 index 從 0 開始 */
+        c->bit_ptr    = 0;       /* 50 bps NAV bit 從 0 開始 */
     }
 
     double sf_start_d2 = floor(sow/0.6)*0.6;      /* 每 0.6 s 一個子帧 */
