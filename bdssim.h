@@ -52,8 +52,7 @@ typedef struct {
     uint32_t step_ms;          /* 幾何更新粒度 (ms) */
     double   gain;             /* 輸出增益 */
     double   target_cn0;       /* 目標 CN0 (dB-Hz) */
-    double   noise_std;        /* AWGN 標準差 (0 表示無) */
-    unsigned noise_seed;       /* AWGN 亂數種子 */
+    unsigned seed;             /* RNG seed */
     bool     byte_output;      /* 以 8-bit 檔輸出 */
     bool     geo_first;        /* 優先可見 GEO 衛星 */
     bool     no_geo;           /* 排除 GEO 衛星 */

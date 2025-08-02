@@ -21,9 +21,8 @@ static void usage(const char *p)
     puts("  --nmea file          NMEA 路徑檔");
     puts("  --duration sec       模擬秒數 (1-3600)");
     puts("  --gain amp           輸出增益 (>0)");
-    puts("  --noise stddev       加入 AWGN 雜訊標準差");
     puts("  -cn0 value          目標 CN0 (dB-Hz)");
-    puts("  --seed n            雜訊亂數種子 (整數)");
+    puts("  --seed n            亂數種子 (整數)");
     puts("  --byte               輸出 I-only 之 8-bit 檔");
     puts("  --geo-first          優先可見 GEO 衛星");
     puts("  --no-geo            排除 GEO 衛星");
@@ -39,8 +38,7 @@ int main(int argc,char *argv[])
     cfg.target_cn0  = 45.0;            /* dB-Hz */
     cfg.step_ms     = 1;
     cfg.duration    = 300;                /* 預設 300 秒 */
-    cfg.noise_std   = 0.0;
-    cfg.noise_seed  = 1;
+    cfg.seed        = 1;
     cfg.byte_output = false;
     cfg.geo_first  = false;
     cfg.no_geo     = false;
@@ -73,7 +71,6 @@ int main(int argc,char *argv[])
         {"nmea",     required_argument, 0, 'n'},
         {"duration", required_argument, 0, 'd'},
         {"gain",     required_argument, 0, 'g'},
-        {"noise",    required_argument, 0, 'z'},
         {"seed",     required_argument, 0, 'R'},
         {"byte",     no_argument,       0, 'b'},
         {"geo-first",no_argument,       0, 'G'},
@@ -84,7 +81,7 @@ int main(int argc,char *argv[])
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:z:R:hbGOp:", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:R:hbGOp:", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -126,15 +123,8 @@ int main(int argc,char *argv[])
                 return 1;
             }
             break;
-        case 'z':
-            cfg.noise_std = atof(optarg);
-            if(cfg.noise_std < 0.0){
-                fprintf(stderr, "--noise 需 >=0\n");
-                return 1;
-            }
-            break;
         case 'R':
-            cfg.noise_seed = (unsigned)strtoul(optarg,NULL,0);
+            cfg.seed = (unsigned)strtoul(optarg,NULL,0);
             break;
         case 'b':
             cfg.byte_output = true;

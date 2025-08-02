@@ -5,7 +5,7 @@ experiments.  Navigation data is read from a RINEX navigation file and
 converted into the binary subframe format required by receivers.
 
 ## Project Summary
-BDS-SDRSIM converts RINEX ephemeris into BeiDou B1I navigation frames and outputs complex baseband samples for software-defined radios. It supports both D1 and D2 messages, static or dynamic user motion and configurable power with optional AWGN. See `docs/frame_layout.md` for an overview of the D1/D2 structure.
+BDS-SDRSIM converts RINEX ephemeris into BeiDou B1I navigation frames and outputs complex baseband samples for software-defined radios. It supports both D1 and D2 messages, static or dynamic user motion and configurable power. See `docs/frame_layout.md` for an overview of the D1/D2 structure.
 
 
 ## System Overview
@@ -126,10 +126,7 @@ range.  The computed power is further adjusted toward the target
 C/N₀ value (45 dB‑Hz by default) so that adding more channels does not
 reduce signal strength excessively.
 
-`--noise` adds complex AWGN with the given standard deviation (in 16‑bit
-sample units).  The default is `0` (no noise).
-`--seed` specifies the random seed for both noise generation and the
-initial carrier phase of each channel. The default is `1`.
+`--seed` specifies the random seed for the initial carrier phase of each channel. The default is `1`.
 
 `--byte`  saves an 8‑bit file containing only the I samples.
 
