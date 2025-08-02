@@ -205,8 +205,8 @@ void generate_signal(const sim_config_t *cfg)
             uvel[1]=(cur_eci[1]-prev_eci[1])/dt;
             uvel[2]=(cur_eci[2]-prev_eci[2])/dt;
         }
-
-        /* 移除每 ms 幾何更新；僅由 10 Hz 區塊維護幾何與振幅 */
+        /* 不在毫秒級更新幾何；改由下面 10 Hz 區塊統一維護 f_inst/R_inst/amp */
+        /* （保留此處空白，避免覆寫 10 Hz 狀態） */
         /* 10 Hz 幾何更新：每 100 ms 一次 */
         if ((ms % 100) == 0) {
             double usr_vel_eci[3];
