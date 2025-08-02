@@ -20,8 +20,8 @@ int main(void){
     channel_t c3, c8;
     channel_reset(&c3, 3, nav_week, 0.0);
     channel_reset(&c8, 8, nav_week, 0.0);
-    channel_set_fs(5.12e6);
-    int samp_per_ms = (int)(5.12e6/1000.0 + 0.5);
+    channel_set_fs(FS_OUTPUT_HZ);
+    int samp_per_ms = (int)(FS_OUTPUT_HZ/1000.0 + 0.5);
     int16_t I[samp_per_ms], Q[samp_per_ms];
 
     for(int i=0;i<10;i++){
