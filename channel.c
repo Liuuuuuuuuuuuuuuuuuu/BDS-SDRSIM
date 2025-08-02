@@ -112,7 +112,7 @@ static inline double smooth_amp_dt(double A_prev, double A_new, double dt_s)
 
 /* ---------- CA cache ---------- */
 static int16_t ca_wave[64][CODE_LEN];
-static int     ca_ready=0;
+static volatile int ca_ready=0;   /* 多執行緒保險 */
 
 /* BeiDou D1 Neumann-Hoffman 20-bit code (0=+1, 1=-1) */
 static const uint8_t nh20_bits[20]={
@@ -123,11 +123,11 @@ static const uint8_t nh20_bits[20]={
 /* ---------- Channel helpers ---------- */
 static void load_ca_once(void)
 {
-    if(ca_ready) return;
+    if(__atomic_load_n(&ca_ready, __ATOMIC_ACQUIRE)) return;
     for(int p=1;p<=63;++p)
         for(int i=0;i<CODE_LEN;++i)
             ca_wave[p][i] = prn_code[p][i]?+1:-1;
-    ca_ready = 1;
+    __atomic_store_n(&ca_ready, 1, __ATOMIC_RELEASE);
 }
 
 void channel_set_time(channel_t *c,int week,double sow)
@@ -170,8 +170,7 @@ void channel_reset(channel_t *c,int prn,int week,double sow){
     c->prn   = prn;
     load_ca_once();
 
-    /* Randomise starting carrier and code phase so I/Q averages
-       are well balanced even for short captures. */
+    /* 每通道給不同初相位，避免共相位假象與短檔案平均值偏移 */
     c->carr_phase = ((double)rand()/(double)RAND_MAX)*PI2;
     c->code_phase = ((double)rand()/(double)RAND_MAX)*CODE_LEN;
 
@@ -257,17 +256,19 @@ void channel_set_fs(double sample_rate)
 }
 
 /* ---------- 產生 1 ms ---------- */
-void gen_samples_1ms(channel_t *c,int week,double sow,
-                     int samp_per_ms,int16_t*I,int16_t*Q)
+void gen_samples_1ms(channel_t *c, int week, double sow,
+                     int samp_per_ms,
+                     int16_t *__restrict I,
+                     int16_t *__restrict Q)
 {
     if(c->bit_ptr==0 && c->ms_count==0)
         get_subframe_bits(c->prn,c->sf_id,week,sow,6.0,c->nav_bits);
 
     const double dt = 1.0/fs;
-    double code_phase = c->code_phase;
-    double phase = c->carr_phase;
-    double f_inst = c->f_inst;   /* Hz */
-    double R_inst = c->R_inst;   /* chips/s */
+    double code_phase = c->code_phase;   /* chips */
+    double phase      = c->carr_phase;   /* rad   */
+    double f_inst     = c->f_inst;       /* Hz    */
+    double R_inst     = c->R_inst;       /* chips/s */
 
     for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;            /* 0..2045 */
@@ -280,12 +281,14 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
         Q[n]=(int16_t)lrintf(s*si);
         /* NCO：只用連續內插（10 Hz 幾何推進） */
         f_inst += c->fdot * dt;
-        phase  += (float)(PI2 * f_inst * dt);
-        if(phase>=PI2)      phase-=PI2;
-        else if(phase<0.0)  phase+=PI2;
+        phase  += (double)(PI2 * f_inst * dt);
+        /* 嚴格相位包絡，避免極端數值累積 */
+        if (phase >= PI2)       phase -= PI2;
+        else if (phase < 0.0)   phase += PI2;
         R_inst += c->Rdot * dt;
         code_phase += R_inst * dt;
-        if(code_phase>=CODE_LEN){
+        /* code 包絡：保守處理負向（理論上不會 <0，但加保險） */
+        if (code_phase >= CODE_LEN){
             code_phase-=CODE_LEN;
             if(++c->ms_count==20){
                 c->ms_count=0;
@@ -294,6 +297,8 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
                     c->sf_id=c->sf_id%5+1;
                 }
             }
+        } else if (code_phase < 0.0) {
+            code_phase += CODE_LEN;
         }
     }
     c->carr_phase = phase;
@@ -308,7 +313,9 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
  *  - 不使用二次 Neumann-Hoffman 編碼
  */
 void gen_samples_1ms_d2(channel_t *c, int week, double sow,
-                               int samp_per_ms, int16_t *I, int16_t *Q)
+                        int samp_per_ms,
+                        int16_t *__restrict I,
+                        int16_t *__restrict Q)
 {
     if(c->bit_ptr_d2==0 && c->ms_count_d2==0){
         double mf_start_d2 = floor(sow/3.0)*3.0;
@@ -317,9 +324,9 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
 
     const double dt = 1.0/fs;
     double code_phase = c->code_phase;
-    double phase = c->carr_phase;
-    double f_inst = c->f_inst;
-    double R_inst = c->R_inst;
+    double phase      = c->carr_phase;
+    double f_inst     = c->f_inst;
+    double R_inst     = c->R_inst;
 
     for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;
@@ -337,8 +344,10 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
         else if(phase<0.0)  phase+=PI2;
         R_inst += c->Rdot * dt;
         code_phase += R_inst * dt;
-        if(code_phase>=CODE_LEN){
+        if (code_phase >= CODE_LEN){
             code_phase-=CODE_LEN;
+        } else if (code_phase < 0.0) {
+            code_phase += CODE_LEN;
         }
     }
     c->carr_phase = phase;

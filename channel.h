@@ -42,9 +42,13 @@ void update_channel_dynamics_10hz(channel_t *, int week, double sow,
                                   double gain, double target_cn0, int n_visible);
 void channel_set_fs(double sample_rate);
 void gen_samples_1ms(channel_t *, int week, double sow,
-                     int samp_per_ms, int16_t *I, int16_t *Q);
+                     int samp_per_ms,
+                     int16_t *__restrict I,
+                     int16_t *__restrict Q);
 void gen_samples_1ms_d2(channel_t *, int week, double sow,
-                        int samp_per_ms, int16_t *I, int16_t *Q);
+                        int samp_per_ms,
+                        int16_t *__restrict I,
+                        int16_t *__restrict Q);
 int  is_d2_prn(int prn);
 int  is_igso_prn(int prn);
 int  is_meo_prn(int prn);

@@ -215,21 +215,47 @@ void generate_signal(const sim_config_t *cfg)
                 update_channel_dynamics_10hz(&ch[i], week, sow,
                                              usr.xyz, usr_vel_eci,
                                              cfg->gain, g_target_cn0, n_ch);
+#if defined(VERIFY_UNIQUE_CARRIER)
                 if(ms == 0){
                     double rdot = -ch[i].fd * (299792458.0/1561.098e6);
                     printf("[ch%02d] rdot %.2f fd %.2fHz\n",
                            ch[i].prn, rdot, ch[i].fd);
                 }
+#endif
+            }
+#if defined(VERIFY_UNIQUE_CARRIER)
+            /* 檢查是否全部通道 fd 幾乎相同（表示共用或更新錯誤） */
+            if (n_ch >= 2) {
+                double ref = ch[0].fd;
+                int same = 1;
+                for (int i = 1; i < n_ch; ++i)
+                    if (fabs(ch[i].fd - ref) > 0.5) { same = 0; break; }
+                if (same) {
+                    fprintf(stderr,
+                        "[warn] All channels have ~identical Doppler at sow=%.3f; "
+                        "check per-channel geometry/NCO.\n", sow);
+                }
+            }
+#endif
+        }
+#if defined(VERIFY_UNIQUE_CARRIER)
+        if (((uint64_t)(sow*1000)) % 1000 == 0) {
+            for (int i = 0; i < n_ch; ++i) {
+                fprintf(stderr, "[sec] PRN%02d fd=%.2f phase=%.3f\n",
+                        ch[i].prn, ch[i].f_inst, ch[i].carr_phase);
             }
         }
+#endif
 
         /* --- STEP_MS 次 1ms 取樣 --- */
         for(int step=0;step<STEP_MS;++step){
             memset(accI,0,sizeof(accI)); memset(accQ,0,sizeof(accQ));
 
-            /* 併行各通道 */
-            #pragma omp parallel for
-            for(int c=0;c<n_ch;++c){
+            /* 併行各通道（顯式列出 shared/private，避免隱式共享） */
+            #pragma omp parallel for schedule(static) default(none) \
+                shared(ch,week,sow,step,samp_per_ms,tmpI,tmpQ,n_ch) \
+                firstprivate(cfg)
+            for (int c = 0; c < n_ch; ++c) {
                 bool use_d2 = is_d2_prn(ch[c].prn);
                 if(use_d2)
                     gen_samples_1ms_d2(&ch[c],week,sow+step*0.001,
