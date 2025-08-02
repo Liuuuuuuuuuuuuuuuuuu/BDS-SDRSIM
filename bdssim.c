@@ -163,6 +163,7 @@ void generate_signal(const sim_config_t *cfg)
     double sumI=0.0,sumQ=0.0,sumI2=0.0,sumQ2=0.0;
     uint64_t samp_cnt=0;
     static uint64_t clip_cnt = 0, tot_cnt = 0;
+    uint64_t ms_counter = 0;  /* for 1 ms pacing stats */
 
     const int STEP_MS = cfg->step_ms;
     const uint64_t total_ms=(uint64_t)cfg->duration*1000;
@@ -273,8 +274,9 @@ void generate_signal(const sim_config_t *cfg)
                 fwrite(iq,sizeof(int16_t),2*samp_per_ms,fp);
             else
                 fwrite(i8,sizeof(int8_t),samp_per_ms,fp8);
-            /* 每秒印一次 clipping 比例 */
-            if (((int)(step+1))%1000==0 && fp){
+            /* 每秒印一次 clipping 比例（以 1 ms 計數） */
+            ms_counter++;
+            if (fp && (ms_counter % 1000ULL)==0) {
                 fprintf(stderr,"[stat] clip=%.5f%%\n", 100.0*(double)clip_cnt/(double)tot_cnt);
                 clip_cnt=tot_cnt=0;
             }

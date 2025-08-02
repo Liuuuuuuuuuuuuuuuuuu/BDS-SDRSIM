@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 #include "channel.h"
 #include "globals.h"               /* prn_code */
@@ -241,6 +242,13 @@ void update_channel_dynamics_10hz(channel_t *c, int week, double sow,
     /* 保留顯示用值 */
     c->fd        = fd0;
     c->code_rate = R0;
+#ifdef DEBUG_DUMP_PHASE
+    if (fabs(fmod(sow, 1.0)) < 1e-6) {
+        fprintf(stderr,
+                "[dbg] PRN%02d fd=%.1fHz R=%.1f cps phase=%.3frad\n",
+                c->prn, c->f_inst, c->R_inst, c->carr_phase);
+    }
+#endif
 }
 void channel_set_fs(double sample_rate)
 {
