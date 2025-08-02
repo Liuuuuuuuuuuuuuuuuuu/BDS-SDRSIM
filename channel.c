@@ -5,6 +5,8 @@
 #include <math.h>
 #include "channel.h"
 #include "globals.h"               /* prn_code */
+#include "coord.h"
+#include "orbits.h"
 
 #define PI2        6.2831853071795864769
 #define FCARRIER   1561.098e6      /* B1I */
@@ -188,10 +190,59 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg
     double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
     c->amp = smooth_amp(c->amp, A_new);
     c->elev_deg = elev_deg;
-    c->fd  = -FCARRIER*rdot/299792458.0;               /* Doppler (Hz) */
+    c->fd        = -FCARRIER*rdot/299792458.0;         /* Doppler (Hz) */
     c->code_rate = CHIPRATE*(1.0 - rdot/299792458.0);  /* Code frequency (Hz) */
+    /* Initialize instantaneous state used by 10 Hz interpolation */
+    c->f_inst = c->fd;
+    c->fdot   = 0.0;
+    c->R_inst = c->code_rate;
+    c->Rdot   = 0.0;
 }
 
+/* 每 100 ms 呼叫一次：以 t 與 t+0.1s 的幾何，更新 f_inst/R_inst 與斜率 */
+void update_channel_dynamics_10hz(channel_t *c, int week, double sow,
+                                  const double usr_xyz[3], const double usr_vel_eci[3],
+                                  double gain, double target_cn0, int n_visible)
+{
+    /* 1) 計算此刻與 +0.1s 的衛星位置/速度與 elev、rdot */
+    double sat0[3], vel0[3], enu0[3];
+    calc_sat_position_velocity(c->prn, week, sow, sat0, vel0);
+    coord_t u0={0}; memcpy(u0.xyz, usr_xyz, sizeof(u0.xyz));
+    /* 與通道無關的 LLH 可略過，僅為仰角計算 */
+    ecef2enu(&u0, sat0, enu0);
+    double el0 = enu_elevation_deg(enu0);
+    double dx0=sat0[0]-usr_xyz[0], dy0=sat0[1]-usr_xyz[1], dz0=sat0[2]-usr_xyz[2];
+    double rho0=hypot(hypot(dx0,dy0),dz0);
+    double rdot0=(dx0*(vel0[0]-usr_vel_eci[0]) + dy0*(vel0[1]-usr_vel_eci[1]) + dz0*(vel0[2]-usr_vel_eci[2]))/rho0;
+
+    double sow1 = sow + 0.1; int week1 = week;
+    if (sow1 >= 604800.0) { sow1 -= 604800.0; week1++; }
+    double sat1[3], vel1[3];
+    calc_sat_position_velocity(c->prn, week1, sow1, sat1, vel1);
+    double dx1=sat1[0]-usr_xyz[0], dy1=sat1[1]-usr_xyz[1], dz1=sat1[2]-usr_xyz[2];
+    double rho1=hypot(hypot(dx1,dy1),dz1);
+    double rdot1=(dx1*(vel1[0]-usr_vel_eci[0]) + dy1*(vel1[1]-usr_vel_eci[1]) + dz1*(vel1[2]-usr_vel_eci[2]))/rho1;
+
+    /* 2) 幅度（平滑）：沿用原本的模型 */
+    double base = amp_from_cn0(target_cn0, n_visible);
+    double s = sin(el0 * (M_PI/180.0)); if (s < 0.0) s = 0.0;
+    double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
+    c->amp = smooth_amp(c->amp, A_new);
+    c->elev_deg = el0;
+
+    /* 3) 設定 10 Hz 內插用的即時量與斜率 */
+    double fd0 = -FCARRIER*rdot0/299792458.0;
+    double fd1 = -FCARRIER*rdot1/299792458.0;
+    c->f_inst = fd0;
+    c->fdot   = (fd1 - fd0) / 0.1;          /* Hz/s */
+    double R0 = CHIPRATE * (1.0 - rdot0/299792458.0);
+    double R1 = CHIPRATE * (1.0 - rdot1/299792458.0);
+    c->R_inst = R0;
+    c->Rdot   = (R1 - R0) / 0.1;            /* chips/s^2 */
+    /* 保留顯示用值 */
+    c->fd        = fd0;
+    c->code_rate = R0;
+}
 void channel_set_fs(double sample_rate)
 {
     fs = sample_rate;
@@ -204,11 +255,11 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
     if(c->bit_ptr==0 && c->ms_count==0)
         get_subframe_bits(c->prn,c->sf_id,week,sow,6.0,c->nav_bits);
 
-    /* Baseband output – only apply Doppler frequency */
-    const double dphi = PI2*c->fd/fs;
-    const double dcode = c->code_rate/fs;     /* chips per sample */
+    const double dt = 1.0/fs;
     double code_phase = c->code_phase;
     double phase = c->carr_phase;
+    double f_inst = c->f_inst;   /* Hz */
+    double R_inst = c->R_inst;   /* chips/s */
 
     for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;            /* 0..2045 */
@@ -220,11 +271,13 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
 
-        /* NCO */
-        phase += dphi;
+        /* NCO：連續內插 */
+        f_inst += c->fdot * dt;
+        phase  += (float)(PI2 * f_inst * dt);
         if(phase>=PI2)      phase-=PI2;
         else if(phase<0.0)  phase+=PI2;
-        code_phase += dcode;
+        R_inst += c->Rdot * dt;
+        code_phase += R_inst * dt;
         if(code_phase>=CODE_LEN){
             code_phase-=CODE_LEN;
             if(++c->ms_count==20){
@@ -238,6 +291,8 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
     }
     c->carr_phase = phase;
     c->code_phase = code_phase;
+    c->f_inst     = f_inst;
+    c->R_inst     = R_inst;
 }
 
 /*
@@ -253,10 +308,11 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
         get_subframe_bits(c->prn,c->sf_id_d2,week,mf_start_d2,3.0,c->nav_bits_d2);
     }
 
-    const double dphi = PI2*c->fd/fs;
-    const double dcode = c->code_rate/fs;
+    const double dt = 1.0/fs;
     double code_phase = c->code_phase;
     double phase = c->carr_phase;
+    double f_inst = c->f_inst;
+    double R_inst = c->R_inst;
 
     for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;
@@ -267,16 +323,20 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
 
-        phase += dphi;
+        f_inst += c->fdot * dt;
+        phase  += (float)(PI2 * f_inst * dt);
         if(phase>=PI2)      phase-=PI2;
         else if(phase<0.0)  phase+=PI2;
-        code_phase += dcode;
+        R_inst += c->Rdot * dt;
+        code_phase += R_inst * dt;
         if(code_phase>=CODE_LEN){
             code_phase-=CODE_LEN;
         }
     }
     c->carr_phase = phase;
     c->code_phase = code_phase;
+    c->f_inst     = f_inst;
+    c->R_inst     = R_inst;
 
     if(++c->ms_count_d2==2){
         c->ms_count_d2=0;
