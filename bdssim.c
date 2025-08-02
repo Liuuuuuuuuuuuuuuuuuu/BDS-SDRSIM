@@ -260,6 +260,7 @@ void generate_signal(const sim_config_t *cfg)
             for (int i = 0; i < n_ch; ++i) {
                 ch[i].fd = 0.0;
                 ch[i].fd_dot = 0.0;
+                ch[i].carr_phase = 0.0;
             }
         }
 
