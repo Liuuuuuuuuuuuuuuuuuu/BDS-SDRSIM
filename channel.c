@@ -109,6 +109,17 @@ static inline double smooth_amp(double A_prev, double A_new, double dt_ms)
     return A_prev + alpha * (A_new - A_prev);
 }
 
+/* 預測下一步的平滑振幅 */
+double predict_next_amp(const channel_t *c,double elev_deg_next,double gain,
+                        double target_cn0,int n_visible,double dt_ms)
+{
+    double base = amp_from_cn0(target_cn0, n_visible);
+    double s = sin(elev_deg_next * (M_PI/180.0));
+    if (s < 0.0) s = 0.0;
+    double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
+    return smooth_amp(c->amp, A_new, dt_ms);
+}
+
 /* ---------- CA cache ---------- */
 static int16_t ca_wave[64][CODE_LEN];
 static int     ca_ready=0;
@@ -187,6 +198,7 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg
     if (s < 0.0) s = 0.0;
     double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
     c->amp = smooth_amp(c->amp, A_new, dt_ms);
+    c->amp_dot = 0.0;
     c->elev_deg = elev_deg;
     c->fd  = -FCARRIER*rdot/299792458.0;               /* Doppler (Hz) */
     c->code_rate = CHIPRATE*(1.0 - rdot/299792458.0);  /* Code frequency (Hz) */
@@ -210,6 +222,8 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
     double code_phase = c->code_phase;
     double dfd = c->fd_dot / fs;
     double dcode_rate = c->code_rate_dot / fs;
+    double amp = c->amp;
+    double damp = c->amp_dot / fs;
 
     for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;            /* 0..2045 */
@@ -217,16 +231,17 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
         uint8_t nh = nh20_bits[c->ms_count];
         int16_t nb = (c->nav_bits[c->bit_ptr]^nh)?-1:+1;
         float co,si; fast_sincos(phase,&co,&si);
-        float s = c->amp*ca*nb;
+        float s = amp*ca*nb;
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
 
-        phase += PI2*fd/fs;
+        phase += PI2*(fd + 0.5*dfd)/fs;
         fd += dfd;
         if(phase>=PI2)      phase-=PI2;
         else if(phase<0.0)  phase+=PI2;
-        code_phase += code_rate/fs;
+        code_phase += (code_rate + 0.5*dcode_rate)/fs;
         code_rate += dcode_rate;
+        amp += damp;
         if(code_phase>=CODE_LEN){
             code_phase-=CODE_LEN;
             if(++c->ms_count==20){
@@ -242,6 +257,7 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
     c->code_rate = code_rate;
     c->carr_phase = phase;
     c->code_phase = code_phase;
+    c->amp = amp;
 }
 
 /*
@@ -263,22 +279,25 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
     double code_phase = c->code_phase;
     double dfd = c->fd_dot / fs;
     double dcode_rate = c->code_rate_dot / fs;
+    double amp = c->amp;
+    double damp = c->amp_dot / fs;
 
     for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;
         int16_t ca = ca_wave[c->prn][chip];
         int16_t nb = c->nav_bits_d2[c->bit_ptr_d2] ? -1:+1;
         float co,si; fast_sincos(phase,&co,&si);
-        float s = c->amp*ca*nb;
+        float s = amp*ca*nb;
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
 
-        phase += PI2*fd/fs;
+        phase += PI2*(fd + 0.5*dfd)/fs;
         fd += dfd;
         if(phase>=PI2)      phase-=PI2;
         else if(phase<0.0)  phase+=PI2;
-        code_phase += code_rate/fs;
+        code_phase += (code_rate + 0.5*dcode_rate)/fs;
         code_rate += dcode_rate;
+        amp += damp;
         if(code_phase>=CODE_LEN){
             code_phase-=CODE_LEN;
         }
@@ -287,6 +306,7 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
     c->code_rate = code_rate;
     c->carr_phase = phase;
     c->code_phase = code_phase;
+    c->amp = amp;
 
     if(++c->ms_count_d2==2){
         c->ms_count_d2=0;

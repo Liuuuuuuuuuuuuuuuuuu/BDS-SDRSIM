@@ -138,10 +138,17 @@ static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
         double dx2=sat2[0]-u_next[0], dy2=sat2[1]-u_next[1], dz2=sat2[2]-u_next[2];
         double rho2=hypot(hypot(dx2,dy2),dz2);
         double rdot2=(dx2*(vel2[0]-uv[0]) + dy2*(vel2[1]-uv[1]) + dz2*(vel2[2]-uv[2]))/rho2;
+        coord_t u2={0};
+        xyz2llh(u_next,&u2);
+        double enu2[3]; ecef2enu(&u2,sat2,enu2);
+        double el2 = enu_elevation_deg(enu2);
         double fd2 = -FCARRIER*rdot2/299792458.0;
         double cr2 = CHIPRATE*(1.0 - rdot2/299792458.0);
+        double A2 = predict_next_amp(&ch[i], el2, gain, target_cn0, n, step_ms);
+        if(el2 < 5.0) A2 = 0.0;
         ch[i].fd_dot = (fd2 - ch[i].fd) / dt;
         ch[i].code_rate_dot = (cr2 - ch[i].code_rate) / dt;
+        ch[i].amp_dot = (A2 - ch[i].amp) / dt;
     }
 }
 /*----------------------------------------------------*/
@@ -221,30 +228,29 @@ void generate_signal(const sim_config_t *cfg)
             static_user_at(week,sow,&ref_usr,&usr,uvel);
         } else if(cfg->path_type==1){
             coord_t prev=usr;
-            interpolate_path(&path, ms/1000.0, &usr);
+            interpolate_path(&path, ms/1000.0, &usr); /* ECEF xyz */
             xyz2llh(usr.xyz,&usr);
             usr.week=week; usr.sow=sow;
-            double prev_eci[3], cur_eci[3];
-            ecef_to_eci(prev.xyz, prev.week, prev.sow, prev_eci);
-            ecef_to_eci(usr.xyz, week, sow, cur_eci);
             double dt=STEP_MS*0.001;
-            uvel[0]=(cur_eci[0]-prev_eci[0])/dt;
-            uvel[1]=(cur_eci[1]-prev_eci[1])/dt;
-            uvel[2]=(cur_eci[2]-prev_eci[2])/dt;
+            uvel[0]=(usr.xyz[0]-prev.xyz[0])/dt;
+            uvel[1]=(usr.xyz[1]-prev.xyz[1])/dt;
+            uvel[2]=(usr.xyz[2]-prev.xyz[2])/dt;
+            /* convert ECEF velocity to inertial */
+            uvel[0]+= -OMEGA_E*usr.xyz[1];
+            uvel[1]+=  OMEGA_E*usr.xyz[0];
         } else {
             coord_t prev=usr;
             double llh[3];
             interpolate_path_llh(&path, ms/1000.0, llh);
-            coord_t ref={0};
-            ref.llh[0]=llh[0]; ref.llh[1]=llh[1]; ref.llh[2]=llh[2];
-            static_user_at(week,sow,&ref,&usr,NULL);
-            double prev_eci[3], cur_eci[3];
-            ecef_to_eci(prev.xyz, prev.week, prev.sow, prev_eci);
-            ecef_to_eci(usr.xyz, week, sow, cur_eci);
+            llh2xyz(llh,&usr);             /* use ECEF path without extra rotation */
+            usr.week=week; usr.sow=sow;
             double dt=STEP_MS*0.001;
-            uvel[0]=(cur_eci[0]-prev_eci[0])/dt;
-            uvel[1]=(cur_eci[1]-prev_eci[1])/dt;
-            uvel[2]=(cur_eci[2]-prev_eci[2])/dt;
+            uvel[0]=(usr.xyz[0]-prev.xyz[0])/dt;
+            uvel[1]=(usr.xyz[1]-prev.xyz[1])/dt;
+            uvel[2]=(usr.xyz[2]-prev.xyz[2])/dt;
+            /* convert ECEF velocity to inertial */
+            uvel[0]+= -OMEGA_E*usr.xyz[1];
+            uvel[1]+=  OMEGA_E*usr.xyz[0];
         }
 
         update_channels_fixed(ch,n_ch,&usr,uvel,
