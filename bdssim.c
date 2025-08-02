@@ -138,10 +138,17 @@ static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
         double dx2=sat2[0]-u_next[0], dy2=sat2[1]-u_next[1], dz2=sat2[2]-u_next[2];
         double rho2=hypot(hypot(dx2,dy2),dz2);
         double rdot2=(dx2*(vel2[0]-uv[0]) + dy2*(vel2[1]-uv[1]) + dz2*(vel2[2]-uv[2]))/rho2;
+        coord_t u2={0};
+        xyz2llh(u_next,&u2);
+        double enu2[3]; ecef2enu(&u2,sat2,enu2);
+        double el2 = enu_elevation_deg(enu2);
         double fd2 = -FCARRIER*rdot2/299792458.0;
         double cr2 = CHIPRATE*(1.0 - rdot2/299792458.0);
+        double A2 = predict_next_amp(&ch[i], el2, gain, target_cn0, n, step_ms);
+        if(el2 < 5.0) A2 = 0.0;
         ch[i].fd_dot = (fd2 - ch[i].fd) / dt;
         ch[i].code_rate_dot = (cr2 - ch[i].code_rate) / dt;
+        ch[i].amp_dot = (A2 - ch[i].amp) / dt;
     }
 }
 /*----------------------------------------------------*/
