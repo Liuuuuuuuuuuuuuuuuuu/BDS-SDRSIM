@@ -109,7 +109,6 @@ static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
     if(uvel){ uv[0]=uvel[0]; uv[1]=uvel[1]; uv[2]=uvel[2]; }
     else     { uv[0]=uv[1]=uv[2]=0.0; }
 
-    double amp_scale = 1.0 / sqrt((double)n);
     for(int i=0;i<n;++i){
         int prn = ch[i].prn;
         double sat[3], vel[3];
@@ -119,7 +118,7 @@ static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,el,gain*amp_scale,target_cn0);
+        update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n);
         if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
     }
 }
@@ -173,7 +172,7 @@ void generate_signal(const sim_config_t *cfg)
         double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,el,cfg->gain,g_target_cn0);
+        update_channel_dynamics(&ch[i],rho,rdot,el,cfg->gain,g_target_cn0,n_ch);
         printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
     }
 
