@@ -206,7 +206,6 @@ void generate_signal(const sim_config_t *cfg)
         }
 
         /* 不再每 ms 更新幾何，交給 10 Hz 版本處理；若要靜態靈敏度，可額外做僅幅度平滑 */
-
         /* 10 Hz 幾何更新：每 100 ms 一次 */
         if ((ms % 100) == 0) {
             double usr_vel_eci[3];

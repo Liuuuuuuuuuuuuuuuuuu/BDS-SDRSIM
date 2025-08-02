@@ -271,7 +271,6 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
         float s = c->amp*ca*nb;
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
-
         /* NCO：只用連續內插（10 Hz 幾何推進） */
         f_inst += c->fdot * dt;
         phase  += (float)(PI2 * f_inst * dt);
