@@ -80,12 +80,30 @@ int is_d2_prn(int prn)
 }
 
 /* ---- gps-sdr-sim 風格的振幅模型 ---- */
-static inline double amp_from_cn0(double cn0_dBHz, int n_visible)
+static const double ant_pat_db[37] = {
+     0.00,  0.00,  0.22,  0.44,  0.67,  1.11,  1.56,  2.00,  2.44,  2.89,
+     3.56,  4.22,  4.89,  5.56,  6.22,  6.89,  7.56,  8.22,  8.89,  9.78,
+    10.67, 11.56, 12.44, 13.33, 14.44, 15.56, 16.67, 17.78, 18.89, 20.00,
+    21.33, 22.67, 24.00, 25.56, 27.33, 29.33, 31.56
+};
+static double ant_pat[37];
+__attribute__((constructor))
+static void init_ant_pat(void){
+    for(int i=0;i<37;++i)
+        ant_pat[i] = pow(10.0, -ant_pat_db[i]/20.0);
+}
+
+static inline double amp_from_geom(double rho,double elev_deg,double gain,
+                                   double cn0_dBHz,int n_visible)
 {
-    /* 以 gps-sdr-sim 作法：45 dB-Hz 為名目，轉線性後放大到 int16 尺度（~16384） */
-    double base = pow(10.0, (cn0_dBHz - 45.0) / 20.0) * 16384.0;
+    double base = pow(10.0,(cn0_dBHz-45.0)/20.0) * 16384.0;
+    double path_loss = 20200000.0 / rho; /* gps-sdr-sim constant */
+    int ibs = (int)((90.0 - elev_deg)/5.0);
+    if(ibs < 0) ibs = 0; else if(ibs > 36) ibs = 36;
+    double ant = ant_pat[ibs];
     if (n_visible < 1) n_visible = 1;
-    return (base / sqrt((double)n_visible)) * HEADROOM_RATIO;
+    double A = base * path_loss * ant * gain;
+    return (A / sqrt((double)n_visible)) * HEADROOM_RATIO;
 }
 
 static inline double orbit_gain_amp(int prn)
@@ -110,13 +128,12 @@ static inline double smooth_amp(double A_prev, double A_new, double dt_ms)
 }
 
 /* 預測下一步的平滑振幅 */
-double predict_next_amp(const channel_t *c,double elev_deg_next,double gain,
-                        double target_cn0,int n_visible,double dt_ms)
+double predict_next_amp(const channel_t *c,double rho_next,double elev_deg_next,
+                        double gain,double target_cn0,int n_visible,double dt_ms)
 {
-    double base = amp_from_cn0(target_cn0, n_visible);
-    double s = sin(elev_deg_next * (M_PI/180.0));
-    if (s < 0.0) s = 0.0;
-    double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
+    double A_new = amp_from_geom(rho_next,elev_deg_next,gain,
+                                 target_cn0,n_visible);
+    A_new *= orbit_gain_amp(c->prn);
     return smooth_amp(c->amp, A_new, dt_ms);
 }
 
@@ -192,11 +209,8 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg
                              double gain,double target_cn0,int n_visible,
                              double dt_ms)
 {
-    (void)rho; /* rho currently unused in simplified amplitude model */
-    double base = amp_from_cn0(target_cn0, n_visible);
-    double s = sin(elev_deg * (M_PI/180.0));
-    if (s < 0.0) s = 0.0;
-    double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
+    double A_new = amp_from_geom(rho,elev_deg,gain,target_cn0,n_visible);
+    A_new *= orbit_gain_amp(c->prn);
     c->amp = smooth_amp(c->amp, A_new, dt_ms);
     c->amp_dot = 0.0;
     c->elev_deg = elev_deg;

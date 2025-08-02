@@ -139,7 +139,7 @@ static void update_channels_path(channel_t *ch,int n,const coord_t *u,
         double el2 = enu_elevation_deg(enu2);
         double fd2 = -FCARRIER*rdot2/299792458.0;
         double cr2 = CHIPRATE*(1.0 - rdot2/299792458.0);
-        double A2 = predict_next_amp(&ch[i], el2, gain, target_cn0, n, step_ms);
+        double A2 = predict_next_amp(&ch[i], rho2, el2, gain, target_cn0, n, step_ms);
         if(el2 < 5.0) A2 = 0.0;
         ch[i].fd_dot = (fd2 - ch[i].fd) / dt;
         ch[i].code_rate_dot = (cr2 - ch[i].code_rate) / dt;
