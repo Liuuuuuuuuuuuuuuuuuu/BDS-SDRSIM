@@ -185,6 +185,12 @@ void channel_set_time(channel_t *c,int week,double sow)
     c->ms_count_d2 = ms2%2;
     /* D2 的 SOW 以主帧(3 s) 的子帧1同步頭對齊 */
     get_subframe_bits(c->prn,c->sf_id_d2,week,mf_start_d2,3.0,c->nav_bits_d2);
+    /* 只在 3 s 主帧邊界重置 D2 的碼相位與導航索引 */
+    if(is_d2_prn(c->prn) && fabs(sow - mf_start_d2) < 1e-9){
+        c->code_phase  = 0.0;
+        c->bit_ptr_d2  = 0;
+        c->ms_count_d2 = 0;
+    }
 }
 
 void channel_reset(channel_t *c,int prn,int week,double sow){
