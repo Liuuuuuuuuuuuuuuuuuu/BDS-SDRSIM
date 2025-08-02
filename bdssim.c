@@ -197,6 +197,7 @@ void generate_signal(const sim_config_t *cfg)
     int32_t accI[samp_per_ms],accQ[samp_per_ms];
     double sumI=0.0,sumQ=0.0,sumI2=0.0,sumQ2=0.0;
     uint64_t samp_cnt=0;
+    static uint64_t clip_cnt = 0, tot_cnt = 0;
 
     const int STEP_MS = cfg->step_ms;
     const uint64_t total_ms=(uint64_t)cfg->duration*1000;
@@ -277,6 +278,8 @@ void generate_signal(const sim_config_t *cfg)
                 if(fi>1.0)fi=1.0; else if(fi<-1.0)fi=-1.0;
                 if(fq>1.0)fq=1.0; else if(fq<-1.0)fq=-1.0;
                 if(fp){
+                    if (fi>=0.999969 || fi<=-0.999969 || fq>=0.999969 || fq<=-0.999969) clip_cnt++;
+                    tot_cnt++;
                     iq[2*k]   = saturate_int16(fi*32767.0);
                     iq[2*k+1] = saturate_int16(fq*32767.0);
                     sumI  += iq[2*k];
@@ -294,6 +297,11 @@ void generate_signal(const sim_config_t *cfg)
                 fwrite(iq,sizeof(int16_t),2*samp_per_ms,fp);
             else
                 fwrite(i8,sizeof(int8_t),samp_per_ms,fp8);
+            /* 每秒印一次 clipping 比例 */
+            if (((int)(step+1))%1000==0 && fp){
+                fprintf(stderr,"[stat] clip=%.5f%%\n", 100.0*(double)clip_cnt/(double)tot_cnt);
+                clip_cnt=tot_cnt=0;
+            }
 
         }
         /* 進度顯示 */
