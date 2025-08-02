@@ -3,7 +3,7 @@
 #define CHANNEL_H
 #include <stdint.h>
 
-#define MAX_CH     12
+#define MAX_CH     8
 #define CODE_LEN   2046
 
 typedef struct {

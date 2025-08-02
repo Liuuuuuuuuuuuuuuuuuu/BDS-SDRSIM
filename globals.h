@@ -10,7 +10,7 @@
 #define HEADROOM_RATIO    0.80        /* 約 -2 dB 頭房，防飽和 */
 #define AMP_SMOOTH_TC_MS  1000        /* 振幅平滑時間常數 */
 /* Per-orbit-class amplitude offsets (dB) */
-#define GAIN_MEO_DB    0.0
+#define GAIN_MEO_DB   +1.5
 #define GAIN_IGSO_DB  +1.5
 #define GAIN_GEO_DB   -3.0
 
