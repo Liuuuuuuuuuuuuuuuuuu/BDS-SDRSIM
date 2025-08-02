@@ -238,6 +238,7 @@ void generate_signal(const sim_config_t *cfg)
             /* convert ECEF velocity to inertial */
             uvel[0]+= -OMEGA_E*usr.xyz[1];
             uvel[1]+=  OMEGA_E*usr.xyz[0];
+
         } else {
             coord_t prev=usr;
             double llh[3];
