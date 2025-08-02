@@ -13,35 +13,8 @@ static double fs = FS_OUTPUT_HZ;           /* default sample rate */
 
 /* default target CN0, overridable via CLI */
 double g_target_cn0 = 42.0;
-#define DBM_REF   (-130.0)         /* ±1.0 → –130 dBm */
 
-/* ---- Receiver antenna pattern (0° boresight) ---- */
-static const double ant_pat_db[37]={
-    0.00,  0.00,  0.22,  0.44,  0.67,  1.11,  1.56,  2.00,  2.44,  2.89,
-    3.56,  4.22,  4.89,  5.56,  6.22,  6.89,  7.56,  8.22,  8.89,  9.78,
-   10.67, 11.56, 12.44, 13.33, 14.44, 15.56, 16.67, 17.78, 18.89, 20.00,
-   21.33, 22.67, 24.00, 25.56, 27.33, 29.33, 31.56
-};
-static double ant_pat[37];
-__attribute__((constructor)) static void init_ant_gain(void){
-    for(int i=0;i<37;i++) ant_pat[i]=pow(10.0,-ant_pat_db[i]/20.0);
-}
-
-static double antenna_gain(double elev_deg)
-{
-    int idx=(int)((90.0-elev_deg)/5.0);
-    if(idx<0) idx=0; else if(idx>36) idx=36;
-    /* 建議先把接收端天線圖改成「最多 -6 dB」的溫和版本做驗證 */
-    double g = ant_pat[idx];
-    if (g < pow(10.0,-6.0/20.0)) g = pow(10.0,-6.0/20.0);
-    return g;
-}
-
-/* simple multipath loss model: -3 dB below 15° elevation */
-static double multipath_loss(double elev_deg)
-{
-    return (elev_deg<15.0)? pow(10.0,-3.0/20.0) : 1.0;
-}
+/* (舊的接收天線圖與 multipath 模型已移除) */
 
 /* ---------- 32k sin LUT ---------- */
 #define LUTBITS   15
@@ -63,14 +36,7 @@ static inline void fast_sincos(double ph,float*co,float*si){
     *co = sin_lut[j] + f*(sin_lut[j2]-sin_lut[j]);
 }
 
-/* ---------- 振幅與功率模型 ---------- */
-
-/*
- * 依衛星軌道類型給予不同的 EIRP。此處僅以簡化常數代表：
- *   GEO  衛星約 52 dBm
- *   IGSO 衛星約 53 dBm
- *   MEO  衛星約 55 dBm
- */
+/* ---------- 載波與振幅計算 ---------- */
 
 static const int geo_prn[] = {1,2,3,4,5,59,60,61,62,63};
 
@@ -113,29 +79,24 @@ int is_d2_prn(int prn)
     return is_geo_prn(prn);
 }
 
-static double sat_eirp_dbm(int prn)
+/* ---- gps-sdr-sim 風格的振幅模型 ---- */
+static inline double amp_from_cn0(double cn0_dBHz, int n_visible)
 {
-    if(is_geo_prn(prn))     return 52.0; /* GEO */
-    else if(is_igso_prn(prn)) return 53.0; /* IGSO */
-    else                    return 55.0; /* MEO */
+    double base = pow(10.0, (cn0_dBHz - 45.0) / 20.0);
+    if (n_visible < 1) n_visible = 1;
+    return (base / sqrt((double)n_visible)) * HEADROOM_RATIO;
 }
 
-/* 大氣衰減常數 (dB) */
-#define ATM_LOSS_DB    2.0
-
-double calc_amp(int prn,double rho,double gain,double target_cn0)
+static inline double orbit_gain_amp(int prn)
 {
-    /* dB path-loss + 衛星 Tx-power → 線性功率，再正規化到 ±16384 */
-    double lambda    = 299792458.0/FCARRIER;
-    double path_loss = 20.0*log10(4.0*M_PI*rho/lambda) + ATM_LOSS_DB;
-    double p_dbm     = sat_eirp_dbm(prn) - path_loss;
-    double cn0_dbhz  = p_dbm - DBM_REF + 10.0*log10(fs);
-    double diff_db   = target_cn0 - cn0_dbhz;
-    double a         = pow(10.0,diff_db/20.0) * 16384.0 * HEADROOM_RATIO;
-    /* 單星硬帽：確保單星 cos/sin 相乘後仍不會觸頂 */
-    if (a > 20000.0) a = 20000.0;
-    if (a < 1.0)     a = 1.0;       /* clip lower bound */
-    return gain * a;
+    return is_meo_prn(prn) ? 1.0 : pow(10.0, GEO_IGSO_BOOST_DB/20.0);
+}
+
+/* 指數平滑振幅，避免 AM 旁帶 */
+static inline double smooth_amp(double A_prev, double A_new)
+{
+    double alpha = 1.0 - exp(-1.0 / (AMP_SMOOTH_TC_MS * 1e-3 * fs));
+    return A_prev + alpha * (A_new - A_prev);
 }
 
 /* ---------- CA cache ---------- */
@@ -207,18 +168,16 @@ void channel_reset(channel_t *c,int prn,int week,double sow){
 }
 /* 幾何→計算振幅 / 初始多普勒 */
 void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg,
-                             double gain,double target_cn0){
-    double a = calc_amp(c->prn,rho,gain,target_cn0);
-    double ant = antenna_gain(elev_deg);
-    double mp  = multipath_loss(elev_deg);
-    c->amp = a * ant * mp;
+                             double gain,double target_cn0,int n_visible)
+{
+    (void)rho; /* rho currently unused in simplified amplitude model */
+    double base = amp_from_cn0(target_cn0, n_visible);
+    double s = sin(elev_deg * (M_PI/180.0));
+    if (s < 0.0) s = 0.0;
+    double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
+    c->amp = smooth_amp(c->amp, A_new);
     c->elev_deg = elev_deg;
     c->fd  = -FCARRIER*rdot/299792458.0;               /* Doppler (Hz) */
-    /*
-     * Positive range rate (rdot) means the satellite is moving away
-     * from the user, resulting in a lower received chipping rate.
-     * The correct relationship is therefore (1 - rdot/c).
-     */
     c->code_rate = CHIPRATE*(1.0 - rdot/299792458.0);  /* Code frequency (Hz) */
 }
 
