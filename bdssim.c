@@ -101,27 +101,6 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
     return *n;
 }
 
-/* 更新通道但保留原始 PRN，不做重新選擇 */
-static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
-                                  const double uvel[3],double gain,double target_cn0)
-{
-    double uv[3];
-    if(uvel){ uv[0]=uvel[0]; uv[1]=uvel[1]; uv[2]=uvel[2]; }
-    else     { uv[0]=uv[1]=uv[2]=0.0; }
-
-    for(int i=0;i<n;++i){
-        int prn = ch[i].prn;
-        double sat[3], vel[3];
-        calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
-        double enu[3]; ecef2enu(u,sat,enu);
-        double el = enu_elevation_deg(enu);
-        double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
-        double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n);
-        if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
-    }
-}
 /*----------------------------------------------------*/
 void generate_signal(const sim_config_t *cfg)
 {
@@ -162,19 +141,6 @@ void generate_signal(const sim_config_t *cfg)
     int samp_per_ms = (int)(fs/1000.0 + 0.5);
     channel_set_fs(fs);                   /* ensure dynamics use correct Fs */
 
-    double uvel[3]={-OMEGA_E*usr.xyz[1], OMEGA_E*usr.xyz[0], 0.0};
-    /* 首次幾何 – 初始化振幅/NCO */
-    for(int i=0;i<n_ch;++i){
-        double sat[3],vel[3];
-        calc_sat_position_velocity(ch[i].prn,usr.week,usr.sow,sat,vel);
-        double enu[3]; ecef2enu(&usr,sat,enu);
-        double el=enu_elevation_deg(enu);
-        double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
-        double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,el,cfg->gain,g_target_cn0,n_ch);
-        printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
-    }
 
     FILE *fp=NULL, *fp8=NULL;
     if(cfg->byte_output){
@@ -239,8 +205,16 @@ void generate_signal(const sim_config_t *cfg)
             uvel[2]=(cur_eci[2]-prev_eci[2])/dt;
         }
 
-        update_channels_fixed(ch,n_ch,&usr,uvel,
-                              cfg->gain,g_target_cn0);
+        /* 10 Hz 幾何更新：每 100 ms 一次 */
+        if ((ms % 100) == 0) {
+            double usr_vel_eci[3];
+            usr_vel_eci[0]=uvel[0]; usr_vel_eci[1]=uvel[1]; usr_vel_eci[2]=uvel[2];
+            for (int i=0;i<n_ch;++i) {
+                update_channel_dynamics_10hz(&ch[i], week, sow,
+                                             usr.xyz, usr_vel_eci,
+                                             cfg->gain, g_target_cn0, n_ch);
+            }
+        }
 
         /* --- STEP_MS 次 1ms 取樣 --- */
         for(int step=0;step<STEP_MS;++step){

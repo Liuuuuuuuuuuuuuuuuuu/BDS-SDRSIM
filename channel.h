@@ -14,6 +14,11 @@ typedef struct {
     double  carr_phase;   /* rad                       */
     double  code_phase;   /* chips                     */
     double  elev_deg;     /* satellite elevation (deg) */
+    /* ---- 10 Hz 幾何更新 + 樣本內線性內插 ---- */
+    double  f_inst;       /* instantaneous carrier freq (Hz), incl. Doppler */
+    double  fdot;         /* carrier frequency slope (Hz/s) over next 100 ms */
+    double  R_inst;       /* instantaneous code rate (chips/s) */
+    double  Rdot;         /* code-rate slope (chips/s^2) over next 100 ms */
     uint16_t code_ptr;
     uint16_t bit_ptr;
     uint8_t  sf_id;
@@ -31,6 +36,10 @@ void channel_set_time(channel_t *, int week, double sow);
 void update_channel_dynamics(channel_t *, double rho, double rdot,
                              double elev_deg, double gain,
                              double target_cn0, int n_visible);
+/* 10 Hz 幾何：在 (week,sow) 與 (sow+0.1) 估計 fdot/Rdot，並更新幅度 */
+void update_channel_dynamics_10hz(channel_t *, int week, double sow,
+                                  const double usr_xyz[3], const double usr_vel_eci[3],
+                                  double gain, double target_cn0, int n_visible);
 void channel_set_fs(double sample_rate);
 void gen_samples_1ms(channel_t *, int week, double sow,
                      int samp_per_ms, int16_t *I, int16_t *Q);
