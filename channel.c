@@ -101,10 +101,9 @@ static inline double orbit_gain_amp(int prn)
 }
 
 /* 指數平滑振幅，避免 AM 旁帶 */
-static inline double smooth_amp(double A_prev, double A_new)
+static inline double smooth_amp(double A_prev, double A_new, double dt_ms)
 {
-    /* Called every 1 ms, so dt = 1 ms; use time constant in milliseconds */
-    double alpha = 1.0 - exp(-1.0 / AMP_SMOOTH_TC_MS);
+    double alpha = 1.0 - exp(-dt_ms / AMP_SMOOTH_TC_MS);
     if (A_prev == 0.0)
         return A_new;                  /* avoid long ramp at start */
     return A_prev + alpha * (A_new - A_prev);
@@ -179,14 +178,15 @@ void channel_reset(channel_t *c,int prn,int week,double sow){
 }
 /* 幾何→計算振幅 / 初始多普勒 */
 void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg,
-                             double gain,double target_cn0,int n_visible)
+                             double gain,double target_cn0,int n_visible,
+                             double dt_ms)
 {
     (void)rho; /* rho currently unused in simplified amplitude model */
     double base = amp_from_cn0(target_cn0, n_visible);
     double s = sin(elev_deg * (M_PI/180.0));
     if (s < 0.0) s = 0.0;
     double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
-    c->amp = smooth_amp(c->amp, A_new);
+    c->amp = smooth_amp(c->amp, A_new, dt_ms);
     c->elev_deg = elev_deg;
     c->fd  = -FCARRIER*rdot/299792458.0;               /* Doppler (Hz) */
     c->code_rate = CHIPRATE*(1.0 - rdot/299792458.0);  /* Code frequency (Hz) */
@@ -204,11 +204,12 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
     if(c->bit_ptr==0 && c->ms_count==0)
         get_subframe_bits(c->prn,c->sf_id,week,sow,6.0,c->nav_bits);
 
-    /* Baseband output – only apply Doppler frequency */
-    const double dphi = PI2*c->fd/fs;
-    const double dcode = c->code_rate/fs;     /* chips per sample */
-    double code_phase = c->code_phase;
+    double fd = c->fd;
+    double code_rate = c->code_rate;
     double phase = c->carr_phase;
+    double code_phase = c->code_phase;
+    double dfd = c->fd_dot / fs;
+    double dcode_rate = c->code_rate_dot / fs;
 
     for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;            /* 0..2045 */
@@ -220,11 +221,12 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
 
-        /* NCO */
-        phase += dphi;
+        phase += PI2*fd/fs;
+        fd += dfd;
         if(phase>=PI2)      phase-=PI2;
         else if(phase<0.0)  phase+=PI2;
-        code_phase += dcode;
+        code_phase += code_rate/fs;
+        code_rate += dcode_rate;
         if(code_phase>=CODE_LEN){
             code_phase-=CODE_LEN;
             if(++c->ms_count==20){
@@ -236,6 +238,8 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
             }
         }
     }
+    c->fd = fd;
+    c->code_rate = code_rate;
     c->carr_phase = phase;
     c->code_phase = code_phase;
 }
@@ -253,10 +257,12 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
         get_subframe_bits(c->prn,c->sf_id_d2,week,mf_start_d2,3.0,c->nav_bits_d2);
     }
 
-    const double dphi = PI2*c->fd/fs;
-    const double dcode = c->code_rate/fs;
-    double code_phase = c->code_phase;
+    double fd = c->fd;
+    double code_rate = c->code_rate;
     double phase = c->carr_phase;
+    double code_phase = c->code_phase;
+    double dfd = c->fd_dot / fs;
+    double dcode_rate = c->code_rate_dot / fs;
 
     for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;
@@ -267,14 +273,18 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
 
-        phase += dphi;
+        phase += PI2*fd/fs;
+        fd += dfd;
         if(phase>=PI2)      phase-=PI2;
         else if(phase<0.0)  phase+=PI2;
-        code_phase += dcode;
+        code_phase += code_rate/fs;
+        code_rate += dcode_rate;
         if(code_phase>=CODE_LEN){
             code_phase-=CODE_LEN;
         }
     }
+    c->fd = fd;
+    c->code_rate = code_rate;
     c->carr_phase = phase;
     c->code_phase = code_phase;
 
