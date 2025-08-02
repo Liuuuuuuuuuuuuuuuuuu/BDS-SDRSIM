@@ -190,8 +190,9 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg
     double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
     c->amp = smooth_amp(c->amp, A_new);
     c->elev_deg = elev_deg;
+    /* Instantaneous Doppler and code rate */
     c->fd        = -FCARRIER*rdot/299792458.0;         /* Doppler (Hz) */
-    c->code_rate = CHIPRATE*(1.0 - rdot/299792458.0);  /* Code frequency (Hz) */
+    c->code_rate = CHIPRATE*(1.0 - rdot/299792458.0);  /* Code rate (Hz) */
     /* Initialize instantaneous state used by 10 Hz interpolation */
     c->f_inst = c->fd;
     c->fdot   = 0.0;
@@ -270,8 +271,7 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
         float s = c->amp*ca*nb;
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
-
-        /* NCO：連續內插 */
+        /* NCO：只用連續內插（10 Hz 幾何推進） */
         f_inst += c->fdot * dt;
         phase  += (float)(PI2 * f_inst * dt);
         if(phase>=PI2)      phase-=PI2;
@@ -323,6 +323,7 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
         I[n]=(int16_t)lrintf(s*co);
         Q[n]=(int16_t)lrintf(s*si);
 
+        /* 只用連續內插 */
         f_inst += c->fdot * dt;
         phase  += (float)(PI2 * f_inst * dt);
         if(phase>=PI2)      phase-=PI2;
