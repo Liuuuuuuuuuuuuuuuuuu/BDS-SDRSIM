@@ -22,9 +22,9 @@ int main(void)
     ch.carr_phase = 0.0;
     ch.code_phase = 0.1; /* avoid boundary ambiguity */
     update_channel_dynamics(&ch, 2.0e7, 0.0, 90.0, 1.0, cfg.target_cn0);
-    channel_set_fs(5.12e6);
+    channel_set_fs(FS_OUTPUT_HZ);
 
-    int samp_per_ms = (int)(5.12e6/1000.0 + 0.5);
+    int samp_per_ms = (int)(FS_OUTPUT_HZ/1000.0 + 0.5);
     int16_t I[samp_per_ms], Q[samp_per_ms];
 
     /* generate 2 ms and verify D2 bit spans two PRN cycles */

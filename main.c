@@ -240,7 +240,7 @@ int main(int argc,char *argv[])
            usr.xyz[0], usr.xyz[1], usr.xyz[2]);
     printf("[cfg] PRN:");
     for(int i=0;i<n_ch;i++) printf(" %02d", ch[i].prn);
-    double fs_out = cfg.byte_output ? 25.0 : 5.12;
+    double fs_out = cfg.byte_output ? 25.0 : FS_OUTPUT_HZ/1e6;
     printf("  Fs %.2fMHz  Gain %.2f\n\n",
            fs_out, cfg.gain);
 
