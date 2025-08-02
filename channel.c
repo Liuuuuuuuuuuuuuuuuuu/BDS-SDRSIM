@@ -103,12 +103,10 @@ static inline double orbit_gain_amp(int prn)
 }
 
 /* 指數平滑振幅，避免 AM 旁帶 */
-static inline double smooth_amp(double A_prev, double A_new)
+static inline double smooth_amp_dt(double A_prev, double A_new, double dt_s)
 {
-    /* Called every 1 ms, so dt = 1 ms; use time constant in milliseconds */
-    double alpha = 1.0 - exp(-1.0 / AMP_SMOOTH_TC_MS);
-    if (A_prev == 0.0)
-        return A_new;                  /* avoid long ramp at start */
+    /* alpha = 1 - exp(-Δt/τ) */
+    double alpha = 1.0 - exp(-dt_s / (AMP_SMOOTH_TC_MS * 1e-3));
     return A_prev + alpha * (A_new - A_prev);
 }
 
@@ -188,7 +186,7 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg
     double s = sin(elev_deg * (M_PI/180.0));
     if (s < 0.0) s = 0.0;
     double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
-    c->amp = smooth_amp(c->amp, A_new);
+    c->amp = smooth_amp_dt(c->amp, A_new, 0.1);  /* 10 Hz */
     c->elev_deg = elev_deg;
     /* Instantaneous Doppler and code rate */
     c->fd        = -FCARRIER*rdot/299792458.0;         /* Doppler (Hz) */
@@ -228,7 +226,7 @@ void update_channel_dynamics_10hz(channel_t *c, int week, double sow,
     double base = amp_from_cn0(target_cn0, n_visible);
     double s = sin(el0 * (M_PI/180.0)); if (s < 0.0) s = 0.0;
     double A_new = base * orbit_gain_amp(c->prn) * pow(s, 1.2) * gain;
-    c->amp = smooth_amp(c->amp, A_new);
+    c->amp = smooth_amp_dt(c->amp, A_new, 0.1);  /* 10 Hz */
     c->elev_deg = el0;
 
     /* 3) 設定 10 Hz 內插用的即時量與斜率 */

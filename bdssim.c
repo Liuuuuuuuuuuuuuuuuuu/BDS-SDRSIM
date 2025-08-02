@@ -205,7 +205,7 @@ void generate_signal(const sim_config_t *cfg)
             uvel[2]=(cur_eci[2]-prev_eci[2])/dt;
         }
 
-        /* 不再每 ms 更新幾何，交給 10 Hz 版本處理；若要靜態靈敏度，可額外做僅幅度平滑 */
+        /* 移除每 ms 幾何更新；僅由 10 Hz 區塊維護幾何與振幅 */
         /* 10 Hz 幾何更新：每 100 ms 一次 */
         if ((ms % 100) == 0) {
             double usr_vel_eci[3];
