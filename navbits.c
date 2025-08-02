@@ -4,6 +4,7 @@
 #include <string.h>
 #include "navbits.h"
 #include "bch.h"
+#include "globals.h"
 
 static inline double rad_to_sc(double v){return v/M_PI;}
 
@@ -648,7 +649,7 @@ static uint8_t sf_static[MAX_SAT][4][SF_STREAM_LEN]; /* subframe 2-5 */
 
 void navbits_init(void)
 {
-    for(int prn=1;prn<=63;prn++){
+    for(int prn=1;prn<=prn_max;prn++){
         B1I_D1_Frame frm;
         frame_from_ephemeris(&eph[prn], &frm);
         uint32_t words[10];

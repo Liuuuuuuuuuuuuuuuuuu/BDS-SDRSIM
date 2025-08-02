@@ -75,6 +75,7 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
 - `--geo-first` 在挑選模擬衛星時會優先加入可見的 GEO 衛星
 - `--no-geo` 排除所有 GEO 衛星
 - `--prn`  可只輸出指定 PRN
+- `--prn37`  僅使用 1-37 號衛星
 
 MEO 與 IGSO 依據星曆中的 `sqrtA`(軌道半長軸平方根) 分辨。大於 6000 的視
 為與 GEO 相同的軌道高度，即 IGSO，否則為 MEO。

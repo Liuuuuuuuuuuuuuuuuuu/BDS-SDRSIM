@@ -123,7 +123,7 @@ static const uint8_t nh20_bits[20]={
 static void load_ca_once(void)
 {
     if(ca_ready) return;
-    for(int p=1;p<=63;++p)
+    for(int p=1;p<=prn_max;++p)
         for(int i=0;i<CODE_LEN;++i)
             ca_wave[p][i] = prn_code[p][i]?+1:-1;
     ca_ready = 1;
