@@ -15,7 +15,7 @@ typedef struct {
     double  code_phase;   /* chips                     */
     double  elev_deg;     /* satellite elevation (deg) */
     /* ---- 10 Hz 幾何更新 + 樣本內線性內插 ---- */
-    double  f_inst;       /* instantaneous carrier freq (Hz), incl. Doppler */
+    double  f_inst;       /* instantaneous carrier Doppler (Hz, baseband) */
     double  fdot;         /* carrier frequency slope (Hz/s) over next 100 ms */
     double  R_inst;       /* instantaneous code rate (chips/s) */
     double  Rdot;         /* code-rate slope (chips/s^2) over next 100 ms */

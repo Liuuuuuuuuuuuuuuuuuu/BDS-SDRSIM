@@ -192,8 +192,8 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg
     c->elev_deg = elev_deg;
     c->fd        = -FCARRIER*rdot/299792458.0;         /* Doppler (Hz) */
     c->code_rate = CHIPRATE*(1.0 - rdot/299792458.0);  /* Code frequency (Hz) */
-    /* 也為新版 10 Hz 內插初始化即時量 */
-    c->f_inst = FCARRIER + c->fd;
+    /* Initialize instantaneous state used by 10 Hz interpolation */
+    c->f_inst = c->fd;
     c->fdot   = 0.0;
     c->R_inst = c->code_rate;
     c->Rdot   = 0.0;
@@ -233,7 +233,7 @@ void update_channel_dynamics_10hz(channel_t *c, int week, double sow,
     /* 3) 設定 10 Hz 內插用的即時量與斜率 */
     double fd0 = -FCARRIER*rdot0/299792458.0;
     double fd1 = -FCARRIER*rdot1/299792458.0;
-    c->f_inst = FCARRIER + fd0;
+    c->f_inst = fd0;
     c->fdot   = (fd1 - fd0) / 0.1;          /* Hz/s */
     double R0 = CHIPRATE * (1.0 - rdot0/299792458.0);
     double R1 = CHIPRATE * (1.0 - rdot1/299792458.0);

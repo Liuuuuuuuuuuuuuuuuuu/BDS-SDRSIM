@@ -213,6 +213,11 @@ void generate_signal(const sim_config_t *cfg)
                 update_channel_dynamics_10hz(&ch[i], week, sow,
                                              usr.xyz, usr_vel_eci,
                                              cfg->gain, g_target_cn0, n_ch);
+                if(ms == 0){
+                    double rdot = -ch[i].fd * (299792458.0/1561.098e6);
+                    printf("[ch%02d] rdot %.2f fd %.2fHz\n",
+                           ch[i].prn, rdot, ch[i].fd);
+                }
             }
         }
 
