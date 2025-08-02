@@ -21,6 +21,7 @@ double iono_beta[4]  = {0};
 int    utc_bdt_diff  = 4;   /* default UTC->BDT offset */
 
 int simulator_inited = 0;
+int prn_max = 63;
 
 /* ───────────── B1I PRN 產生 ───────────── */
 #define ITER 2047                     /* 先跑滿 2047，再丟掉最後 1 chip */
@@ -82,15 +83,16 @@ static void cb1i_generate(int prn, uint8_t *dst)
 
 static void init_prn_table(void)
 {
-    for (int p = 1; p <= 63; ++p)
+    for (int p = 1; p <= prn_max; ++p)
         cb1i_generate(p, prn_code[p]);
-    puts("[bdssim] PRN 表已產生 (1–63)");
+    printf("[bdssim] PRN 表已產生 (1–%d)\n", prn_max);
 }
 
 /* ───────────── 對外 API ───────────── */
 bool init_simulator(sim_config_t *cfg, double start_bdt)
 {
     if(simulator_inited) return true;
+    prn_max = cfg->prn37_only ? 37 : 63;
     init_prn_table();
     memset(eph, 0, sizeof(eph));
     if(read_rinex_nav(cfg->rinex_file, start_bdt)!=0) return false;

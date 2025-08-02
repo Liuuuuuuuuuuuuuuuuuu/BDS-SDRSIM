@@ -57,6 +57,7 @@ typedef struct {
     bool     geo_first;        /* 優先可見 GEO 衛星 */
     bool     no_geo;           /* 排除 GEO 衛星 */
     int      single_prn;       /* 僅模擬此 PRN (0 = 全部) */
+    bool     prn37_only;       /* 僅使用 1-37 號衛星 */
 } sim_config_t;
 
 /* ---------- 介面 ---------- */

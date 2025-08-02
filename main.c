@@ -27,6 +27,7 @@ static void usage(const char *p)
     puts("  --geo-first          優先可見 GEO 衛星");
     puts("  --no-geo            排除 GEO 衛星");
     puts("  --prn N             僅模擬指定 PRN");
+    puts("  --prn37             僅使用 1-37 號衛星");
     puts("  --help               顯示本說明\n");
 }
 
@@ -43,6 +44,7 @@ int main(int argc,char *argv[])
     cfg.geo_first  = false;
     cfg.no_geo     = false;
     cfg.single_prn = 0;
+    cfg.prn37_only = false;
     bool llh_given   = false;
 
     /* 處理 "-byte" 舊習慣 */
@@ -76,12 +78,13 @@ int main(int argc,char *argv[])
         {"geo-first",no_argument,       0, 'G'},
         {"no-geo",   no_argument,       0, 'O'},
         {"prn",      required_argument, 0, 'p'},
+        {"prn37",    no_argument,       0, 'B'},
         {"help",     no_argument,       0, 'h'},
         {0,0,0,0}
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:R:hbGOp:", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:R:hbGOp:B", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -138,6 +141,9 @@ int main(int argc,char *argv[])
         case 'p':
             cfg.single_prn = atoi(optarg);
             break;
+        case 'B':
+            cfg.prn37_only = true;
+            break;
         case 'h':
             usage(argv[0]);
             return 0;
@@ -171,8 +177,9 @@ int main(int argc,char *argv[])
         fputs("--llh 超出合理範圍\n", stderr);
         return 1;
     }
-    if(cfg.single_prn<0 || cfg.single_prn>63){
-        fputs("--prn 範圍 1-63\n", stderr);
+    int prn_limit = cfg.prn37_only ? 37 : 63;
+    if(cfg.single_prn<0 || cfg.single_prn>prn_limit){
+        fprintf(stderr,"--prn 範圍 1-%d\n", prn_limit);
         return 1;
     }
 

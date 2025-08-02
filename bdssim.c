@@ -32,7 +32,7 @@ static void check_ephemeris_age(int week,double sow)
 {
     double t = week*604800.0 + sow;
     int warn = 0;
-    for(int prn=1; prn<=63; ++prn){
+    for(int prn=1; prn<=prn_max; ++prn){
         if(eph[prn].prn==0) continue;
         double toe = eph[prn].week*604800.0 + eph[prn].toe;
         double diff = fabs(t - toe);
@@ -78,7 +78,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
     struct cand{int prn;double elev,rho,rdot;int pri;} c[63];
     int m=0;
     double uv[3]={-OMEGA_E*u->xyz[1], OMEGA_E*u->xyz[0], 0.0};
-    for(int prn=1;prn<=63;++prn){
+    for(int prn=1;prn<=prn_max;++prn){
         if(single_prn>0 && prn!=single_prn) continue;
         if(no_geo && is_d2_prn(prn)) continue;
         double sat[3],vel[3];

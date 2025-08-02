@@ -18,6 +18,7 @@
 extern uint8_t      prn_code[MAX_SAT][CODE_LEN];
 extern ephemeris_t  eph[MAX_SAT];
 extern int          simulator_inited;
+extern int          prn_max;        /* 上限 PRN 編號 */
 extern double       nav_time_min;
 extern double       nav_time_max;
 extern int          nav_week;       /* ephemeris week reference */
