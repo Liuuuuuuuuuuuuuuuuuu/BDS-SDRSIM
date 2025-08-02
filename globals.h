@@ -4,10 +4,15 @@
 #include <stdint.h>
 #include "bdssim.h"          /* 已含 MAX_SAT、CODE_LEN、ephemeris_t */
 
-/* === CN0 / NH20 全域設定 === */
-#define CN0_TARGET_DBHZ   42.0     /* 目標載波-雜訊比；40~45 均可 */
-#define HEADROOM_RATIO    0.8      /* -2 dB 的峰值餘量 */
-#define FS_OUTPUT_HZ      6144000  /* 6.144 MHz = 2.046 MHz × 3 */
+/* ===== gps-sdr-sim 風格的基本參數 ===== */
+#define FS_OUTPUT_HZ      6144000.0   /* 6.144 MHz = 2.046 MHz × 3 */
+#define CN0_TARGET_DBHZ   42.0        /* 40–45 dB-Hz 常用 */
+#define HEADROOM_RATIO    0.80        /* 約 -2 dB 頭房，防飽和 */
+#define AMP_SMOOTH_TC_MS  1000        /* 振幅平滑時間常數 */
+/* Per-orbit-class amplitude offsets (dB) */
+#define GAIN_MEO_DB    0.0
+#define GAIN_IGSO_DB  +1.5
+#define GAIN_GEO_DB   -3.0
 
 /* 由 globals.c 定義 */
 extern uint8_t      prn_code[MAX_SAT][CODE_LEN];

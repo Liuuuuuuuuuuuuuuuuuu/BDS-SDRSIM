@@ -109,7 +109,6 @@ static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
     if(uvel){ uv[0]=uvel[0]; uv[1]=uvel[1]; uv[2]=uvel[2]; }
     else     { uv[0]=uv[1]=uv[2]=0.0; }
 
-    double amp_scale = 1.0 / sqrt((double)n);
     for(int i=0;i<n;++i){
         int prn = ch[i].prn;
         double sat[3], vel[3];
@@ -119,7 +118,7 @@ static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,el,gain*amp_scale,target_cn0);
+        update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n);
         if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
     }
 }
@@ -173,7 +172,7 @@ void generate_signal(const sim_config_t *cfg)
         double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,el,cfg->gain,g_target_cn0);
+        update_channel_dynamics(&ch[i],rho,rdot,el,cfg->gain,g_target_cn0,n_ch);
         printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
     }
 
@@ -269,25 +268,22 @@ void generate_signal(const sim_config_t *cfg)
             /* 限幅並打包成 I/Q */
             int16_t iq[2*samp_per_ms];
             int8_t  i8[samp_per_ms];            /* byte output holds I only */
-            double  scale = 1.0/32768.0;
             for(int k=0;k<samp_per_ms;++k){
                 int32_t i=accI[k];
                 int32_t q=accQ[k];
-                double fi = i*scale;
-                double fq = q*scale;
-                if(fi>1.0)fi=1.0; else if(fi<-1.0)fi=-1.0;
-                if(fq>1.0)fq=1.0; else if(fq<-1.0)fq=-1.0;
                 if(fp){
-                    if (fi>=0.999969 || fi<=-0.999969 || fq>=0.999969 || fq<=-0.999969) clip_cnt++;
-                    tot_cnt++;
-                    iq[2*k]   = saturate_int16(fi*32767.0);
-                    iq[2*k+1] = saturate_int16(fq*32767.0);
+                    if(i>32760 || i<-32760) clip_cnt++;
+                    if(q>32760 || q<-32760) clip_cnt++;
+                    tot_cnt += 2;
+                    iq[2*k]   = saturate_int16((double)i);
+                    iq[2*k+1] = saturate_int16((double)q);
                     sumI  += iq[2*k];
                     sumQ  += iq[2*k+1];
                     sumI2 += (double)iq[2*k]*iq[2*k];
                     sumQ2 += (double)iq[2*k+1]*iq[2*k+1];
                 } else {
-                    i8[k] = (int8_t)lrint(fi*127.0);
+                    if (i>127) i=127; else if (i<-128) i=-128;
+                    i8[k] = (int8_t)i;
                     sumI  += i8[k];
                     sumI2 += (double)i8[k]*i8[k];
                 }
