@@ -228,10 +228,29 @@ int main(int argc,char *argv[])
            usr.llh[0], usr.llh[1], usr.llh[2]);
     printf("[cfg] XYZ %.3f %.3f %.3f (m)\n",
            usr.xyz[0], usr.xyz[1], usr.xyz[2]);
+    int prn_sorted[MAX_CH];
+    for(int i=0;i<n_ch;i++) prn_sorted[i] = ch[i].prn;
+    for(int i=0;i<n_ch-1;i++)
+        for(int j=i+1;j<n_ch;j++)
+            if(prn_sorted[j] < prn_sorted[i]){
+                int t = prn_sorted[i];
+                prn_sorted[i] = prn_sorted[j];
+                prn_sorted[j] = t;
+            }
     printf("[cfg] PRN:");
-    for(int i=0;i<n_ch;i++) printf(" %02d", ch[i].prn);
+    for(int i=0;i<n_ch;i++) printf(" %02d", prn_sorted[i]);
+    printf("\n[cfg] GEO:");
+    for(int i=0;i<n_ch;i++)
+        if(!is_igso_prn(prn_sorted[i]) && !is_meo_prn(prn_sorted[i]))
+            printf(" %02d", prn_sorted[i]);
+    printf("\n[cfg] IGSO:");
+    for(int i=0;i<n_ch;i++)
+        if(is_igso_prn(prn_sorted[i])) printf(" %02d", prn_sorted[i]);
+    printf("\n[cfg] MEO:");
+    for(int i=0;i<n_ch;i++)
+        if(is_meo_prn(prn_sorted[i])) printf(" %02d", prn_sorted[i]);
     double fs_out = cfg.byte_output ? 25.0 : FS_OUTPUT_HZ/1e6;
-    printf("  Fs %.2fMHz  Gain %.2f\n\n",
+    printf("\n[cfg] Fs %.2fMHz  Gain %.2f\n\n",
            fs_out, cfg.gain);
 
     /* 4. 產生基帶 ----------------------------------- */

@@ -9,7 +9,7 @@
 /* ---------- 常數 ---------- */
 #define MAX_SAT      65
 #define MAX_PRN_LEN  CODE_LEN
-#define MAX_CH       12        /* 最多同時播 12 顆 */
+#define MAX_CH       8         /* 最多同時播 8 顆 */
 
 /* ---------- 星曆結構 (僅用到的欄位) ---------- */
 typedef struct {
