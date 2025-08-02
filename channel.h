@@ -10,7 +10,9 @@ typedef struct {
     int     prn;
     double  amp;
     double  fd;           /* Doppler                   */
+    double  fd_dot;       /* Doppler rate (Hz/s)       */
     double  code_rate;    /* chipping rate             */
+    double  code_rate_dot;/* chipping rate slope       */
     double  carr_phase;   /* rad                       */
     double  code_phase;   /* chips                     */
     double  elev_deg;     /* satellite elevation (deg) */
@@ -30,7 +32,8 @@ void channel_reset(channel_t *, int prn, int week, double sow);
 void channel_set_time(channel_t *, int week, double sow);
 void update_channel_dynamics(channel_t *, double rho, double rdot,
                              double elev_deg, double gain,
-                             double target_cn0, int n_visible);
+                             double target_cn0, int n_visible,
+                             double dt_ms);
 void channel_set_fs(double sample_rate);
 void gen_samples_1ms(channel_t *, int week, double sow,
                      int samp_per_ms, int16_t *I, int16_t *Q);

@@ -16,6 +16,8 @@
 #define OMEGA_E   7.2921150e-5
 #define FSAMP_DEF FS_OUTPUT_HZ    /* default 6.144 MHz for 16-bit I/Q output */
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
+#define FCARRIER   1561.098e6      /* B1I carrier */
+#define CHIPRATE   2.046e6
 
 /* ========= 振幅計算與 int16 飽和保護 ========= */
 static inline int16_t saturate_int16(double x)
@@ -103,11 +105,14 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
 
 /* 更新通道但保留原始 PRN，不做重新選擇 */
 static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
-                                  const double uvel[3],double gain,double target_cn0)
+                                  const double uvel[3],double gain,double target_cn0,
+                                  int step_ms)
 {
     double uv[3];
     if(uvel){ uv[0]=uvel[0]; uv[1]=uvel[1]; uv[2]=uvel[2]; }
     else     { uv[0]=uv[1]=uv[2]=0.0; }
+
+    double dt = step_ms * 0.001; /* seconds */
 
     for(int i=0;i<n;++i){
         int prn = ch[i].prn;
@@ -118,8 +123,25 @@ static void update_channels_fixed(channel_t *ch,int n,const coord_t *u,
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n);
+        update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
         if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
+
+        /* predict next dynamics for linear interpolation */
+        double u_next[3]={u->xyz[0]+uv[0]*dt,
+                          u->xyz[1]+uv[1]*dt,
+                          u->xyz[2]+uv[2]*dt};
+        double sat2[3], vel2[3];
+        double t_abs = u->week*604800.0 + u->sow + dt;
+        int week2 = (int)(t_abs/604800.0);
+        double sow2 = t_abs - week2*604800.0;
+        calc_sat_position_velocity(prn,week2,sow2,sat2,vel2);
+        double dx2=sat2[0]-u_next[0], dy2=sat2[1]-u_next[1], dz2=sat2[2]-u_next[2];
+        double rho2=hypot(hypot(dx2,dy2),dz2);
+        double rdot2=(dx2*(vel2[0]-uv[0]) + dy2*(vel2[1]-uv[1]) + dz2*(vel2[2]-uv[2]))/rho2;
+        double fd2 = -FCARRIER*rdot2/299792458.0;
+        double cr2 = CHIPRATE*(1.0 - rdot2/299792458.0);
+        ch[i].fd_dot = (fd2 - ch[i].fd) / dt;
+        ch[i].code_rate_dot = (cr2 - ch[i].code_rate) / dt;
     }
 }
 /*----------------------------------------------------*/
@@ -161,20 +183,6 @@ void generate_signal(const sim_config_t *cfg)
     double fs = cfg->byte_output ? FSAMP_BYTE : FSAMP_DEF;
     int samp_per_ms = (int)(fs/1000.0 + 0.5);
     channel_set_fs(fs);                   /* ensure dynamics use correct Fs */
-
-    double uvel[3]={-OMEGA_E*usr.xyz[1], OMEGA_E*usr.xyz[0], 0.0};
-    /* 首次幾何 – 初始化振幅/NCO */
-    for(int i=0;i<n_ch;++i){
-        double sat[3],vel[3];
-        calc_sat_position_velocity(ch[i].prn,usr.week,usr.sow,sat,vel);
-        double enu[3]; ecef2enu(&usr,sat,enu);
-        double el=enu_elevation_deg(enu);
-        double dx=sat[0]-usr.xyz[0],dy=sat[1]-usr.xyz[1],dz=sat[2]-usr.xyz[2];
-        double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
-        update_channel_dynamics(&ch[i],rho,rdot,el,cfg->gain,g_target_cn0,n_ch);
-        printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
-    }
 
     FILE *fp=NULL, *fp8=NULL;
     if(cfg->byte_output){
@@ -240,7 +248,13 @@ void generate_signal(const sim_config_t *cfg)
         }
 
         update_channels_fixed(ch,n_ch,&usr,uvel,
-                              cfg->gain,g_target_cn0);
+                              cfg->gain,g_target_cn0,STEP_MS);
+        if(ms==0){
+            for(int i=0;i<n_ch;++i){
+                double rdot = -ch[i].fd*299792458.0/FCARRIER;
+                printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
+            }
+        }
 
         /* --- STEP_MS 次 1ms 取樣 --- */
         for(int step=0;step<STEP_MS;++step){
