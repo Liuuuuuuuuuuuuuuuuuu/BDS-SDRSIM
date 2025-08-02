@@ -228,30 +228,24 @@ void generate_signal(const sim_config_t *cfg)
             static_user_at(week,sow,&ref_usr,&usr,uvel);
         } else if(cfg->path_type==1){
             coord_t prev=usr;
-            interpolate_path(&path, ms/1000.0, &usr); /* ECEF xyz */
+            interpolate_path(&path, ms/1000.0, &usr);
             xyz2llh(usr.xyz,&usr);
             usr.week=week; usr.sow=sow;
             double dt=STEP_MS*0.001;
             uvel[0]=(usr.xyz[0]-prev.xyz[0])/dt;
             uvel[1]=(usr.xyz[1]-prev.xyz[1])/dt;
             uvel[2]=(usr.xyz[2]-prev.xyz[2])/dt;
-            /* convert ECEF velocity to inertial */
-            uvel[0]+= -OMEGA_E*usr.xyz[1];
-            uvel[1]+=  OMEGA_E*usr.xyz[0];
-
         } else {
             coord_t prev=usr;
             double llh[3];
             interpolate_path_llh(&path, ms/1000.0, llh);
-            llh2xyz(llh,&usr);             /* use ECEF path without extra rotation */
-            usr.week=week; usr.sow=sow;
+            coord_t ref={0};
+            ref.llh[0]=llh[0]; ref.llh[1]=llh[1]; ref.llh[2]=llh[2];
+            static_user_at(week,sow,&ref,&usr,NULL);
             double dt=STEP_MS*0.001;
             uvel[0]=(usr.xyz[0]-prev.xyz[0])/dt;
             uvel[1]=(usr.xyz[1]-prev.xyz[1])/dt;
             uvel[2]=(usr.xyz[2]-prev.xyz[2])/dt;
-            /* convert ECEF velocity to inertial */
-            uvel[0]+= -OMEGA_E*usr.xyz[1];
-            uvel[1]+=  OMEGA_E*usr.xyz[0];
         }
 
         update_channels_fixed(ch,n_ch,&usr,uvel,
