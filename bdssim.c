@@ -77,7 +77,6 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
 {
     struct cand{int prn;double elev,rho,rdot;int pri;} c[63];
     int m=0;
-    double uv[3]={-OMEGA_E*u->xyz[1], OMEGA_E*u->xyz[0], 0.0};
     for(int prn=1;prn<=prn_max;++prn){
         if(single_prn>0 && prn!=single_prn) continue;
         if(no_geo && is_d2_prn(prn)) continue;
@@ -87,7 +86,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
         double el=enu_elevation_deg(enu); if(el<5.0)continue;
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*(vel[0]-uv[0]) + dy*(vel[1]-uv[1]) + dz*(vel[2]-uv[2]))/rho;
+        double rdot=(dx*vel[0] + dy*vel[1] + dz*vel[2])/rho;
         int pri = (geo_first && is_d2_prn(prn)) ? 1 : 0;
         c[m++] = (struct cand){prn,el,rho,rdot,pri};
     }
@@ -210,7 +209,6 @@ void generate_signal(const sim_config_t *cfg)
 
     const int STEP_MS = cfg->step_ms;
     const uint64_t total_ms=(uint64_t)cfg->duration*1000;
-    coord_t ref_usr=ref_llh; /* keep LLH */
     double start_bdt = usr.week*604800.0 + usr.sow;
     for(uint64_t ms=0; ms<total_ms; ms+=STEP_MS)
     {
@@ -222,9 +220,12 @@ void generate_signal(const sim_config_t *cfg)
         double uvel[3], uvel_next[3];
         coord_t usr_next={0};
         if(cfg->path_type==0){
-            static_user_at(week,sow,&ref_usr,&usr,uvel);
-            static_user_at(week,sow+dt,&ref_usr,&usr_next,NULL);
-            uvel_next[0]=uvel[0]; uvel_next[1]=uvel[1]; uvel_next[2]=uvel[2];
+            usr.week = week;
+            usr.sow  = sow;
+            usr_next = usr;
+            usr_next.sow = sow + dt;
+            uvel[0]=uvel[1]=uvel[2]=0.0;
+            uvel_next[0]=uvel_next[1]=uvel_next[2]=0.0;
             update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
                                  cfg->gain,g_target_cn0,STEP_MS);
         } else if(cfg->path_type==1){
