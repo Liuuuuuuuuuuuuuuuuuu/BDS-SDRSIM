@@ -74,6 +74,7 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
 - IGSO/MEO PRN → D1 (50 bps, 有 NH 二次碼)
 - `--geo-first` 在挑選模擬衛星時會優先加入可見的 GEO 衛星
 - `--no-geo` 排除所有 GEO 衛星
+- `--meo-only` 僅模擬 MEO 衛星
 - `--prn`  可只輸出指定 PRN
 - `--prn37`  僅使用 1-37 號衛星
 
