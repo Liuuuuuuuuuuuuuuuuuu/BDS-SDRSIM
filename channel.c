@@ -160,15 +160,21 @@ static void load_ca_once(void)
 
 void channel_set_time(channel_t *c,int week,double sow)
 {
+    /* Compute sub-ms fractional offset to align PRN/NH/data boundaries. */
+    double sow_ms = sow * 1000.0;
+    double frac_ms = sow_ms - floor(sow_ms);
+    c->code_phase = frac_ms * CODE_LEN;  /* 1 ms = 2046 chips */
+
     double sf_start = floor(sow/6.0)*6.0;
     c->sf_id = ((int)(sf_start/6.0))%5 + 1;
-    int ms = (int)llround((sow - sf_start)*1000.0);
+    double sub_ms = (sow - sf_start)*1000.0;
+    int ms = (int)floor(sub_ms);
     if(ms < 0)      ms = 0;
     else if(ms >= 6000) ms = 5999;
     c->bit_ptr = ms/20;
     c->ms_count = ms%20;
     get_subframe_bits(c->prn,c->sf_id,week,sf_start,6.0,c->nav_bits);
-    if(ms == 0){
+    if(ms == 0 && frac_ms < 1e-9){
         /* 在子幀邊界，強制對齊三個時序：PRN、NH20、NAV */
         c->code_phase = 0.0;     /* 1 ms PRN 2046 chips 從頭開始 */
         c->ms_count   = 0;       /* NH20 index 從 0 開始 */
@@ -178,7 +184,8 @@ void channel_set_time(channel_t *c,int week,double sow)
     double sf_start_d2 = floor(sow/0.6)*0.6;      /* 每 0.6 s 一個子帧 */
     double mf_start_d2 = floor(sow/3.0)*3.0;      /* 周内秒对齐到 3 s 主帧 */
     c->sf_id_d2 = ((int)(sf_start_d2/0.6))%5 + 1;
-    int ms2 = (int)llround((sow - sf_start_d2)*1000.0);
+    double sub_ms2 = (sow - sf_start_d2)*1000.0;
+    int ms2 = (int)floor(sub_ms2);
     if(ms2 < 0)      ms2 = 0;
     else if(ms2 >= 600) ms2 = 599;
     c->bit_ptr_d2 = ms2/2;
@@ -186,7 +193,7 @@ void channel_set_time(channel_t *c,int week,double sow)
     /* D2 的 SOW 以主帧(3 s) 的子帧1同步頭對齊 */
     get_subframe_bits(c->prn,c->sf_id_d2,week,mf_start_d2,3.0,c->nav_bits_d2);
     /* 只在 3 s 主帧邊界重置 D2 的碼相位與導航索引 */
-    if(is_d2_prn(c->prn) && fabs(sow - mf_start_d2) < 1e-9){
+    if(is_d2_prn(c->prn) && fabs(sow - mf_start_d2) < 1e-9 && frac_ms < 1e-9){
         c->code_phase  = 0.0;
         c->bit_ptr_d2  = 0;
         c->ms_count_d2 = 0;
