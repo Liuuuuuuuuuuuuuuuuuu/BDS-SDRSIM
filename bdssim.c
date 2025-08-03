@@ -48,13 +48,15 @@ static void check_ephemeris_age(int week,double sow)
 
 /*----------------------------------------------------*/
 int select_channels(channel_t *ch,int *n,const coord_t*u,
-                    bool geo_first,int single_prn,bool no_geo)
+                    bool geo_first,int single_prn,bool no_geo,
+                    bool meo_only)
 {
     struct cand{int prn;double elev,rho,rdot;int pri;} c[63];
     int m=0;
     for(int prn=1;prn<=prn_max;++prn){
         if(single_prn>0 && prn!=single_prn) continue;
         if(no_geo && is_d2_prn(prn)) continue;
+        if(meo_only && !is_meo_prn(prn)) continue;
         double sat[3],vel[3];
         calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
         double enu[3]; ecef2enu(u,sat,enu);
@@ -157,7 +159,7 @@ void generate_signal(const sim_config_t *cfg)
     channel_t ch[MAX_CH];
     int n_ch;
     select_channels(ch,&n_ch,&usr,cfg->geo_first,
-                    cfg->single_prn,cfg->no_geo);
+                    cfg->single_prn,cfg->no_geo,cfg->meo_only);
 
     double fs = cfg->byte_output ? FSAMP_BYTE : FSAMP_DEF;
     int samp_per_ms = (int)(fs/1000.0 + 0.5);

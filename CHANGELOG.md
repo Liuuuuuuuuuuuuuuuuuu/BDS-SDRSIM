@@ -17,4 +17,5 @@
 * Orbit propagation now uses the unified GPS/BDS RAAN
   expression `Ω(t)=Ω₀+(Ω̇−Ωₑ)·tk−Ωₑ·Toe` for all BeiDou
   satellites
+* Added `--meo-only` flag to simulate only MEO satellites
 

@@ -27,6 +27,7 @@ static void usage(const char *p)
     puts("  --byte               輸出 I-only 之 8-bit 檔");
     puts("  --geo-first          優先可見 GEO 衛星");
     puts("  --no-geo            排除 GEO 衛星");
+    puts("  --meo-only          僅模擬 MEO 衛星");
     puts("  --prn N             僅模擬指定 PRN");
     puts("  --prn37             僅使用 1-37 號衛星");
     puts("  --help               顯示本說明\n");
@@ -44,6 +45,7 @@ int main(int argc,char *argv[])
     cfg.byte_output = false;
     cfg.geo_first  = false;
     cfg.no_geo     = false;
+    cfg.meo_only   = false;
     cfg.single_prn = 0;
     cfg.prn37_only = false;
     bool llh_given   = false;
@@ -78,6 +80,7 @@ int main(int argc,char *argv[])
         {"byte",     no_argument,       0, 'b'},
         {"geo-first",no_argument,       0, 'G'},
         {"no-geo",   no_argument,       0, 'O'},
+        {"meo-only", no_argument,       0, 'M'},
         {"prn",      required_argument, 0, 'p'},
         {"prn37",    no_argument,       0, 'B'},
         {"help",     no_argument,       0, 'h'},
@@ -85,7 +88,7 @@ int main(int argc,char *argv[])
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:R:hbGOp:B", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:R:hbGOp:BM", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -138,6 +141,9 @@ int main(int argc,char *argv[])
             break;
         case 'O':
             cfg.no_geo = true;
+            break;
+        case 'M':
+            cfg.meo_only = true;
             break;
         case 'p':
             cfg.single_prn = atoi(optarg);
@@ -230,7 +236,8 @@ int main(int argc,char *argv[])
 
     channel_t ch[MAX_CH];
     int n_ch;
-    select_channels(ch,&n_ch,&usr,cfg.geo_first,cfg.single_prn,cfg.no_geo);
+    select_channels(ch,&n_ch,&usr,cfg.geo_first,cfg.single_prn,
+                    cfg.no_geo,cfg.meo_only);
 
     /* 印出確認訊息 (簡潔模式) */
     printf("[cfg] UTC %s  BDT W%d %.3f\n",
