@@ -9,6 +9,7 @@
 #include "globals.h"
 #include "path.h"
 #include "channel.h"        /* g_target_cn0 */
+#include "coord.h"
 
 /* ───────────────────────────── */
 static void usage(const char *p)
@@ -223,6 +224,9 @@ int main(int argc,char *argv[])
     }
     usr.week = start_week;
     usr.sow  = start_sow;
+
+    coord_t ref_llh = usr;
+    static_user_at(usr.week, usr.sow, &ref_llh, &usr, NULL);
 
     channel_t ch[MAX_CH];
     int n_ch;

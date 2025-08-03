@@ -13,7 +13,6 @@
 #include "timeconv.h"
 #include "path.h"
 #include "globals.h"     /* nav_week */
-#define OMEGA_E   7.2921150e-5
 #define FSAMP_DEF FS_OUTPUT_HZ    /* default 6.144 MHz for 16-bit I/Q output */
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
 #define FCARRIER   1561.098e6      /* B1I carrier */
@@ -45,30 +44,6 @@ static void check_ephemeris_age(int week,double sow)
     }
     if(warn)
         fputs("建議使用接近星曆 toe 的起始時間以避免 tk 錯誤\n", stderr);
-}
-
-/* ---- Rotate fixed LLH with Earth rotation ----- */
-static void static_user_at(int week,double sow,const coord_t*ref,
-                           coord_t*out,double vel[3])
-{
-    double lat=ref->llh[0]*(M_PI/180.0);
-    double lon0=ref->llh[1]*(M_PI/180.0);
-    double h=ref->llh[2];
-    double sinp=sin(lat); double cosp=cos(lat);
-    double N=WGS_A/sqrt(1.0-WGS_E2*sinp*sinp);
-    double t=(week-nav_week)*604800.0 + sow;
-    double lon=lon0 + OMEGA_E*t;
-    double cosL=cos(lon), sinL=sin(lon);
-    out->xyz[0]=(N+h)*cosp*cosL;
-    out->xyz[1]=(N+h)*cosp*sinL;
-    out->xyz[2]=(N*(1.0-WGS_E2)+h)*sinp;
-    out->llh[0]=ref->llh[0]; out->llh[1]=ref->llh[1]; out->llh[2]=ref->llh[2];
-    out->week=week; out->sow=sow;
-    if(vel){
-        vel[0]=-OMEGA_E*out->xyz[1];
-        vel[1]= OMEGA_E*out->xyz[0];
-        vel[2]=0.0;
-    }
 }
 
 /*----------------------------------------------------*/
