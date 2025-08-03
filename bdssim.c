@@ -87,6 +87,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*vel[0] + dy*vel[1] + dz*vel[2])/rho;
+        if(is_d2_prn(prn)) rdot = 0.0;
         int pri = (geo_first && is_d2_prn(prn)) ? 1 : 0;
         c[m++] = (struct cand){prn,el,rho,rdot,pri};
     }
@@ -120,6 +121,7 @@ static void update_channels_path(channel_t *ch,int n,const coord_t *u,
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
+        if(is_d2_prn(prn)) rdot = 0.0;
         update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
         if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
 
@@ -134,6 +136,7 @@ static void update_channels_path(channel_t *ch,int n,const coord_t *u,
         double rdot2=(dx2*(vel2[0]-uvel_next[0]) +
                       dy2*(vel2[1]-uvel_next[1]) +
                       dz2*(vel2[2]-uvel_next[2]))/rho2;
+        if(is_d2_prn(prn)) rdot2 = 0.0;
         double enu2[3]; ecef2enu(u_next,sat2,enu2);
         double el2 = enu_elevation_deg(enu2);
         double fd2 = -FCARRIER*rdot2/299792458.0;
