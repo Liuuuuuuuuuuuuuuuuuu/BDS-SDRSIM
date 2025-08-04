@@ -9,7 +9,6 @@
 #define PI2        6.2831853071795864769
 #define FCARRIER   1561.098e6      /* B1I */
 #define CHIPRATE   2.046e6
-#define INV_SQRT2  0.70710678118654752440
 static double fs = FS_OUTPUT_HZ;           /* default sample rate */
 
 /* default target CN0, overridable via CLI */
@@ -250,15 +249,12 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
     for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;            /* 0..2045 */
         int16_t ca = ca_wave[c->prn][chip];
-        int16_t d1 = c->nav_bits[c->bit_ptr] ? -1 : +1;   /* D1 資料 */
-        int16_t nh = nh20_bits[c->ms_count] ? -1 : +1;    /* NH20 pilot */
-        float i_sym = ca * d1 * INV_SQRT2;
-        float q_sym = ca * nh * INV_SQRT2;
+        uint8_t nh = nh20_bits[c->ms_count];
+        int16_t nb = (c->nav_bits[c->bit_ptr]^nh)?-1:+1;
         float co,si; fast_sincos(phase,&co,&si);
-        float ci = amp * i_sym;
-        float cq = amp * q_sym;
-        I[n] = (int16_t)lrintf(ci*co - cq*si);
-        Q[n] = (int16_t)lrintf(ci*si + cq*co);
+        float s = amp*ca*nb;
+        I[n]=(int16_t)lrintf(s*co);
+        Q[n]=(int16_t)lrintf(s*si);
 
         phase += PI2*(fd + 0.5*dfd)/fs;
         fd += dfd;
@@ -310,14 +306,11 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
     for(int n=0;n<samp_per_ms;++n){
         int chip = (int)code_phase;
         int16_t ca = ca_wave[c->prn][chip];
-        int16_t d2 = c->nav_bits_d2[c->bit_ptr_d2] ? -1 : +1; /* D2 資料 */
-        float i_sym = ca * INV_SQRT2;         /* I 路純 PRN pilot */
-        float q_sym = ca * d2 * INV_SQRT2;
+        int16_t nb = c->nav_bits_d2[c->bit_ptr_d2] ? -1:+1;
         float co,si; fast_sincos(phase,&co,&si);
-        float ci = amp * i_sym;
-        float cq = amp * q_sym;
-        I[n] = (int16_t)lrintf(ci*co - cq*si);
-        Q[n] = (int16_t)lrintf(ci*si + cq*co);
+        float s = amp*ca*nb;
+        I[n]=(int16_t)lrintf(s*co);
+        Q[n]=(int16_t)lrintf(s*si);
 
         phase += PI2*(fd + 0.5*dfd)/fs;
         fd += dfd;
@@ -326,8 +319,9 @@ void gen_samples_1ms_d2(channel_t *c, int week, double sow,
         code_phase += (code_rate + 0.5*dcode_rate)/fs;
         code_rate += dcode_rate;
         amp += damp;
-        if(code_phase>=CODE_LEN)
+        if(code_phase>=CODE_LEN){
             code_phase-=CODE_LEN;
+        }
     }
     c->fd = fd;
     c->code_rate = code_rate;
