@@ -157,16 +157,28 @@ static void load_ca_once(void)
     ca_ready = 1;
 }
 
-void channel_set_time(channel_t *c,int week,double sow)
+void channel_set_time(channel_t *c,int week,double sow,double rho)
 {
+    /* Transmission time accounts for signal travel time (rho/c). */
+    double tx_sow = sow - rho/299792458.0; /* seconds */
+    int tx_week = week;
+    if(tx_sow < 0.0){
+        tx_sow += 604800.0;
+        tx_week -= 1;
+    } else if(tx_sow >= 604800.0){
+        tx_sow -= 604800.0;
+        tx_week += 1;
+    }
+    c->tx_week = tx_week;
+
     /* Compute sub-ms fractional offset to align PRN/NH/data boundaries. */
-    double sow_ms = sow * 1000.0;
+    double sow_ms = tx_sow * 1000.0;
     double frac_ms = sow_ms - floor(sow_ms);
     c->code_phase = frac_ms * CODE_LEN;  /* 1 ms = 2046 chips */
 
-    double sf_start = floor(sow/6.0)*6.0;
+    double sf_start = floor(tx_sow/6.0)*6.0;
     c->sf_id = ((int)(sf_start/6.0))%5 + 1;  /* 1..5 */
-    double sub_ms = (sow - sf_start)*1000.0;
+    double sub_ms = (tx_sow - sf_start)*1000.0;
     int ms = (int)floor(sub_ms);
     if(ms < 0)      ms = 0;
     else if(ms >= 6000) ms = 5999;
@@ -176,7 +188,7 @@ void channel_set_time(channel_t *c,int week,double sow)
     /* ---- D1：以 6 s 對齊作為固定錨點 ---- */
     c->d1_sf_t0    = sf_start;
     c->d1_sf_index = 0;
-    get_subframe_bits(c->prn,c->sf_id,week,c->d1_sf_t0,6.0,c->nav_bits);
+    get_subframe_bits(c->prn,c->sf_id,c->tx_week,c->d1_sf_t0,6.0,c->nav_bits);
     if(ms == 0 && frac_ms < 1e-9){
         /* 在子幀邊界，強制對齊三個時序：PRN、NH20、NAV */
         c->code_phase = 0.0;     /* 1 ms PRN 2046 chips 從頭開始 */
@@ -186,17 +198,15 @@ void channel_set_time(channel_t *c,int week,double sow)
     /* 暫時停用 GEO/D2：不初始化任何 D2 狀態 */
 }
 
-void channel_reset(channel_t *c,int prn,int week,double sow){
+void channel_reset(channel_t *c,int prn,int week,double sow,double rho){
     memset(c,0,sizeof(*c));
     c->prn   = prn;
     load_ca_once();
 
-    /* Randomise starting carrier and code phase so I/Q averages
-       are well balanced even for short captures. */
+    /* Randomise starting carrier phase so I/Q averages are balanced. */
     c->carr_phase = ((double)rand()/(double)RAND_MAX)*PI2;
-    c->code_phase = ((double)rand()/(double)RAND_MAX)*CODE_LEN;
 
-    channel_set_time(c,week,sow);
+    channel_set_time(c,week,sow,rho);
 }
 /* 幾何→計算振幅 / 初始多普勒 */
 void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg,
@@ -221,11 +231,11 @@ void channel_set_fs(double sample_rate)
 void gen_samples_1ms(channel_t *c,int week,double sow,
                      int samp_per_ms,int16_t*I,int16_t*Q)
 {
-    (void)sow;
+    (void)week; (void)sow;
     if(c->bit_ptr==0 && c->ms_count==0){
         /* 一律使用固定錨點 + 6.0 * index，杜絕邊界抖動 */
         double t0 = c->d1_sf_t0 + 6.0 * c->d1_sf_index;
-        get_subframe_bits(c->prn,c->sf_id,week,t0,6.0,c->nav_bits);
+        get_subframe_bits(c->prn,c->sf_id,c->tx_week,t0,6.0,c->nav_bits);
     }
 
     double fd = c->fd;

@@ -114,7 +114,8 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
         }
     }
     *n = m<MAX_CH?m:MAX_CH;
-    for(int i=0;i<*n;++i) channel_reset(&ch[i],c[i].prn,u->week,u->sow);
+    for(int i=0;i<*n;++i)
+        channel_reset(&ch[i],c[i].prn,u->week,u->sow,c[i].rho);
     return *n;
 }
 
