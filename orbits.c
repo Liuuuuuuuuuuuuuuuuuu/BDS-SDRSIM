@@ -35,7 +35,7 @@ static double kepler(double M, double e)
 /* --------------------------------------------------------------*/
 /*          主要 API：回傳 ECEF 位置 xyz 與速度 vel               */
 void calc_sat_position_velocity(int prn, int week, double sow,
-                                double *xyz, double *vel)
+                                double *xyz, double *vel, double *clk)
 {
     const ephemeris_t *ep = &eph[prn];        /* 全域星曆陣列 (外部定義) */
 
@@ -117,6 +117,17 @@ void calc_sat_position_velocity(int prn, int week, double sow,
         y_dot = (x_op_dot - y_op * cosi * Omega_dot) * sinO
               + (x_op * Omega_dot + y_op_dot * cosi - y_op * sini * i_dot) * cosO;
         z_dot = y_op_dot * sini + y_op * cosi * i_dot;
+    }
+
+    /* -------- 衛星鐘差 (含相對論效應與 TGD1) ----------------- */
+    if (clk) {
+        const double relativistic = -4.442807633e-10 * ep->e * ep->sqrtA * sinE;
+        const double t_clk_ref = ep->week * 604800.0 + ep->toc;
+        double tk_clk = t_sim - t_clk_ref;
+        if (tk_clk > 302400.0) tk_clk -= 604800.0;
+        if (tk_clk < -302400.0) tk_clk += 604800.0;
+        clk[0] = ep->af0 + tk_clk * (ep->af1 + tk_clk * ep->af2) + relativistic - ep->tgd1;
+        clk[1] = ep->af1 + 2.0 * tk_clk * ep->af2;
     }
 
     if (is_geo_prn(prn)) {
