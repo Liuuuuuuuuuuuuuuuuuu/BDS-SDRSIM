@@ -160,6 +160,9 @@ int main(int argc,char *argv[])
         }
     }
 
+    /* unify GEO exclusion with GEO/D2 enable switch */
+    cfg.no_geo = cfg.no_geo || !cfg.enable_geo_d2;
+
     if(cfg.rinex_file[0]=='\0' || cfg.time_start[0]=='\0'){
         usage(argv[0]); return 1;
     }

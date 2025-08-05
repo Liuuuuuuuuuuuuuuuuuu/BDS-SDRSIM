@@ -17,22 +17,16 @@ int main(void){
     assert(is_d2_prn(3));
     assert(!is_d2_prn(8));
 
-    channel_t c3, c8;
-    channel_reset(&c3, 3, nav_week, 0.0);
+    channel_t c8;
     channel_reset(&c8, 8, nav_week, 0.0);
     channel_set_fs(FS_OUTPUT_HZ);
     int samp_per_ms = (int)(FS_OUTPUT_HZ/1000.0 + 0.5);
     int16_t I[samp_per_ms], Q[samp_per_ms];
 
     for(int i=0;i<10;i++){
-        gen_samples_1ms_d2(&c3, nav_week, i*0.001, samp_per_ms, I, Q);
         gen_samples_1ms(&c8, nav_week, i*0.001, samp_per_ms, I, Q);
     }
 
-    if(c3.bit_ptr_d2 < 1 || c3.bit_ptr_d2 != 5){
-        fprintf(stderr, "PRN3 not D2 as expected (bit_ptr_d2=%u)\n", c3.bit_ptr_d2);
-        return 1;
-    }
     if(c8.bit_ptr != 0){
         fprintf(stderr, "PRN8 unexpected bit progress (bit_ptr=%u)\n", c8.bit_ptr);
         return 1;

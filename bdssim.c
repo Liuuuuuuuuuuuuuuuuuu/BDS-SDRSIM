@@ -64,7 +64,6 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*vel[0] + dy*vel[1] + dz*vel[2])/rho;
-        if(is_d2_prn(prn)) rdot = 0.0;
         int pri = (geo_first && is_d2_prn(prn)) ? 1 : 0;
         c[m++] = (struct cand){prn,el,rho,rdot,pri};
     }
@@ -82,10 +81,10 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
 
 
 /* 依照使用者軌跡更新通道，使用目前與下一步的幾何資訊 */
-static void update_channels_path(channel_t *ch,int n,const coord_t *u,
-                                 const double uvel[3],const coord_t *u_next,
-                                 const double uvel_next[3],double gain,
-                                 double target_cn0,int step_ms)
+static void update_channels_path(const sim_config_t *cfg, channel_t *ch,int n,
+                                 const coord_t *u,const double uvel[3],
+                                 const coord_t *u_next,const double uvel_next[3],
+                                 double gain,double target_cn0,int step_ms)
 {
     double dt = step_ms * 0.001; /* seconds */
 
@@ -98,7 +97,8 @@ static void update_channels_path(channel_t *ch,int n,const coord_t *u,
         double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
         double rho=hypot(hypot(dx,dy),dz);
         double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
-        if(is_d2_prn(prn)) rdot = 0.0;
+        if(is_d2_prn(prn) && (cfg->no_geo || cfg->zero_doppler_geo))
+            rdot = 0.0;
         update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
         if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
 
@@ -113,7 +113,8 @@ static void update_channels_path(channel_t *ch,int n,const coord_t *u,
         double rdot2=(dx2*(vel2[0]-uvel_next[0]) +
                       dy2*(vel2[1]-uvel_next[1]) +
                       dz2*(vel2[2]-uvel_next[2]))/rho2;
-        if(is_d2_prn(prn)) rdot2 = 0.0;
+        if(is_d2_prn(prn) && (cfg->no_geo || cfg->zero_doppler_geo))
+            rdot2 = 0.0;
         double enu2[3]; ecef2enu(u_next,sat2,enu2);
         double el2 = enu_elevation_deg(enu2);
         double fd2 = -FCARRIER*rdot2/299792458.0;
@@ -159,7 +160,8 @@ void generate_signal(const sim_config_t *cfg)
     channel_t ch[MAX_CH];
     int n_ch;
     select_channels(ch,&n_ch,&usr,cfg->geo_first,
-                    cfg->single_prn,cfg->no_geo,cfg->meo_only);
+                    cfg->single_prn,cfg->no_geo,
+                    cfg->meo_only);
 
     double fs = cfg->byte_output ? FSAMP_BYTE : FSAMP_DEF;
     int samp_per_ms = (int)(fs/1000.0 + 0.5);
@@ -206,7 +208,7 @@ void generate_signal(const sim_config_t *cfg)
             usr_next.sow = sow + dt;
             uvel[0]=uvel[1]=uvel[2]=0.0;
             uvel_next[0]=uvel_next[1]=uvel_next[2]=0.0;
-            update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
+            update_channels_path(cfg,ch,n_ch,&usr,uvel,&usr_next,uvel_next,
                                  cfg->gain,g_target_cn0,STEP_MS);
         } else if(cfg->path_type==1){
             coord_t u0,u1,u2;
@@ -222,7 +224,7 @@ void generate_signal(const sim_config_t *cfg)
             uvel_next[0]=(u2.xyz[0]-u1.xyz[0])/dt;
             uvel_next[1]=(u2.xyz[1]-u1.xyz[1])/dt;
             uvel_next[2]=(u2.xyz[2]-u1.xyz[2])/dt;
-            update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
+            update_channels_path(cfg,ch,n_ch,&usr,uvel,&usr_next,uvel_next,
                                  cfg->gain,g_target_cn0,STEP_MS);
         } else {
             double llh0[3], llh1[3], llh2[3];
@@ -242,7 +244,7 @@ void generate_signal(const sim_config_t *cfg)
             uvel_next[0]=(usr2.xyz[0]-usr_next.xyz[0])/dt;
             uvel_next[1]=(usr2.xyz[1]-usr_next.xyz[1])/dt;
             uvel_next[2]=(usr2.xyz[2]-usr_next.xyz[2])/dt;
-            update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
+            update_channels_path(cfg,ch,n_ch,&usr,uvel,&usr_next,uvel_next,
                                  cfg->gain,g_target_cn0,STEP_MS);
         }
         if(ms==0){
@@ -259,13 +261,8 @@ void generate_signal(const sim_config_t *cfg)
             /* 併行各通道 */
             #pragma omp parallel for
             for(int c=0;c<n_ch;++c){
-                bool use_d2 = is_d2_prn(ch[c].prn);
-                if(use_d2)
-                    gen_samples_1ms_d2(&ch[c],week,sow+step*0.001,
-                                       samp_per_ms,tmpI[c],tmpQ[c]);
-                else
-                    gen_samples_1ms(&ch[c],week,sow+step*0.001,
-                                   samp_per_ms,tmpI[c],tmpQ[c]);
+                gen_samples_1ms(&ch[c],week,sow+step*0.001,
+                                samp_per_ms,tmpI[c],tmpQ[c]);
             }
 
             /* 歸併 */
