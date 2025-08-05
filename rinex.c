@@ -2,6 +2,7 @@
  *            (c) 2025  your-name
  * ------------------------------------------------------------------------ */
 
+#include "timeconv.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -80,12 +81,25 @@ int read_rinex_nav(const char *fname, double start_bdt)
         ephemeris_t tmp = {0};
         tmp.prn = prn;
 
-        /* ── 1st row：af0/1/2 & UTC stamp -------------------------- */
+        /* ── 1st row：時間戳記與 af0/1/2 -------------------------- */
+        int yy, mm, dd, hh, mi;
+        double ss;
+        int w_dummy; double sow;
+        int toc_sec = -1;
+        if (sscanf(l + 4, "%d %d %d %d %d %lf", &yy, &mm, &dd, &hh, &mi, &ss) == 6) {
+            char utc_str[32];
+            snprintf(utc_str, sizeof utc_str,
+                     "%04d/%02d/%02d,%02d:%02d:%02d",
+                     yy, mm, dd, hh, mi, (int)ss);
+            if (utc_to_bdt(utc_str, &w_dummy, &sow) == 0)
+                toc_sec = ((int)sow + utc_bdt_diff) % 604800;
+        }
+        (void)w_dummy;
         tmp.af0 = fld(l, 0, IND1);
         tmp.af1 = fld(l, 1, IND1);
         tmp.af2 = fld(l, 2, IND1);
 
-        /* 先略過年月日等欄位，僅取後續週數與 TOE/SOW  */
+        /* ── 讀後 7 行 -------------------------------------------- */
 
         /* ── 讀後 7 行 -------------------------------------------- */
         char r[7][120];
@@ -103,7 +117,7 @@ int read_rinex_nav(const char *fname, double start_bdt)
         tmp.sqrtA   = fld(r[1], 3, INDN);
 
         tmp.toe     = fld(r[2], 0, INDN);
-        tmp.toc     = (int)tmp.toe;          /* RINEX 無 toc 欄位，沿用 toe */
+        tmp.toc     = (toc_sec >= 0) ? toc_sec : (int)tmp.toe; /* fallback: toe */
         tmp.cic     = fld(r[2], 1, INDN);
         tmp.omega0  = fld(r[2], 2, INDN);
         tmp.cis     = fld(r[2], 3, INDN);
