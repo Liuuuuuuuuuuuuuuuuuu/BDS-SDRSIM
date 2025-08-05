@@ -34,7 +34,7 @@ static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
     f->toc      = (uint32_t)(e->toc / 8);
     f->aodc     = e->aodc & 0x1F;
     f->urai     = e->ura & 0xF;
-    f->satH1    = e->health & 0x1;
+    f->satH1    = 0;                  /* ignore ephemeris health */
 
     /* TGD values: 0.1 ns resolution (ICD 5.2.4.10) */
     f->tgd1     = (int32_t)llround(e->tgd1 / 1e-10);
