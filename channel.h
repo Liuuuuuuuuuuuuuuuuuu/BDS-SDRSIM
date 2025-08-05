@@ -38,8 +38,7 @@ void channel_reset(channel_t *, int prn, int week, double sow);
 void channel_set_time(channel_t *, int week, double sow);
 void update_channel_dynamics(channel_t *, double rho, double rdot,
                              double elev_deg, double gain,
-                             double target_cn0, int n_visible,
-                             double dt_ms);
+                             double target_cn0, double dt_ms);
 void channel_set_fs(double sample_rate);
 void gen_samples_1ms(channel_t *, int week, double sow,
                      int samp_per_ms, int16_t *I, int16_t *Q);
@@ -51,7 +50,7 @@ int  is_d2_prn(int prn);
 int  is_igso_prn(int prn);
 int  is_meo_prn(int prn);
 double predict_next_amp(const channel_t *c,double rho_next,double elev_deg_next,
-                        double gain,double target_cn0,int n_visible,double dt_ms);
+                        double gain,double target_cn0,double dt_ms);
 
 /* Global target CN0 (dB-Hz) */
 extern double g_target_cn0;
