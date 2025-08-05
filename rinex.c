@@ -92,7 +92,7 @@ int read_rinex_nav(const char *fname, double start_bdt)
                      "%04d/%02d/%02d,%02d:%02d:%02d",
                      yy, mm, dd, hh, mi, (int)ss);
             if (utc_to_bdt(utc_str, &w_dummy, &sow) == 0)
-                toc_sec = ((int)sow + utc_bdt_diff) % 604800;
+                toc_sec = ((int)sow - utc_bdt_diff) % 604800;
         }
         (void)w_dummy;
         tmp.af0 = fld(l, 0, IND1);
