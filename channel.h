@@ -55,6 +55,7 @@ double predict_next_amp(const channel_t *c,double rho_next,double elev_deg_next,
 
 /* Global target CN0 (dB-Hz) */
 extern double g_target_cn0;
+extern int    g_force_d1_constant_bits;  /* 1=所有 D1 資料位固定 +1；0=送真資料 */
 
 /* === 修正：用指標而非 array declarator === */
 void get_subframe_bits(int prn, int sf_id, int week, double sow,

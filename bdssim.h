@@ -63,6 +63,7 @@ typedef struct {
     /* ---- Simulation toggles ---- */
     int   enable_geo_d2;       /* 0=禁用 GEO/D2（預設）; 1=啟用 GEO/D2 */
     int   zero_doppler_geo;    /* 1=將 GEO r_dot 視為 0（僅當 enable_geo_d2=1 時生效）*/
+    int   force_d1_constant_bits; /* 0=送真資料; 1=所有 D1 資料位固定 +1 */
 } sim_config_t;
 
 /* ---------- 介面 ---------- */

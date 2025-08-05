@@ -13,6 +13,7 @@ static double fs = FS_OUTPUT_HZ;           /* default sample rate */
 
 /* default target CN0, overridable via CLI */
 double g_target_cn0 = 42.0;
+int    g_force_d1_constant_bits = 0;
 
 /* (舊的接收天線圖與 multipath 模型已移除) */
 
@@ -222,11 +223,6 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
                      int samp_per_ms,int16_t*I,int16_t*Q)
 {
     (void)sow;
-    if(c->bit_ptr==0 && c->ms_count==0){
-        /* 一律使用固定錨點 + 6.0 * index，杜絕邊界抖動 */
-        double t0 = c->d1_sf_t0 + 6.0 * c->d1_sf_index;
-        get_subframe_bits(c->prn,c->sf_id,week,t0,6.0,c->nav_bits);
-    }
 
     double fd = c->fd;
     double code_rate = c->code_rate;
@@ -241,7 +237,11 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
         int chip = (int)code_phase;            /* 0..2045 */
         int16_t ca = ca_wave[c->prn][chip];
         uint8_t nh = nh20_bits[c->ms_count];
-        int16_t nb = (c->nav_bits[c->bit_ptr]^nh)?-1:+1;
+        int16_t nh_sign = nh ? -1 : +1;
+        int16_t data_bit = g_force_d1_constant_bits
+                           ? +1
+                           : (c->nav_bits[c->bit_ptr] ? -1 : +1);
+        int16_t nb = data_bit * nh_sign;
         float co,si; fast_sincos(phase,&co,&si);
         float s = amp*ca*nb;
         I[n]=(int16_t)lrintf(s*co);
@@ -262,6 +262,8 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
                     c->bit_ptr=0;
                     c->sf_id=c->sf_id%5+1;      /* 1..5 */
                     c->d1_sf_index=(c->d1_sf_index+1)%5;
+                    double t0 = c->d1_sf_t0 + 6.0 * c->d1_sf_index;
+                    get_subframe_bits(c->prn,c->sf_id,week,t0,6.0,c->nav_bits);
                 }
             }
         }
