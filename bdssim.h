@@ -59,6 +59,10 @@ typedef struct {
     bool     meo_only;         /* 只模擬 MEO 衛星 */
     int      single_prn;       /* 僅模擬此 PRN (0 = 全部) */
     bool     prn37_only;       /* 僅使用 1-37 號衛星 */
+
+    /* ---- Simulation toggles ---- */
+    int   enable_geo_d2;       /* 0=禁用 GEO/D2（預設）; 1=啟用 GEO/D2 */
+    int   zero_doppler_geo;    /* 1=將 GEO r_dot 視為 0（僅當 enable_geo_d2=1 時生效）*/
 } sim_config_t;
 
 /* ---------- 介面 ---------- */

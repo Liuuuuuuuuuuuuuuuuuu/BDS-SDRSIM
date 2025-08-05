@@ -165,38 +165,25 @@ void channel_set_time(channel_t *c,int week,double sow)
     c->code_phase = frac_ms * CODE_LEN;  /* 1 ms = 2046 chips */
 
     double sf_start = floor(sow/6.0)*6.0;
-    c->sf_id = ((int)(sf_start/6.0))%5 + 1;
+    c->sf_id = ((int)(sf_start/6.0))%5 + 1;  /* 1..5 */
     double sub_ms = (sow - sf_start)*1000.0;
     int ms = (int)floor(sub_ms);
     if(ms < 0)      ms = 0;
     else if(ms >= 6000) ms = 5999;
     c->bit_ptr = ms/20;
     c->ms_count = ms%20;
-    get_subframe_bits(c->prn,c->sf_id,week,sf_start,6.0,c->nav_bits);
+
+    /* ---- D1：以 6 s 對齊作為固定錨點 ---- */
+    c->d1_sf_t0    = sf_start;
+    c->d1_sf_index = 0;
+    get_subframe_bits(c->prn,c->sf_id,week,c->d1_sf_t0,6.0,c->nav_bits);
     if(ms == 0 && frac_ms < 1e-9){
         /* 在子幀邊界，強制對齊三個時序：PRN、NH20、NAV */
         c->code_phase = 0.0;     /* 1 ms PRN 2046 chips 從頭開始 */
         c->ms_count   = 0;       /* NH20 index 從 0 開始 */
         c->bit_ptr    = 0;       /* 50 bps NAV bit 從 0 開始 */
     }
-
-    double sf_start_d2 = floor(sow/0.6)*0.6;      /* 每 0.6 s 一個子帧 */
-    double mf_start_d2 = floor(sow/3.0)*3.0;      /* 周内秒对齐到 3 s 主帧 */
-    c->sf_id_d2 = ((int)(sf_start_d2/0.6))%5 + 1;
-    double sub_ms2 = (sow - sf_start_d2)*1000.0;
-    int ms2 = (int)floor(sub_ms2);
-    if(ms2 < 0)      ms2 = 0;
-    else if(ms2 >= 600) ms2 = 599;
-    c->bit_ptr_d2 = ms2/2;
-    c->ms_count_d2 = ms2%2;
-    /* D2 的 SOW 以主帧(3 s) 的子帧1同步頭對齊 */
-    get_subframe_bits(c->prn,c->sf_id_d2,week,mf_start_d2,3.0,c->nav_bits_d2);
-    /* 只在 3 s 主帧邊界重置 D2 的碼相位與導航索引 */
-    if(is_d2_prn(c->prn) && fabs(sow - mf_start_d2) < 1e-9 && frac_ms < 1e-9){
-        c->code_phase  = 0.0;
-        c->bit_ptr_d2  = 0;
-        c->ms_count_d2 = 0;
-    }
+    /* 暫時停用 GEO/D2：不初始化任何 D2 狀態 */
 }
 
 void channel_reset(channel_t *c,int prn,int week,double sow){
@@ -234,8 +221,12 @@ void channel_set_fs(double sample_rate)
 void gen_samples_1ms(channel_t *c,int week,double sow,
                      int samp_per_ms,int16_t*I,int16_t*Q)
 {
-    if(c->bit_ptr==0 && c->ms_count==0)
-        get_subframe_bits(c->prn,c->sf_id,week,sow,6.0,c->nav_bits);
+    (void)sow;
+    if(c->bit_ptr==0 && c->ms_count==0){
+        /* 一律使用固定錨點 + 6.0 * index，杜絕邊界抖動 */
+        double t0 = c->d1_sf_t0 + 6.0 * c->d1_sf_index;
+        get_subframe_bits(c->prn,c->sf_id,week,t0,6.0,c->nav_bits);
+    }
 
     double fd = c->fd;
     double code_rate = c->code_rate;
@@ -269,7 +260,8 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
                 c->ms_count=0;
                 if(++c->bit_ptr==300){
                     c->bit_ptr=0;
-                    c->sf_id=c->sf_id%5+1;
+                    c->sf_id=c->sf_id%5+1;      /* 1..5 */
+                    c->d1_sf_index=(c->d1_sf_index+1)%5;
                 }
             }
         }
@@ -281,60 +273,13 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
     c->amp = amp;
 }
 
-/*
- * ======== D2 (500 bps) support ========
- *  - 資料速率 500 bps (2 ms per bit)
- *  - 不使用二次 Neumann-Hoffman 編碼
- */
+#if 0
+/* ======== D2 (500 bps) support ========
+ * 暫時停用 GEO/D2 */
 void gen_samples_1ms_d2(channel_t *c, int week, double sow,
-                               int samp_per_ms, int16_t *I, int16_t *Q)
+                        int samp_per_ms, int16_t *I, int16_t *Q)
 {
-    if(c->bit_ptr_d2==0 && c->ms_count_d2==0){
-        double mf_start_d2 = floor(sow/3.0)*3.0;
-        get_subframe_bits(c->prn,c->sf_id_d2,week,mf_start_d2,3.0,c->nav_bits_d2);
-    }
-
-    double fd = c->fd;
-    double code_rate = c->code_rate;
-    double phase = c->carr_phase;
-    double code_phase = c->code_phase;
-    double dfd = c->fd_dot / fs;
-    double dcode_rate = c->code_rate_dot / fs;
-    double amp = c->amp;
-    double damp = c->amp_dot / fs;
-
-    for(int n=0;n<samp_per_ms;++n){
-        int chip = (int)code_phase;
-        int16_t ca = ca_wave[c->prn][chip];
-        int16_t nb = c->nav_bits_d2[c->bit_ptr_d2] ? -1:+1;
-        float co,si; fast_sincos(phase,&co,&si);
-        float s = amp*ca*nb;
-        I[n]=(int16_t)lrintf(s*co);
-        Q[n]=(int16_t)lrintf(s*si);
-
-        phase += PI2*(fd + 0.5*dfd)/fs;
-        fd += dfd;
-        if(phase>=PI2)      phase-=PI2;
-        else if(phase<0.0)  phase+=PI2;
-        code_phase += (code_rate + 0.5*dcode_rate)/fs;
-        code_rate += dcode_rate;
-        amp += damp;
-        if(code_phase>=CODE_LEN){
-            code_phase-=CODE_LEN;
-        }
-    }
-    c->fd = fd;
-    c->code_rate = code_rate;
-    c->carr_phase = phase;
-    c->code_phase = code_phase;
-    c->amp = amp;
-
-    if(++c->ms_count_d2==2){
-        c->ms_count_d2=0;
-        if(++c->bit_ptr_d2==300){
-            c->bit_ptr_d2=0;
-            c->sf_id_d2 = c->sf_id_d2%5 + 1;
-        }
-    }
+    (void)c; (void)week; (void)sow; (void)samp_per_ms; (void)I; (void)Q;
 }
+#endif
 
