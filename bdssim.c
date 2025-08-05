@@ -17,6 +17,7 @@
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
 #define FCARRIER   1561.098e6      /* B1I carrier */
 #define CHIPRATE   2.046e6
+#define TARGET_RMS 12000.0          /* clipping guard RMS threshold */
 
 /* ========= 振幅計算與 int16 飽和保護 ========= */
 static inline int16_t saturate_int16(double x)
@@ -99,7 +100,7 @@ static void update_channels_path(const sim_config_t *cfg, channel_t *ch,int n,
         double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
         if(is_d2_prn(prn) && (cfg->no_geo || cfg->zero_doppler_geo))
             rdot = 0.0;
-        update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
+        update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,step_ms);
         if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
 
         /* predict next dynamics using next position/velocity */
@@ -119,7 +120,7 @@ static void update_channels_path(const sim_config_t *cfg, channel_t *ch,int n,
         double el2 = enu_elevation_deg(enu2);
         double fd2 = -FCARRIER*rdot2/299792458.0;
         double cr2 = CHIPRATE*(1.0 - rdot2/299792458.0);
-        double A2 = predict_next_amp(&ch[i], rho2, el2, gain, target_cn0, n, step_ms);
+        double A2 = predict_next_amp(&ch[i], rho2, el2, gain, target_cn0, step_ms);
         if(el2 < 5.0) A2 = 0.0;
         ch[i].fd_dot = (fd2 - ch[i].fd) / dt;
         ch[i].code_rate_dot = (cr2 - ch[i].code_rate) / dt;
@@ -267,8 +268,20 @@ void generate_signal(const sim_config_t *cfg)
         }
 
         /* --- STEP_MS 次 1ms 取樣 --- */
-        for(int step=0;step<STEP_MS;++step){
-            memset(accI,0,sizeof(accI)); memset(accQ,0,sizeof(accQ));
+        for(int step=0; step<STEP_MS; ++step){
+            /* --- 根據當前振幅估計全域縮放避免飽和 --- */
+            double sum_power = 0.0;
+            for(int c=0; c<n_ch; ++c){
+                double a = ch[c].amp;
+                sum_power += 0.5 * a * a;
+            }
+            double global_scale = 1.0;
+            double total_rms = sqrt(sum_power);
+            if(total_rms > TARGET_RMS)
+                global_scale = TARGET_RMS / total_rms;
+
+            memset(accI,0,sizeof(accI));
+            memset(accQ,0,sizeof(accQ));
 
             /* 併行各通道 */
             #pragma omp parallel for
@@ -288,21 +301,21 @@ void generate_signal(const sim_config_t *cfg)
             int16_t iq[2*samp_per_ms];
             int8_t  i8[samp_per_ms];            /* byte output holds I only */
             for(int k=0;k<samp_per_ms;++k){
-                int32_t i=accI[k];
-                int32_t q=accQ[k];
+                double di = global_scale * accI[k];
+                double dq = global_scale * accQ[k];
                 if(fp){
-                    if(i>32760 || i<-32760) clip_cnt++;
-                    if(q>32760 || q<-32760) clip_cnt++;
+                    if(di>32760.0 || di<-32760.0) clip_cnt++;
+                    if(dq>32760.0 || dq<-32760.0) clip_cnt++;
                     tot_cnt += 2;
-                    iq[2*k]   = saturate_int16((double)i);
-                    iq[2*k+1] = saturate_int16((double)q);
+                    iq[2*k]   = saturate_int16(di);
+                    iq[2*k+1] = saturate_int16(dq);
                     sumI  += iq[2*k];
                     sumQ  += iq[2*k+1];
                     sumI2 += (double)iq[2*k]*iq[2*k];
                     sumQ2 += (double)iq[2*k+1]*iq[2*k+1];
                 } else {
-                    if (i>127) i=127; else if (i<-128) i=-128;
-                    i8[k] = (int8_t)i;
+                    if (di > 127.0) di = 127.0; else if (di < -128.0) di = -128.0;
+                    i8[k] = (int8_t)llround(di);
                     sumI  += i8[k];
                     sumI2 += (double)i8[k]*i8[k];
                 }

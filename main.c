@@ -39,7 +39,7 @@ int main(int argc,char *argv[])
     sim_config_t cfg = {0};
     cfg.gain        = 1.0;
     cfg.target_cn0  = 45.0;            /* dB-Hz */
-    cfg.step_ms     = 100;
+    cfg.step_ms     = 10;
     cfg.duration    = 300;                /* 預設 300 秒 */
     cfg.seed        = 1;
     cfg.byte_output = false;

@@ -95,16 +95,15 @@ static void init_ant_pat(void){
 }
 
 static inline double amp_from_geom(double rho,double elev_deg,double gain,
-                                   double cn0_dBHz,int n_visible)
+                                   double cn0_dBHz)
 {
     double base = pow(10.0,(cn0_dBHz-45.0)/20.0) * 16384.0;
     double path_loss = 20200000.0 / rho; /* gps-sdr-sim constant */
     int ibs = (int)((90.0 - elev_deg)/5.0);
     if(ibs < 0) ibs = 0; else if(ibs > 36) ibs = 36;
     double ant = ant_pat[ibs];
-    if (n_visible < 1) n_visible = 1;
     double A = base * path_loss * ant * gain;
-    return (A / sqrt((double)n_visible)) * HEADROOM_RATIO;
+    return A * HEADROOM_RATIO;
 }
 
 static inline double orbit_gain_amp(int prn)
@@ -130,10 +129,10 @@ static inline double smooth_amp(double A_prev, double A_new, double dt_ms)
 
 /* 預測下一步的平滑振幅 */
 double predict_next_amp(const channel_t *c,double rho_next,double elev_deg_next,
-                        double gain,double target_cn0,int n_visible,double dt_ms)
+                        double gain,double target_cn0,double dt_ms)
 {
     double A_new = amp_from_geom(rho_next,elev_deg_next,gain,
-                                 target_cn0,n_visible);
+                                 target_cn0);
     A_new *= orbit_gain_amp(c->prn);
     return smooth_amp(c->amp, A_new, dt_ms);
 }
@@ -201,10 +200,9 @@ void channel_reset(channel_t *c,int prn,int week,double sow){
 }
 /* 幾何→計算振幅 / 初始多普勒 */
 void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg,
-                             double gain,double target_cn0,int n_visible,
-                             double dt_ms)
+                             double gain,double target_cn0,double dt_ms)
 {
-    double A_new = amp_from_geom(rho,elev_deg,gain,target_cn0,n_visible);
+    double A_new = amp_from_geom(rho,elev_deg,gain,target_cn0);
     A_new *= orbit_gain_amp(c->prn);
     c->amp = smooth_amp(c->amp, A_new, dt_ms);
     c->amp_dot = 0.0;
