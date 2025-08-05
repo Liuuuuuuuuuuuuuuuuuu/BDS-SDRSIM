@@ -134,6 +134,8 @@ int read_rinex_nav(const char *fname, double start_bdt)
         /* line 7: SV accuracy/health and TGD1/2 */
         tmp.ura     = ifld(r[5], 0, INDN) & 0xF;
         tmp.health  = ifld(r[5], 1, INDN) & 0x1;
+        if (tmp.health == 1)                /* SatH1=1 ⇒ skip satellite */
+            continue;
         tmp.tgd1    = fld(r[5], 2, INDN);
         tmp.tgd2    = fld(r[5], 3, INDN);
 

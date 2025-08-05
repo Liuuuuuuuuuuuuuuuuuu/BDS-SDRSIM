@@ -18,4 +18,6 @@
   expression `Ω(t)=Ω₀+(Ω̇−Ωₑ)·tk−Ωₑ·Toe` for all BeiDou
   satellites
 * Added `--meo-only` flag to simulate only MEO satellites
+* Skip satellites marked unhealthy in ephemeris and
+  always emit `SatH1=0` in navigation data
 
