@@ -17,6 +17,8 @@
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
 #define FCARRIER   1561.098e6      /* B1I carrier */
 #define CHIPRATE   2.046e6
+#define CLIGHT     299792458.0
+#define OMEGA_E    7.2921150e-5
 
 /* ========= 振幅計算與 int16 飽和保護 ========= */
 static inline int16_t saturate_int16(double x)
@@ -46,6 +48,46 @@ static void check_ephemeris_age(int week,double sow)
         fputs("建議使用接近星曆 toe 的起始時間以避免 tk 錯誤\n", stderr);
 }
 
+/* Compute corrected pseudorange and range rate */
+static void compute_range_rate(int prn,int week,double sow,
+                               const coord_t *u,const double uvel[3],
+                               double sat[3],double *rho,double *rdot)
+{
+    double pos[3], vel[3], clk[2];
+    calc_sat_position_velocity(prn, week, sow, pos, vel, clk);
+
+    double dx = pos[0]-u->xyz[0];
+    double dy = pos[1]-u->xyz[1];
+    double dz = pos[2]-u->xyz[2];
+    double range = hypot(hypot(dx,dy),dz);
+    double tau = range / CLIGHT;
+
+    pos[0] -= vel[0]*tau;
+    pos[1] -= vel[1]*tau;
+    pos[2] -= vel[2]*tau;
+
+    double xrot = pos[0] + pos[1]*OMEGA_E*tau;
+    double yrot = pos[1] - pos[0]*OMEGA_E*tau;
+    pos[0] = xrot;
+    pos[1] = yrot;
+
+    if(sat){ sat[0]=pos[0]; sat[1]=pos[1]; sat[2]=pos[2]; }
+
+    dx = pos[0]-u->xyz[0];
+    dy = pos[1]-u->xyz[1];
+    dz = pos[2]-u->xyz[2];
+    range = hypot(hypot(dx,dy),dz);
+
+    if(rho) *rho = range - CLIGHT*clk[0];
+
+    if(rdot){
+        double rvx = vel[0] - (uvel?uvel[0]:0.0);
+        double rvy = vel[1] - (uvel?uvel[1]:0.0);
+        double rvz = vel[2] - (uvel?uvel[2]:0.0);
+        *rdot = (rvx*dx + rvy*dy + rvz*dz) / range;
+    }
+}
+
 /*----------------------------------------------------*/
 int select_channels(channel_t *ch,int *n,const coord_t*u,
                     bool geo_first,int single_prn,bool no_geo,
@@ -57,13 +99,10 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
         if(single_prn>0 && prn!=single_prn) continue;
         if(no_geo && is_d2_prn(prn)) continue;
         if(meo_only && !is_meo_prn(prn)) continue;
-        double sat[3],vel[3];
-        calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
+        double sat[3], rho, rdot;
+        compute_range_rate(prn,u->week,u->sow,u,NULL,sat,&rho,&rdot);
         double enu[3]; ecef2enu(u,sat,enu);
         double el=enu_elevation_deg(enu); if(el<5.0)continue;
-        double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
-        double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*vel[0] + dy*vel[1] + dz*vel[2])/rho;
         int pri = (geo_first && is_d2_prn(prn)) ? 1 : 0;
         c[m++] = (struct cand){prn,el,rho,rdot,pri};
     }
@@ -75,7 +114,8 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
         }
     }
     *n = m<MAX_CH?m:MAX_CH;
-    for(int i=0;i<*n;++i) channel_reset(&ch[i],c[i].prn,u->week,u->sow);
+    for(int i=0;i<*n;++i)
+        channel_reset(&ch[i],c[i].prn,u->week,u->sow,c[i].rho);
     return *n;
 }
 
@@ -90,13 +130,10 @@ static void update_channels_path(const sim_config_t *cfg, channel_t *ch,int n,
 
     for(int i=0;i<n;++i){
         int prn = ch[i].prn;
-        double sat[3], vel[3];
-        calc_sat_position_velocity(prn,u->week,u->sow,sat,vel);
+        double sat[3], rho, rdot;
+        compute_range_rate(prn,u->week,u->sow,u,uvel,sat,&rho,&rdot);
         double enu[3]; ecef2enu(u,sat,enu);
         double el = enu_elevation_deg(enu);
-        double dx=sat[0]-u->xyz[0], dy=sat[1]-u->xyz[1], dz=sat[2]-u->xyz[2];
-        double rho=hypot(hypot(dx,dy),dz);
-        double rdot=(dx*(vel[0]-uvel[0]) + dy*(vel[1]-uvel[1]) + dz*(vel[2]-uvel[2]))/rho;
         if(is_d2_prn(prn) && (cfg->no_geo || cfg->zero_doppler_geo))
             rdot = 0.0;
         update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
@@ -106,19 +143,14 @@ static void update_channels_path(const sim_config_t *cfg, channel_t *ch,int n,
         double t_abs = u->week*604800.0 + u->sow + dt;
         int week2 = (int)(t_abs/604800.0);
         double sow2 = t_abs - week2*604800.0;
-        double sat2[3], vel2[3];
-        calc_sat_position_velocity(prn,week2,sow2,sat2,vel2);
-        double dx2=sat2[0]-u_next->xyz[0], dy2=sat2[1]-u_next->xyz[1], dz2=sat2[2]-u_next->xyz[2];
-        double rho2=hypot(hypot(dx2,dy2),dz2);
-        double rdot2=(dx2*(vel2[0]-uvel_next[0]) +
-                      dy2*(vel2[1]-uvel_next[1]) +
-                      dz2*(vel2[2]-uvel_next[2]))/rho2;
+        double sat2[3], rho2, rdot2;
+        compute_range_rate(prn,week2,sow2,u_next,uvel_next,sat2,&rho2,&rdot2);
         if(is_d2_prn(prn) && (cfg->no_geo || cfg->zero_doppler_geo))
             rdot2 = 0.0;
         double enu2[3]; ecef2enu(u_next,sat2,enu2);
         double el2 = enu_elevation_deg(enu2);
-        double fd2 = -FCARRIER*rdot2/299792458.0;
-        double cr2 = CHIPRATE*(1.0 - rdot2/299792458.0);
+        double fd2 = -FCARRIER*rdot2/CLIGHT;
+        double cr2 = CHIPRATE*(1.0 - rdot2/CLIGHT);
         double A2 = predict_next_amp(&ch[i], rho2, el2, gain, target_cn0, n, step_ms);
         if(el2 < 5.0) A2 = 0.0;
         ch[i].fd_dot = (fd2 - ch[i].fd) / dt;

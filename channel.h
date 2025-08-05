@@ -23,6 +23,8 @@ typedef struct {
     uint8_t  ms_count;      /* 0~19: ms index within data bit */
     uint8_t  nav_bits[300]; /* cached subframe bits */
 
+    int     tx_week;       /* transmission week number */
+
     /* ---- D1 固定時間錨點（6 s 子幀） ---- */
     double  d1_sf_t0;       /* 第一次對齊好的 D1 子幀起點（周內秒） */
     int     d1_sf_index;    /* 子幀索引 0..4（每 6 s 前進一次，對應頁 1..5） */
@@ -34,8 +36,8 @@ typedef struct {
     uint8_t  nav_bits_d2[300];
 } channel_t;
 
-void channel_reset(channel_t *, int prn, int week, double sow);
-void channel_set_time(channel_t *, int week, double sow);
+void channel_reset(channel_t *, int prn, int week, double sow, double rho);
+void channel_set_time(channel_t *, int week, double sow, double rho);
 void update_channel_dynamics(channel_t *, double rho, double rdot,
                              double elev_deg, double gain,
                              double target_cn0, int n_visible,

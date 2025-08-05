@@ -18,7 +18,7 @@ int main(void){
     assert(!is_d2_prn(8));
 
     channel_t c8;
-    channel_reset(&c8, 8, nav_week, 0.0);
+    channel_reset(&c8, 8, nav_week, 0.0, 0.0);
     channel_set_fs(FS_OUTPUT_HZ);
     int samp_per_ms = (int)(FS_OUTPUT_HZ/1000.0 + 0.5);
     int16_t I[samp_per_ms], Q[samp_per_ms];

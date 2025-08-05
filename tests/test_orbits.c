@@ -68,7 +68,7 @@ int main(void)
 
 
             double xyz[3];
-            calc_sat_position_velocity(prn, bw, bsow, xyz, NULL);
+            calc_sat_position_velocity(prn, bw, bsow, xyz, NULL, NULL);
 
             double dx = xyz[0] - x*1000.0;
             double dy = xyz[1] - y*1000.0;

@@ -23,7 +23,7 @@ int main(void)
 
     int prn = 8; /* MEO/IGSO uses D1 with NH code */
     channel_t ch;
-    channel_reset(&ch, prn, nav_week, 0.0);
+    channel_reset(&ch, prn, nav_week, 0.0, 0.0);
     ch.carr_phase = 0.0;
     ch.code_phase = 0.1; /* avoid boundary ambiguity */
     update_channel_dynamics(&ch, 2.0e7, 0.0, 90.0, 1.0, cfg.target_cn0, 1, 1.0);
