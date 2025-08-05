@@ -153,6 +153,7 @@ void generate_signal(const sim_config_t *cfg)
     static_user_at(usr.week,usr.sow,&ref_llh,&usr,NULL);
 
     navbits_init();
+    g_force_d1_constant_bits = cfg->force_d1_constant_bits;
 
     /* 檢查 start 時間是否與星曆 toe 接近 */
     check_ephemeris_age(usr.week, usr.sow);
@@ -194,29 +195,36 @@ void generate_signal(const sim_config_t *cfg)
     double start_bdt = usr.week*604800.0 + usr.sow;
     for(uint64_t ms=0; ms<total_ms; ms+=STEP_MS)
     {
+        const double GEOM_OFF = 0.003;   /* 3 ms offset to avoid bit boundaries */
         double t_abs = start_bdt + ms*0.001;
         int week = (int)(t_abs/604800.0);
         double sow = t_abs - week*604800.0;
-
         double dt = STEP_MS * 0.001;
+        double t_geom = t_abs + GEOM_OFF;
+        int week_g = (int)(t_geom/604800.0);
+        double sow_g = t_geom - week_g*604800.0;
+        double t_geom_next = t_geom + dt;
+        int week_g2 = (int)(t_geom_next/604800.0);
+        double sow_g2 = t_geom_next - week_g2*604800.0;
         double uvel[3], uvel_next[3];
         coord_t usr_next={0};
         if(cfg->path_type==0){
-            usr.week = week;
-            usr.sow  = sow;
+            usr.week = week_g;
+            usr.sow  = sow_g;
             usr_next = usr;
-            usr_next.sow = sow + dt;
+            usr_next.week = week_g2;
+            usr_next.sow  = sow_g2;
             uvel[0]=uvel[1]=uvel[2]=0.0;
             uvel_next[0]=uvel_next[1]=uvel_next[2]=0.0;
             update_channels_path(cfg,ch,n_ch,&usr,uvel,&usr_next,uvel_next,
                                  cfg->gain,g_target_cn0,STEP_MS);
         } else if(cfg->path_type==1){
             coord_t u0,u1,u2;
-            interpolate_path(&path, ms/1000.0, &u0);
-            interpolate_path(&path, (ms+STEP_MS)/1000.0, &u1);
-            interpolate_path(&path, (ms+2*STEP_MS)/1000.0, &u2);
-            xyz2llh(u0.xyz,&usr); usr.week=week; usr.sow=sow;
-            xyz2llh(u1.xyz,&usr_next);
+            interpolate_path(&path, ms/1000.0 + GEOM_OFF, &u0);
+            interpolate_path(&path, (ms+STEP_MS)/1000.0 + GEOM_OFF, &u1);
+            interpolate_path(&path, (ms+2*STEP_MS)/1000.0 + GEOM_OFF, &u2);
+            xyz2llh(u0.xyz,&usr); usr.week=week_g; usr.sow=sow_g;
+            xyz2llh(u1.xyz,&usr_next); usr_next.week=week_g2; usr_next.sow=sow_g2;
             xyz2llh(u2.xyz,&u2);
             uvel[0]=(u1.xyz[0]-u0.xyz[0])/dt;
             uvel[1]=(u1.xyz[1]-u0.xyz[1])/dt;
@@ -228,16 +236,20 @@ void generate_signal(const sim_config_t *cfg)
                                  cfg->gain,g_target_cn0,STEP_MS);
         } else {
             double llh0[3], llh1[3], llh2[3];
-            interpolate_path_llh(&path, ms/1000.0, llh0);
-            interpolate_path_llh(&path, (ms+STEP_MS)/1000.0, llh1);
-            interpolate_path_llh(&path, (ms+2*STEP_MS)/1000.0, llh2);
+            interpolate_path_llh(&path, ms/1000.0 + GEOM_OFF, llh0);
+            interpolate_path_llh(&path, (ms+STEP_MS)/1000.0 + GEOM_OFF, llh1);
+            interpolate_path_llh(&path, (ms+2*STEP_MS)/1000.0 + GEOM_OFF, llh2);
             coord_t ref0={0}, ref1={0}, ref2={0};
             ref0.llh[0]=llh0[0]; ref0.llh[1]=llh0[1]; ref0.llh[2]=llh0[2];
             ref1.llh[0]=llh1[0]; ref1.llh[1]=llh1[1]; ref1.llh[2]=llh1[2];
             ref2.llh[0]=llh2[0]; ref2.llh[1]=llh2[1]; ref2.llh[2]=llh2[2];
-            static_user_at(week,sow,&ref0,&usr,NULL);
-            static_user_at(week,sow+dt,&ref1,&usr_next,NULL);
-            coord_t usr2; static_user_at(week,sow+2*dt,&ref2,&usr2,NULL);
+            static_user_at(week_g,sow_g,&ref0,&usr,NULL);
+            static_user_at(week_g2,sow_g2,&ref1,&usr_next,NULL);
+            double t_geom2 = t_geom_next + dt;
+            int week_g3 = (int)(t_geom2/604800.0);
+            double sow_g3 = t_geom2 - week_g3*604800.0;
+            coord_t usr2;
+            static_user_at(week_g3,sow_g3,&ref2,&usr2,NULL);
             uvel[0]=(usr_next.xyz[0]-usr.xyz[0])/dt;
             uvel[1]=(usr_next.xyz[1]-usr.xyz[1])/dt;
             uvel[2]=(usr_next.xyz[2]-usr.xyz[2])/dt;
