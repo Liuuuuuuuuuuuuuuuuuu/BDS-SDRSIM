@@ -184,8 +184,6 @@ void generate_signal(const sim_config_t *cfg)
     coord_t ref_llh=usr;              /* 保存經緯度作旋轉基準 */
     static_user_at(usr.week,usr.sow,&ref_llh,&usr,NULL);
 
-    navbits_init();
-
     /* 檢查 start 時間是否與星曆 toe 接近 */
     check_ephemeris_age(usr.week, usr.sow);
 

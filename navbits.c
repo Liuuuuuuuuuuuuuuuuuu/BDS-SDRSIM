@@ -320,19 +320,6 @@ static void build_subframe5_d1(uint8_t *out, double sow, double frame_len)
     put_word(out, 270, build_word(filler, 22));
 }
 
-static uint8_t sf_static[MAX_SAT][4][SF_STREAM_LEN]; /* subframe 2-5 */
-
-void navbits_init(void)
-{
-    for(int prn=1;prn<=prn_max;prn++){
-        B1I_D1_Frame frm;
-        frame_from_ephemeris(&eph[prn], &frm);
-        build_subframe2_d1(sf_static[prn][0], &frm, 0, 6.0);
-        build_subframe3_d1(sf_static[prn][1], &frm, 0, 6.0);
-        build_subframe4_d1(sf_static[prn][2],0,6.0);
-        build_subframe5_d1(sf_static[prn][3],0,6.0);
-    }
-}
 
 /* 根據時間取得子帧 bit 流 (300 bits) */
 void get_subframe_bits(int prn,int sf_id,int week,double sow,double frame_len,uint8_t *out)
