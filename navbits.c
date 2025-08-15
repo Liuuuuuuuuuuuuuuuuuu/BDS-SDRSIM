@@ -40,19 +40,6 @@ static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
     f->tgd1     = (int32_t)llround(e->tgd1 / 1e-10);
     f->tgd2     = (int32_t)llround(e->tgd2 / 1e-10);
 
-    /* Ionospheric parameters from header.  Each coefficient uses
-     * a different scaling factor according to the B1I ICD. */
-    static const double a_scale[4] = {
-        pow(2, -30), pow(2, -27), pow(2, -24), pow(2, -24)
-    };
-    static const double b_scale[4] = {
-        pow(2, 11), pow(2, 14), pow(2, 16), pow(2, 16)
-    };
-    for (int i = 0; i < 4; ++i) {
-        f->alpha[i] = (int32_t)llround(iono_alpha[i] / a_scale[i]);
-        f->beta[i]  = (int32_t)llround(iono_beta[i]  / b_scale[i]);
-    }
-
     f->a0       = (int32_t)llround(e->af0 / pow(2, -33));
     f->a1       = (int32_t)llround(e->af1 / pow(2, -50));
     f->a2       = (int32_t)llround(e->af2 / pow(2, -66));
@@ -75,6 +62,19 @@ static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
     f->cis      = (int32_t)llround(e->cis / pow(2, -31));
     f->idot     = (int32_t)llround(rad_to_sc(e->idot) / pow(2, -43));
     f->omegadot = (int32_t)llround(rad_to_sc(e->omegadot) / pow(2, -43));
+    
+    /* Ionospheric parameters from header.  Each coefficient uses
+     * a different scaling factor according to the B1I ICD. */
+    static const double a_scale[4] = {
+        pow(2, -30), pow(2, -27), pow(2, -24), pow(2, -24)
+    };
+    static const double b_scale[4] = {
+        pow(2, 11), pow(2, 14), pow(2, 16), pow(2, 16)
+    };
+    for (int i = 0; i < 4; ++i) {
+        f->alpha[i] = (int32_t)llround(iono_alpha[i] / a_scale[i]);
+        f->beta[i]  = (int32_t)llround(iono_beta[i]  / b_scale[i]);
+    }
 }
 
 /* --------------------------------- 宏 & 工具 -------------------------------- */
@@ -87,8 +87,7 @@ static void put_word(uint8_t *b, int pos, uint32_t w30)
 }
 
 /* --------------------------------- 子帧 1 ----------------------------------- */
-static void build_subframe1_d1(uint8_t *out, const B1I_D1_Frame *f,
-                               int week, double sow, double frame_len)
+static void build_subframe1_d1(uint8_t *out, const B1I_D1_Frame *f, int week, double sow, double frame_len)
 {
     memset(out,0,SF_STREAM_LEN);
 
@@ -102,72 +101,52 @@ static void build_subframe1_d1(uint8_t *out, const B1I_D1_Frame *f,
      * corresponds to the rising edge of the frame sync
      * at the beginning of the subframe.
      */
-    /* For D2 the message repeats every 0.6 s whereas D1 repeats
-       every 6 s. The time-of-week field shall therefore reflect the
-       start of the current subframe length. */
     uint32_t sow_int = (uint32_t)(floor(sow/frame_len)*frame_len);
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, build_word(info, 26));
 
     /* word2: SOW[11:0] + SatH1 + AODC + URAI */
-    uint32_t w2 = ((sow_int & 0xFFF) << 10) |
-                  ((f->satH1 & 1) << 9) |
-                  ((f->aodc & 0x1F) << 4) |
-                  (f->urai & 0xF);
+    uint32_t w2 = ((sow_int & 0xFFF) << 10) | ((f->satH1 & 1) << 9) | ((f->aodc & 0x1F) << 4) | (f->urai & 0xF);
     put_word(out,30, build_word(w2,22));
 
     /* word3: WN + toc high 9 bits */
     uint32_t toc_ticks = f->toc;
-    uint32_t w3 = ((week & 0x1FFF) << 9) |
-                  ((toc_ticks >> 8) & 0x1FF);
+    uint32_t w3 = ((week & 0x1FFF) << 9) | ((toc_ticks >> 8) & 0x1FF);
     put_word(out,60, build_word(w3,22));
 
     /* word4: toc low 8 + TGD1 + TGD2 high 4 */
     int32_t tgd1_i = f->tgd1;
     int32_t tgd2_i = f->tgd2;
-    uint32_t w4 = ((toc_ticks & 0xFF) << 14) |
-                  ((tgd1_i & 0x3FF) << 4) |
-                  ((tgd2_i >> 6) & 0xF);
+    uint32_t w4 = ((toc_ticks & 0xFF) << 14) | ((tgd1_i & 0x3FF) << 4) | ((tgd2_i >> 6) & 0xF);
     put_word(out,90, build_word(w4,22));
 
     /* word5: TGD2 low 6 + alpha0 + alpha1 */
-    uint32_t w5 = ((tgd2_i & 0x3F) << 16) |
-                  ((f->alpha[0] & 0xFF) << 8) |
-                  (f->alpha[1] & 0xFF);
+    uint32_t w5 = ((tgd2_i & 0x3F) << 16) | ((f->alpha[0] & 0xFF) << 8) | (f->alpha[1] & 0xFF);
     put_word(out,120, build_word(w5,22));
 
     /* word6: alpha2 + alpha3 + beta0 high 6 */
     uint32_t beta0 = f->beta[0];
-    uint32_t w6 = ((f->alpha[2] & 0xFF) << 14) |
-                  ((f->alpha[3] & 0xFF) << 6) |
-                  ((beta0 >> 2) & 0x3F);
+    uint32_t w6 = ((f->alpha[2] & 0xFF) << 14) | ((f->alpha[3] & 0xFF) << 6) | ((beta0 >> 2) & 0x3F);
     put_word(out,150, build_word(w6,22));
 
     /* word7: beta0 low 2 + beta1 + beta2 + beta3 high 4 */
     uint32_t beta1 = f->beta[1], beta2 = f->beta[2], beta3 = f->beta[3];
-    uint32_t w7 = ((beta0 & 0x3) << 20) |
-                  ((beta1 & 0xFF) << 12) |
-                  ((beta2 & 0xFF) << 4) |
-                  ((beta3 >> 4) & 0xF);
+    uint32_t w7 = ((beta0 & 0x3) << 20) | ((beta1 & 0xFF) << 12) | ((beta2 & 0xFF) << 4) | ((beta3 >> 4) & 0xF);
     put_word(out,180, build_word(w7,22));
 
     /* word8: beta3 low 4 + a2 + a0 high 7 */
     int32_t a0_i = f->a0;
     int32_t a1_i = f->a1;
     int32_t a2_i = f->a2;
-    uint32_t w8 = ((beta3 & 0xF) << 18) |
-                  ((a2_i & 0x7FF) << 7) |
-                  (((uint32_t)a0_i >> 17) & 0x7F);
+    uint32_t w8 = ((beta3 & 0xF) << 18) | ((a2_i & 0x7FF) << 7) | (((uint32_t)a0_i >> 17) & 0x7F);
     put_word(out,210, build_word(w8,22));
 
     /* word9: a0 low 17 + a1 high 5 */
-    uint32_t w9 = ((uint32_t)a0_i & 0x1FFFF) << 5 |
-                  (((uint32_t)a1_i >> 17) & 0x1F);
+    uint32_t w9 = ((uint32_t)a0_i & 0x1FFFF) << 5 | (((uint32_t)a1_i >> 17) & 0x1F);
     put_word(out,240, build_word(w9,22));
 
     /* word10: a1 low 17 + AODE */
-    uint32_t w10 = (((uint32_t)a1_i & 0x1FFFF) << 5) |
-                   (f->aode & 0x1F);
+    uint32_t w10 = (((uint32_t)a1_i & 0x1FFFF) << 5) | (f->aode & 0x1F);
     put_word(out,270, build_word(w10,22));
 }
 
@@ -187,18 +166,15 @@ static void build_subframe2_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[1
     w[1] = build_word(p, 22);
 
     /* Word3: delta_n low 6 + Cuc high 16 */
-    p = ((uint32_t)f->delta_n & 0x3F) << 16 |
-        ((uint32_t)f->cuc >> 2 & 0xFFFF);
+    p = ((uint32_t)f->delta_n & 0x3F) << 16 | ((uint32_t)f->cuc >> 2 & 0xFFFF);
     w[2] = build_word(p, 22);
 
     /* Word4: Cuc low 2 + M0 high 20 */
-    p = ((uint32_t)f->cuc & 0x3) << 20 |
-        ((uint32_t)f->M0 >> 12 & 0xFFFFF);
+    p = ((uint32_t)f->cuc & 0x3) << 20 | ((uint32_t)f->M0 >> 12 & 0xFFFFF);
     w[3] = build_word(p, 22);
 
     /* Word5: M0 low 12 + e high 10 */
-    p = ((uint32_t)f->M0 & 0xFFF) << 10 |
-        ((uint32_t)f->e >> 22 & 0x3FF);
+    p = ((uint32_t)f->M0 & 0xFFF) << 10 | ((uint32_t)f->e >> 22 & 0x3FF);
     w[4] = build_word(p, 22);
 
     /* Word6: e low 22 */
@@ -206,23 +182,19 @@ static void build_subframe2_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[1
     w[5] = build_word(p, 22);
 
     /* Word7: Cus + Crc high 4 */
-    p = ((uint32_t)f->cus & 0x3FFFF) << 4 |
-        ((uint32_t)f->crc >> 14 & 0xF);
+    p = ((uint32_t)f->cus & 0x3FFFF) << 4 | ((uint32_t)f->crc >> 14 & 0xF);
     w[6] = build_word(p, 22);
 
     /* Word8: Crc low 14 + Crs high 8 */
-    p = ((uint32_t)f->crc & 0x3FFF) << 8 |
-        ((uint32_t)f->crs >> 10 & 0xFF);
+    p = ((uint32_t)f->crc & 0x3FFF) << 8 | ((uint32_t)f->crs >> 10 & 0xFF);
     w[7] = build_word(p, 22);
 
     /* Word9: Crs low 10 + sqrtA high 12 */
-    p = ((uint32_t)f->crs & 0x3FF) << 12 |
-        ((uint32_t)f->sqrtA >> 20 & 0xFFF);
+    p = ((uint32_t)f->crs & 0x3FF) << 12 | ((uint32_t)f->sqrtA >> 20 & 0xFFF);
     w[8] = build_word(p, 22);
 
     /* Word10: sqrtA low 20 + toe high 2 */
-    p = ((uint32_t)f->sqrtA & 0xFFFFF) << 2 |
-        ((f->toe >> 15) & 0x3);
+    p = ((uint32_t)f->sqrtA & 0xFFFFF) << 2 | ((f->toe >> 15) & 0x3);
     w[9] = build_word(p, 22);
 }
 /* --------------------------------- 子帧 3 ----------------------------------- */
@@ -261,8 +233,7 @@ static void build_subframe3_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[1
     w[6] = build_word(p, 22);
 
     /* Word8: IDOT low1 + omega0 high21 */
-    p = ((uint32_t)f->idot & 0x1) << 21 |
-        ((uint32_t)f->omega0 >> 11 & 0x1FFFFF);
+    p = ((uint32_t)f->idot & 0x1) << 21 | ((uint32_t)f->omega0 >> 11 & 0x1FFFFF);
     w[7] = build_word(p, 22);
 
     /* Word9: omega0 low11 + omega high11 */
@@ -286,11 +257,8 @@ static int calc_pnum(double sow, double frame_len)
     return frame % 24 + 1;
 }
 
-static void build_subframe4_d1(uint8_t *out, int week, double sow,
-                               double frame_len)
+static void build_subframe4_d1(uint8_t *out, double sow, double frame_len)
 {
-    (void)week; /* not used */
-
     /* Subframe 4 carries almanac pages.  Actual parameters are not yet
      * implemented, so we keep the word layout but fill the data portion
      * with the official "10" placeholder pattern (0x2AAAAA). */
@@ -308,8 +276,7 @@ static void build_subframe4_d1(uint8_t *out, int week, double sow,
 
     /* word2: SOW[11:0] + reserved + PNUM + spare (1,0) */
     int pnum = calc_pnum(sow, frame_len);
-    uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) |
-                  ((pnum & 0x7F) << 2) | 0x2;
+    uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) | ((pnum & 0x7F) << 2) | 0x2;
     put_word(out, 30, build_word(w2, 22));
 
     uint32_t filler = 0x2AAAAA; /* 1010... repeated */
@@ -317,11 +284,8 @@ static void build_subframe4_d1(uint8_t *out, int week, double sow,
         put_word(out, i * 30, build_word(filler, 22));
 }
 /* --------------------------------- 子帧 5 ----------------------------------- */
-static void build_subframe5_d1(uint8_t *out, int week, double sow,
-                               double frame_len)
+static void build_subframe5_d1(uint8_t *out, double sow, double frame_len)
 {
-    (void)week;
-
     /* Identical to subframe 4 but with FraID=5.  Data words use the same
      * placeholder pattern since almanac/UTC parameters are not generated. */
 
@@ -338,8 +302,7 @@ static void build_subframe5_d1(uint8_t *out, int week, double sow,
 
     /* word2: SOW[11:0] + reserved + PNUM + spare (1,0) */
     int pnum = calc_pnum(sow, frame_len);
-    uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) |
-                  ((pnum & 0x7F) << 2) | 0x2;
+    uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) | ((pnum & 0x7F) << 2) | 0x2;
     put_word(out, 30, build_word(w2, 22));
 
     uint32_t filler = 0x2AAAAA;
@@ -348,18 +311,12 @@ static void build_subframe5_d1(uint8_t *out, int week, double sow,
 }
 
 /* ------------------ D1 Subframe Assembly Helpers ------------------------- */
-
-
-
-
-static void assemble_subframe2_d1(const B1I_D1_Frame *frm, uint32_t sow,
-                                  uint32_t words[10])
+static void assemble_subframe2_d1(const B1I_D1_Frame *frm, uint32_t sow, uint32_t words[10])
 {
     if (frm) build_subframe2_d1(frm, sow, words); else memset(words, 0, sizeof(uint32_t) * 10);
 }
 
-static void assemble_subframe3_d1(const B1I_D1_Frame *frm, uint32_t sow,
-                                  uint32_t words[10])
+static void assemble_subframe3_d1(const B1I_D1_Frame *frm, uint32_t sow, uint32_t words[10])
 {
     if (frm) build_subframe3_d1(frm, sow, words); else memset(words, 0, sizeof(uint32_t) * 10);
 }
@@ -382,14 +339,13 @@ void navbits_init(void)
         for(int w=0; w<10; ++w)
             put_word(sf_static[prn][1], w*30, words[w]);
 
-        build_subframe4_d1(sf_static[prn][2],0,0,6.0);
-        build_subframe5_d1(sf_static[prn][3],0,0,6.0);
+        build_subframe4_d1(sf_static[prn][2],0,6.0);
+        build_subframe5_d1(sf_static[prn][3],0,6.0);
     }
 }
 
 /* 根據時間取得子帧 bit 流 (300 bits) */
-void get_subframe_bits(int prn,int sf_id,int week,double sow,
-                       double frame_len,uint8_t *out)
+void get_subframe_bits(int prn,int sf_id,int week,double sow,double frame_len,uint8_t *out)
 {
     double start = floor(sow/frame_len)*frame_len;
     B1I_D1_Frame frm, *pf = NULL;
@@ -411,9 +367,9 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,
         for(int w=0; w<10; ++w)
             put_word(out, w*30, words[w]);
     }else if(sf_id==4){
-        build_subframe4_d1(out,week,start,frame_len);
+        build_subframe4_d1(out,start,frame_len);
     }else if(sf_id==5){
-        build_subframe5_d1(out,week,start,frame_len);
+        build_subframe5_d1(out,start,frame_len);
     }else{
         memset(out,0,SF_STREAM_LEN);
     }
