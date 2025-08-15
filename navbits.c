@@ -334,9 +334,9 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,double frame_len,ui
     if(sf_id==1){
         build_subframe1_d1(out,pf,week,start,frame_len);
     }else if(sf_id==2){
-        if(pf) build_subframe2_d1(out,pf,start,frame_len); else memset(out,0,SF_STREAM_LEN);
+        build_subframe2_d1(out,pf,start,frame_len);
     }else if(sf_id==3){
-        if(pf) build_subframe3_d1(out,pf,start,frame_len); else memset(out,0,SF_STREAM_LEN);
+        build_subframe3_d1(out,pf,start,frame_len);
     }else if(sf_id==4){
         build_subframe4_d1(out,start,frame_len);
     }else if(sf_id==5){
