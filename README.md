@@ -5,7 +5,7 @@ experiments.  Navigation data is read from a RINEX navigation file and
 converted into the binary subframe format required by receivers.
 
 ## Project Summary
-BDS-SDRSIM converts RINEX ephemeris into BeiDou B1I navigation frames and outputs complex baseband samples for software-defined radios. It supports both D1 and D2 messages, static or dynamic user motion and configurable power. See `docs/frame_layout.md` for an overview of the D1/D2 structure.
+BDS-SDRSIM converts RINEX ephemeris into BeiDou B1I navigation frames and outputs complex baseband samples for software-defined radios. It supports the D1 message, static or dynamic user motion and configurable power.
 
 
 ## System Overview
@@ -16,9 +16,7 @@ time and user location, and builds the B1I navigation subframes.  Each
 enabled satellite channel spreads these bits with the appropriate PRN
 code.  The 50 bps D1 navigation message is further modulated by the
 standard 20‑bit Neumann–Hoffman sequence so that the resulting signal
-matches the BeiDou B1I specification.  Optionally a 500 bps D2 message
-without secondary coding can be interleaved every other millisecond.
-Finally the channels are summed to
+matches the BeiDou B1I specification. Finally the channels are summed to
 produce complex baseband samples ready for SDR playback.
 The output is ready to be transmitted by an SDR.
 
@@ -70,7 +68,6 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
 
 ## 訊號型別
 
-- GEO PRN → D2 (500 bps, 無 NH 二次碼)
 - IGSO/MEO PRN → D1 (50 bps, 有 NH 二次碼)
 - `--geo-first` 在挑選模擬衛星時會優先加入可見的 GEO 衛星
 - `--no-geo` 排除所有 GEO 衛星
