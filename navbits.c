@@ -151,98 +151,107 @@ static void build_subframe1_d1(uint8_t *out, const B1I_D1_Frame *f, int week, do
 }
 
 /* --------------------------------- 子帧 2 ----------------------------------- */
-static void build_subframe2_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
+static void build_subframe2_d1(uint8_t *out, const B1I_D1_Frame *f, double sow, double frame_len)
 {
+    memset(out, 0, SF_STREAM_LEN);
+
+    uint32_t sow_int = (uint32_t)(floor(sow / frame_len) * frame_len);
     uint32_t p;
+
     /* Word1: preamble + reserved + FraID=2 + SOW[19:12] */
     p = 0x712;
     p = (p << 4);
     p = (p << 3) | 2;
-    p = (p << 8) | ((sow >> 12) & 0xFF);
-    w[0] = build_word(p, 26);
+    p = (p << 8) | ((sow_int >> 12) & 0xFF);
+    put_word(out, 0, build_word(p, 26));
 
     /* Word2: SOW[11:0] + delta_n high 10 bits */
-    p = ((sow & 0xFFF) << 10) | ((uint32_t)f->delta_n >> 6 & 0x3FF);
-    w[1] = build_word(p, 22);
+    p = ((sow_int & 0xFFF) << 10) | ((uint32_t)f->delta_n >> 6 & 0x3FF);
+    put_word(out, 30, build_word(p, 22));
 
     /* Word3: delta_n low 6 + Cuc high 16 */
     p = ((uint32_t)f->delta_n & 0x3F) << 16 | ((uint32_t)f->cuc >> 2 & 0xFFFF);
-    w[2] = build_word(p, 22);
+    put_word(out, 60, build_word(p, 22));
 
     /* Word4: Cuc low 2 + M0 high 20 */
     p = ((uint32_t)f->cuc & 0x3) << 20 | ((uint32_t)f->M0 >> 12 & 0xFFFFF);
-    w[3] = build_word(p, 22);
+    put_word(out, 90, build_word(p, 22));
 
     /* Word5: M0 low 12 + e high 10 */
     p = ((uint32_t)f->M0 & 0xFFF) << 10 | ((uint32_t)f->e >> 22 & 0x3FF);
-    w[4] = build_word(p, 22);
+    put_word(out, 120, build_word(p, 22));
 
     /* Word6: e low 22 */
     p = (uint32_t)f->e & 0x3FFFFF;
-    w[5] = build_word(p, 22);
+    put_word(out, 150, build_word(p, 22));
 
     /* Word7: Cus + Crc high 4 */
     p = ((uint32_t)f->cus & 0x3FFFF) << 4 | ((uint32_t)f->crc >> 14 & 0xF);
-    w[6] = build_word(p, 22);
+    put_word(out, 180, build_word(p, 22));
 
     /* Word8: Crc low 14 + Crs high 8 */
     p = ((uint32_t)f->crc & 0x3FFF) << 8 | ((uint32_t)f->crs >> 10 & 0xFF);
-    w[7] = build_word(p, 22);
+    put_word(out, 210, build_word(p, 22));
 
     /* Word9: Crs low 10 + sqrtA high 12 */
     p = ((uint32_t)f->crs & 0x3FF) << 12 | ((uint32_t)f->sqrtA >> 20 & 0xFFF);
-    w[8] = build_word(p, 22);
+    put_word(out, 240, build_word(p, 22));
 
     /* Word10: sqrtA low 20 + toe high 2 */
     p = ((uint32_t)f->sqrtA & 0xFFFFF) << 2 | ((f->toe >> 15) & 0x3);
-    w[9] = build_word(p, 22);
+    put_word(out, 270, build_word(p, 22));
 }
+
 /* --------------------------------- 子帧 3 ----------------------------------- */
-static void build_subframe3_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[10])
+static void build_subframe3_d1(uint8_t *out, const B1I_D1_Frame *f, double sow, double frame_len)
 {
+    memset(out, 0, SF_STREAM_LEN);
+
+    uint32_t sow_int = (uint32_t)(floor(sow / frame_len) * frame_len);
     uint32_t p;
+
     /* Word1: preamble + reserved + FraID=3 + SOW[19:12] */
     p = 0x712;
     p = (p << 4);
     p = (p << 3) | 3;
-    p = (p << 8) | ((sow >> 12) & 0xFF);
-    w[0] = build_word(p, 26);
+    p = (p << 8) | ((sow_int >> 12) & 0xFF);
+    put_word(out, 0, build_word(p, 26));
 
     /* Word2: SOW[11:0] + toe bits[14:5] */
-    p = ((sow & 0xFFF) << 10) | ((f->toe >> 5) & 0x3FF);
-    w[1] = build_word(p, 22);
+    p = ((sow_int & 0xFFF) << 10) | ((f->toe >> 5) & 0x3FF);
+    put_word(out, 30, build_word(p, 22));
 
     /* Word3: toe low5 + i0 high17 */
     p = ((f->toe & 0x1F) << 17) | ((uint32_t)f->i0 >> 15 & 0x1FFFF);
-    w[2] = build_word(p, 22);
+    put_word(out, 60, build_word(p, 22));
 
     /* Word4: i0 low15 + Cic high7 */
     p = ((uint32_t)f->i0 & 0x7FFF) << 7 | ((uint32_t)f->cic >> 11 & 0x7F);
-    w[3] = build_word(p, 22);
+    put_word(out, 90, build_word(p, 22));
 
     /* Word5: Cic low11 + omegadot high11 */
     p = ((uint32_t)f->cic & 0x7FF) << 11 | ((uint32_t)f->omegadot >> 13 & 0x7FF);
-    w[4] = build_word(p, 22);
+    put_word(out, 120, build_word(p, 22));
 
     /* Word6: omegadot low13 + Cis high9 */
     p = ((uint32_t)f->omegadot & 0x1FFF) << 9 | ((uint32_t)f->cis >> 9 & 0x1FF);
-    w[5] = build_word(p, 22);
+    put_word(out, 150, build_word(p, 22));
 
     /* Word7: Cis low9 + IDOT high13 */
     p = ((uint32_t)f->cis & 0x1FF) << 13 | ((uint32_t)f->idot >> 1 & 0x1FFF);
-    w[6] = build_word(p, 22);
+    put_word(out, 180, build_word(p, 22));
 
     /* Word8: IDOT low1 + omega0 high21 */
     p = ((uint32_t)f->idot & 0x1) << 21 | ((uint32_t)f->omega0 >> 11 & 0x1FFFFF);
-    w[7] = build_word(p, 22);
+    put_word(out, 210, build_word(p, 22));
 
     /* Word9: omega0 low11 + omega high11 */
     p = ((uint32_t)f->omega0 & 0x7FF) << 11 | ((uint32_t)f->omega >> 21 & 0x7FF);
-    w[8] = build_word(p, 22);
+    put_word(out, 240, build_word(p, 22));
 
     /* Word10: omega low21 + reserved bit */
     p = ((uint32_t)f->omega & 0x1FFFFF) << 1;
-    w[9] = build_word(p, 22);
+    put_word(out, 270, build_word(p, 22));
 }
 
 /* --------------------------------- 子帧 4 ----------------------------------- */
@@ -311,18 +320,6 @@ static void build_subframe5_d1(uint8_t *out, double sow, double frame_len)
     put_word(out, 270, build_word(filler, 22));
 }
 
-/* ------------------ D1 Subframe Assembly Helpers ------------------------- */
-static void assemble_subframe2_d1(const B1I_D1_Frame *frm, uint32_t sow, uint32_t words[10])
-{
-    if (frm) build_subframe2_d1(frm, sow, words); else memset(words, 0, sizeof(uint32_t) * 10);
-}
-
-static void assemble_subframe3_d1(const B1I_D1_Frame *frm, uint32_t sow, uint32_t words[10])
-{
-    if (frm) build_subframe3_d1(frm, sow, words); else memset(words, 0, sizeof(uint32_t) * 10);
-}
-
-/* ---------------------------------------------------------------------------- */
 static uint8_t sf_static[MAX_SAT][4][SF_STREAM_LEN]; /* subframe 2-5 */
 
 void navbits_init(void)
@@ -330,16 +327,8 @@ void navbits_init(void)
     for(int prn=1;prn<=prn_max;prn++){
         B1I_D1_Frame frm;
         frame_from_ephemeris(&eph[prn], &frm);
-        uint32_t words[10];
-
-        assemble_subframe2_d1(&frm, 0, words);
-        for(int w=0; w<10; ++w)
-            put_word(sf_static[prn][0], w*30, words[w]);
-
-        assemble_subframe3_d1(&frm, 0, words);
-        for(int w=0; w<10; ++w)
-            put_word(sf_static[prn][1], w*30, words[w]);
-
+        build_subframe2_d1(sf_static[prn][0], &frm, 0, 6.0);
+        build_subframe3_d1(sf_static[prn][1], &frm, 0, 6.0);
         build_subframe4_d1(sf_static[prn][2],0,6.0);
         build_subframe5_d1(sf_static[prn][3],0,6.0);
     }
@@ -358,15 +347,9 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,double frame_len,ui
     if(sf_id==1){
         build_subframe1_d1(out,pf,week,start,frame_len);
     }else if(sf_id==2){
-        uint32_t words[10];
-        assemble_subframe2_d1(pf, (uint32_t)start, words);
-        for(int w=0; w<10; ++w)
-            put_word(out, w*30, words[w]);
+        if(pf) build_subframe2_d1(out,pf,start,frame_len); else memset(out,0,SF_STREAM_LEN);
     }else if(sf_id==3){
-        uint32_t words[10];
-        assemble_subframe3_d1(pf, (uint32_t)start, words);
-        for(int w=0; w<10; ++w)
-            put_word(out, w*30, words[w]);
+        if(pf) build_subframe3_d1(out,pf,start,frame_len); else memset(out,0,SF_STREAM_LEN);
     }else if(sf_id==4){
         build_subframe4_d1(out,start,frame_len);
     }else if(sf_id==5){
