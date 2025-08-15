@@ -246,17 +246,6 @@ static void build_subframe3_d1(const B1I_D1_Frame *f, uint32_t sow, uint32_t w[1
 }
 
 /* --------------------------------- 子帧 4 ----------------------------------- */
-/* Determine page number (PNUM) based on the current frame index.
- * The BeiDou superframe contains 24 frames (30 s each) and subframes 4/5
- * share the same page number within a frame.  Since the simulator does not
- * implement actual almanac content yet, we simply cycle the value 1–24.
- */
-static int calc_pnum(double sow, double frame_len)
-{
-    int frame = (int)floor(sow / (frame_len * 5.0));
-    return frame % 24 + 1;
-}
-
 static void build_subframe4_d1(uint8_t *out, double sow, double frame_len)
 {
     /* Subframe 4 carries almanac pages.  Actual parameters are not yet
@@ -275,13 +264,18 @@ static void build_subframe4_d1(uint8_t *out, double sow, double frame_len)
     put_word(out, 0, build_word(w, 26));
 
     /* word2: SOW[11:0] + reserved + PNUM + spare (1,0) */
-    int pnum = calc_pnum(sow, frame_len);
+    int pnum = 1;
     uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) | ((pnum & 0x7F) << 2) | 0x2;
     put_word(out, 30, build_word(w2, 22));
 
     uint32_t filler = 0x2AAAAA; /* 1010... repeated */
-    for (int i = 2; i < 10; ++i)
+    for (int i = 2; i < 9; ++i)
         put_word(out, i * 30, build_word(filler, 22));
+
+    /* word10: spare + AmEpID (1,1) */
+    uint32_t w10 = (0xAAAAA << 2) | 0x3;
+    put_word(out, 270, build_word(w10, 22));
+    
 }
 /* --------------------------------- 子帧 5 ----------------------------------- */
 static void build_subframe5_d1(uint8_t *out, double sow, double frame_len)
@@ -301,13 +295,20 @@ static void build_subframe5_d1(uint8_t *out, double sow, double frame_len)
     put_word(out, 0, build_word(w, 26));
 
     /* word2: SOW[11:0] + reserved + PNUM + spare (1,0) */
-    int pnum = calc_pnum(sow, frame_len);
+    int pnum = 24;
     uint32_t w2 = ((sow_int & 0xFFF) << 10) | (0 << 9) | ((pnum & 0x7F) << 2) | 0x2;
     put_word(out, 30, build_word(w2, 22));
 
     uint32_t filler = 0x2AAAAA;
-    for (int i = 2; i < 10; ++i)
+    for (int i = 2; i < 8; ++i)
         put_word(out, i * 30, build_word(filler, 22));
+
+    /* word8: spare + AmID (0,0) + spare */
+    uint32_t w8 = (0x15 << 17) | (0 << 2) | 0x5555;
+    put_word(out, 210, build_word(w8, 22));
+
+    put_word(out, 240, build_word(filler, 22));
+    put_word(out, 270, build_word(filler, 22));
 }
 
 /* ------------------ D1 Subframe Assembly Helpers ------------------------- */
