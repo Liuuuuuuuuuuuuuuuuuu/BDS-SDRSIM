@@ -10,6 +10,7 @@
 #include "path.h"
 #include "channel.h"        /* g_target_cn0 */
 #include "coord.h"
+#include "navbits.h"
 
 /* ───────────────────────────── */
 static void usage(const char *p)
@@ -273,6 +274,9 @@ int main(int argc,char *argv[])
     double fs_out = cfg.byte_output ? 25.0 : FS_OUTPUT_HZ/1e6;
     printf("\n[cfg] Fs %.2fMHz  Gain %.2f\n\n",
            fs_out, cfg.gain);
+
+    if(cfg.single_prn > 0)
+        print_ephemeris_params(cfg.single_prn);
 
     /* 4. 產生基帶 ----------------------------------- */
     generate_signal(&cfg);
