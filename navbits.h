@@ -13,6 +13,8 @@
 void get_subframe_bits(int prn, int sf_id, int week, double sow,
                        double frame_len, uint8_t *out); /* sf_id=1..5 */
 
+void print_ephemeris_params(int prn);
+
 #endif
 
 
