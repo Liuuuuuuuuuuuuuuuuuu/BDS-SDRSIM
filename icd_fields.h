@@ -10,32 +10,32 @@ typedef struct {
     uint32_t aodc;       /* 5 bits */
     uint32_t urai;       /* 4 bits */
     uint32_t toc;        /* 17 bits */
-    uint32_t a0;         /* 24 bits, two's complement */
-    uint32_t a1;         /* 22 bits, two's complement */
-    uint32_t a2;         /* 11 bits, two's complement */
-    uint32_t tgd1;       /* 10 bits, two's complement */
-    uint32_t tgd2;       /* 10 bits, two's complement */
-    uint32_t alpha[4];   /* 8 bits each, two's complement */
-    uint32_t beta[4];    /* 8 bits each, two's complement */
+    int32_t  a0;         /* 24 bits signed */
+    int32_t  a1;         /* 22 bits signed */
+    int32_t  a2;         /* 11 bits signed */
+    int32_t  tgd1;       /* 10 bits signed */
+    int32_t  tgd2;       /* 10 bits signed */
+    int32_t  alpha[4];   /* 8 bits each signed */
+    int32_t  beta[4];    /* 8 bits each signed */
 
     /* orbital parameters --------------------------------------- */
-    uint32_t delta_n;    /* 16 bits, two's complement */
-    uint32_t M0;         /* 32 bits, two's complement */
+    int32_t  delta_n;    /* 16 bits signed */
+    int32_t  M0;         /* 32 bits signed */
     uint32_t e;          /* 32 bits unsigned */
     uint32_t sqrtA;      /* 32 bits unsigned */
-    uint32_t cuc;        /* 18 bits, two's complement */
-    uint32_t cus;        /* 18 bits, two's complement */
-    uint32_t crc;        /* 18 bits, two's complement */
-    uint32_t crs;        /* 18 bits, two's complement */
+    int32_t  cuc;        /* 18 bits signed */
+    int32_t  cus;        /* 18 bits signed */
+    int32_t  crc;        /* 18 bits signed */
+    int32_t  crs;        /* 18 bits signed */
     uint32_t toe;        /* 17 bits */
     uint32_t aode;       /* 5 bits */
-    uint32_t i0;         /* 32 bits, two's complement */
-    uint32_t omega0;     /* 32 bits, two's complement */
-    uint32_t omega;      /* 32 bits, two's complement */
-    uint32_t omegadot;   /* 24 bits, two's complement */
-    uint32_t idot;       /* 14 bits, two's complement */
-    uint32_t cic;        /* 18 bits, two's complement */
-    uint32_t cis;        /* 18 bits, two's complement */
+    int32_t  i0;         /* 32 bits signed */
+    int32_t  omega0;     /* 32 bits signed */
+    int32_t  omega;      /* 32 bits signed */
+    int32_t  omegadot;   /* 24 bits signed */
+    int32_t  idot;       /* 14 bits signed */
+    int32_t  cic;        /* 18 bits signed */
+    int32_t  cis;        /* 18 bits signed */
 } B1I_D1_Frame;
 
 
