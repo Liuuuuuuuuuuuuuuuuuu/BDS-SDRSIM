@@ -37,46 +37,31 @@ static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
     f->satH1    = 0;                  /* ignore ephemeris health */
 
     /* TGD values: 0.1 ns resolution (ICD 5.2.4.10) */
-    int32_t tmp;
-    tmp = (int32_t)llround(e->tgd1 / 1e-10);
-    f->tgd1 = (uint32_t)(tmp & 0x3FF);
-    tmp = (int32_t)llround(e->tgd2 / 1e-10);
-    f->tgd2 = (uint32_t)(tmp & 0x3FF);
+    f->tgd1     = (int32_t)llround(e->tgd1 / 1e-10);
+    f->tgd2     = (int32_t)llround(e->tgd2 / 1e-10);
 
-    tmp = (int32_t)llround(e->af0 / pow(2, -33));
-    f->a0 = (uint32_t)(tmp & 0xFFFFFF);
-    tmp = (int32_t)llround(e->af1 / pow(2, -50));
-    f->a1 = (uint32_t)(tmp & 0x3FFFFF);
-    tmp = (int32_t)llround(e->af2 / pow(2, -66));
-    f->a2 = (uint32_t)(tmp & 0x7FF);
+    f->a0       = (int32_t)llround(e->af0 / pow(2, -33));
+    f->a1       = (int32_t)llround(e->af1 / pow(2, -50));
+    f->a2       = (int32_t)llround(e->af2 / pow(2, -66));
 
-    f->toe      = ((uint32_t)(e->toe / 8)) & 0x1FFFF;
+    f->toe      = (uint32_t)(e->toe / 8);
     f->sqrtA    = (uint32_t)llround(e->sqrtA / pow(2, -19));
     f->e        = (uint32_t)llround(e->e / pow(2, -33));
+    
+    f->delta_n  = (int32_t)llround(rad_to_sc(e->deltan) / pow(2, -43));
+    f->M0       = (int32_t)llround(rad_to_sc(e->M0) / pow(2, -31));
 
-    tmp = (int32_t)llround(rad_to_sc(e->deltan) / pow(2, -43));
-    f->delta_n  = (uint32_t)(tmp & 0xFFFF);
-    f->M0       = (uint32_t)(int32_t)llround(rad_to_sc(e->M0) / pow(2, -31));
-
-    f->omega0   = (uint32_t)(int32_t)llround(rad_to_sc(e->omega0) / pow(2, -31));
-    f->i0       = (uint32_t)(int32_t)llround(rad_to_sc(e->i0) / pow(2, -31));
-    f->omega    = (uint32_t)(int32_t)llround(rad_to_sc(e->w) / pow(2, -31));
-    tmp = (int32_t)llround(e->crc / pow(2, -6));
-    f->crc      = (uint32_t)(tmp & 0x3FFFF);
-    tmp = (int32_t)llround(e->crs / pow(2, -6));
-    f->crs      = (uint32_t)(tmp & 0x3FFFF);
-    tmp = (int32_t)llround(e->cuc / pow(2, -31));
-    f->cuc      = (uint32_t)(tmp & 0x3FFFF);
-    tmp = (int32_t)llround(e->cus / pow(2, -31));
-    f->cus      = (uint32_t)(tmp & 0x3FFFF);
-    tmp = (int32_t)llround(e->cic / pow(2, -31));
-    f->cic      = (uint32_t)(tmp & 0x3FFFF);
-    tmp = (int32_t)llround(e->cis / pow(2, -31));
-    f->cis      = (uint32_t)(tmp & 0x3FFFF);
-    tmp = (int32_t)llround(rad_to_sc(e->idot) / pow(2, -43));
-    f->idot     = (uint32_t)(tmp & 0x3FFF);
-    tmp = (int32_t)llround(rad_to_sc(e->omegadot) / pow(2, -43));
-    f->omegadot = (uint32_t)(tmp & 0xFFFFFF);
+    f->omega0   = (int32_t)llround(rad_to_sc(e->omega0) / pow(2, -31));
+    f->i0       = (int32_t)llround(rad_to_sc(e->i0) / pow(2, -31));
+    f->omega    = (int32_t)llround(rad_to_sc(e->w) / pow(2, -31));
+    f->crc      = (int32_t)llround(e->crc / pow(2, -6));
+    f->crs      = (int32_t)llround(e->crs / pow(2, -6));
+    f->cuc      = (int32_t)llround(e->cuc / pow(2, -31));
+    f->cus      = (int32_t)llround(e->cus / pow(2, -31));
+    f->cic      = (int32_t)llround(e->cic / pow(2, -31));
+    f->cis      = (int32_t)llround(e->cis / pow(2, -31));
+    f->idot     = (int32_t)llround(rad_to_sc(e->idot) / pow(2, -43));
+    f->omegadot = (int32_t)llround(rad_to_sc(e->omegadot) / pow(2, -43));
     
     /* Ionospheric parameters from header.  Each coefficient uses
      * a different scaling factor according to the B1I ICD. */
@@ -87,10 +72,8 @@ static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
         pow(2, 11), pow(2, 14), pow(2, 16), pow(2, 16)
     };
     for (int i = 0; i < 4; ++i) {
-        tmp = (int32_t)llround(iono_alpha[i] / a_scale[i]);
-        f->alpha[i] = (uint32_t)(tmp & 0xFF);
-        tmp = (int32_t)llround(iono_beta[i]  / b_scale[i]);
-        f->beta[i]  = (uint32_t)(tmp & 0xFF);
+        f->alpha[i] = (int32_t)llround(iono_alpha[i] / a_scale[i]);
+        f->beta[i]  = (int32_t)llround(iono_beta[i]  / b_scale[i]);
     }
 }
 
@@ -132,11 +115,13 @@ static void build_subframe1_d1(uint8_t *out, const B1I_D1_Frame *f, int week, do
     put_word(out,60, build_word(w3,22));
 
     /* word4: toc low 8 + TGD1 + TGD2 high 4 */
-    uint32_t w4 = ((toc_ticks & 0xFF) << 14) | ((f->tgd1 & 0x3FF) << 4) | ((f->tgd2 >> 6) & 0xF);
+    int32_t tgd1_i = f->tgd1;
+    int32_t tgd2_i = f->tgd2;
+    uint32_t w4 = ((toc_ticks & 0xFF) << 14) | ((tgd1_i & 0x3FF) << 4) | ((tgd2_i >> 6) & 0xF);
     put_word(out,90, build_word(w4,22));
 
     /* word5: TGD2 low 6 + alpha0 + alpha1 */
-    uint32_t w5 = ((f->tgd2 & 0x3F) << 16) | ((f->alpha[0] & 0xFF) << 8) | (f->alpha[1] & 0xFF);
+    uint32_t w5 = ((tgd2_i & 0x3F) << 16) | ((f->alpha[0] & 0xFF) << 8) | (f->alpha[1] & 0xFF);
     put_word(out,120, build_word(w5,22));
 
     /* word6: alpha2 + alpha3 + beta0 high 6 */
@@ -150,15 +135,18 @@ static void build_subframe1_d1(uint8_t *out, const B1I_D1_Frame *f, int week, do
     put_word(out,180, build_word(w7,22));
 
     /* word8: beta3 low 4 + a2 + a0 high 7 */
-    uint32_t w8 = ((beta3 & 0xF) << 18) | ((f->a2 & 0x7FF) << 7) | ((f->a0 >> 17) & 0x7F);
+    int32_t a0_i = f->a0;
+    int32_t a1_i = f->a1;
+    int32_t a2_i = f->a2;
+    uint32_t w8 = ((beta3 & 0xF) << 18) | ((a2_i & 0x7FF) << 7) | (((uint32_t)a0_i >> 17) & 0x7F);
     put_word(out,210, build_word(w8,22));
 
     /* word9: a0 low 17 + a1 high 5 */
-    uint32_t w9 = ((f->a0 & 0x1FFFF) << 5) | ((f->a1 >> 17) & 0x1F);
+    uint32_t w9 = ((uint32_t)a0_i & 0x1FFFF) << 5 | (((uint32_t)a1_i >> 17) & 0x1F);
     put_word(out,240, build_word(w9,22));
 
     /* word10: a1 low 17 + AODE */
-    uint32_t w10 = ((f->a1 & 0x1FFFF) << 5) | (f->aode & 0x1F);
+    uint32_t w10 = (((uint32_t)a1_i & 0x1FFFF) << 5) | (f->aode & 0x1F);
     put_word(out,270, build_word(w10,22));
 }
 
@@ -178,39 +166,39 @@ static void build_subframe2_d1(uint8_t *out, const B1I_D1_Frame *f, double sow, 
     put_word(out, 0, build_word(p, 26));
 
     /* Word2: SOW[11:0] + delta_n high 10 bits */
-    p = ((sow_int & 0xFFF) << 10) | ((f->delta_n >> 6) & 0x3FF);
+    p = ((sow_int & 0xFFF) << 10) | ((uint32_t)f->delta_n >> 6 & 0x3FF);
     put_word(out, 30, build_word(p, 22));
 
     /* Word3: delta_n low 6 + Cuc high 16 */
-    p = ((f->delta_n & 0x3F) << 16) | ((f->cuc >> 2) & 0xFFFF);
+    p = ((uint32_t)f->delta_n & 0x3F) << 16 | ((uint32_t)f->cuc >> 2 & 0xFFFF);
     put_word(out, 60, build_word(p, 22));
 
     /* Word4: Cuc low 2 + M0 high 20 */
-    p = ((f->cuc & 0x3) << 20) | ((f->M0 >> 12) & 0xFFFFF);
+    p = ((uint32_t)f->cuc & 0x3) << 20 | ((uint32_t)f->M0 >> 12 & 0xFFFFF);
     put_word(out, 90, build_word(p, 22));
 
     /* Word5: M0 low 12 + e high 10 */
-    p = ((f->M0 & 0xFFF) << 10) | ((f->e >> 22) & 0x3FF);
+    p = ((uint32_t)f->M0 & 0xFFF) << 10 | ((uint32_t)f->e >> 22 & 0x3FF);
     put_word(out, 120, build_word(p, 22));
 
     /* Word6: e low 22 */
-    p = f->e & 0x3FFFFF;
+    p = (uint32_t)f->e & 0x3FFFFF;
     put_word(out, 150, build_word(p, 22));
 
     /* Word7: Cus + Crc high 4 */
-    p = ((f->cus & 0x3FFFF) << 4) | ((f->crc >> 14) & 0xF);
+    p = ((uint32_t)f->cus & 0x3FFFF) << 4 | ((uint32_t)f->crc >> 14 & 0xF);
     put_word(out, 180, build_word(p, 22));
 
     /* Word8: Crc low 14 + Crs high 8 */
-    p = ((f->crc & 0x3FFF) << 8) | ((f->crs >> 10) & 0xFF);
+    p = ((uint32_t)f->crc & 0x3FFF) << 8 | ((uint32_t)f->crs >> 10 & 0xFF);
     put_word(out, 210, build_word(p, 22));
 
     /* Word9: Crs low 10 + sqrtA high 12 */
-    p = ((f->crs & 0x3FF) << 12) | ((f->sqrtA >> 20) & 0xFFF);
+    p = ((uint32_t)f->crs & 0x3FF) << 12 | ((uint32_t)f->sqrtA >> 20 & 0xFFF);
     put_word(out, 240, build_word(p, 22));
 
     /* Word10: sqrtA low 20 + toe high 2 */
-    p = ((f->sqrtA & 0xFFFFF) << 2) | ((f->toe >> 15) & 0x3);
+    p = ((uint32_t)f->sqrtA & 0xFFFFF) << 2 | ((f->toe >> 15) & 0x3);
     put_word(out, 270, build_word(p, 22));
 }
 
@@ -234,35 +222,35 @@ static void build_subframe3_d1(uint8_t *out, const B1I_D1_Frame *f, double sow, 
     put_word(out, 30, build_word(p, 22));
 
     /* Word3: toe low5 + i0 high17 */
-    p = ((f->toe & 0x1F) << 17) | ((f->i0 >> 15) & 0x1FFFF);
+    p = ((f->toe & 0x1F) << 17) | ((uint32_t)f->i0 >> 15 & 0x1FFFF);
     put_word(out, 60, build_word(p, 22));
 
     /* Word4: i0 low15 + Cic high7 */
-    p = ((f->i0 & 0x7FFF) << 7) | ((f->cic >> 11) & 0x7F);
+    p = ((uint32_t)f->i0 & 0x7FFF) << 7 | ((uint32_t)f->cic >> 11 & 0x7F);
     put_word(out, 90, build_word(p, 22));
 
     /* Word5: Cic low11 + omegadot high11 */
-    p = ((f->cic & 0x7FF) << 11) | ((f->omegadot >> 13) & 0x7FF);
+    p = ((uint32_t)f->cic & 0x7FF) << 11 | ((uint32_t)f->omegadot >> 13 & 0x7FF);
     put_word(out, 120, build_word(p, 22));
 
     /* Word6: omegadot low13 + Cis high9 */
-    p = ((f->omegadot & 0x1FFF) << 9) | ((f->cis >> 9) & 0x1FF);
+    p = ((uint32_t)f->omegadot & 0x1FFF) << 9 | ((uint32_t)f->cis >> 9 & 0x1FF);
     put_word(out, 150, build_word(p, 22));
 
     /* Word7: Cis low9 + IDOT high13 */
-    p = ((f->cis & 0x1FF) << 13) | ((f->idot >> 1) & 0x1FFF);
+    p = ((uint32_t)f->cis & 0x1FF) << 13 | ((uint32_t)f->idot >> 1 & 0x1FFF);
     put_word(out, 180, build_word(p, 22));
 
     /* Word8: IDOT low1 + omega0 high21 */
-    p = ((f->idot & 0x1) << 21) | ((f->omega0 >> 11) & 0x1FFFFF);
+    p = ((uint32_t)f->idot & 0x1) << 21 | ((uint32_t)f->omega0 >> 11 & 0x1FFFFF);
     put_word(out, 210, build_word(p, 22));
 
     /* Word9: omega0 low11 + omega high11 */
-    p = ((f->omega0 & 0x7FF) << 11) | ((f->omega >> 21) & 0x7FF);
+    p = ((uint32_t)f->omega0 & 0x7FF) << 11 | ((uint32_t)f->omega >> 21 & 0x7FF);
     put_word(out, 240, build_word(p, 22));
 
     /* Word10: omega low21 + reserved bit */
-    p = (f->omega & 0x1FFFFF) << 1;
+    p = ((uint32_t)f->omega & 0x1FFFFF) << 1;
     put_word(out, 270, build_word(p, 22));
 }
 
