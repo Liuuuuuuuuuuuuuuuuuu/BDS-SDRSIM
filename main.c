@@ -26,8 +26,6 @@ static void usage(const char *p)
     puts("  -cn0 value          目標 CN0 (dB-Hz)");
     puts("  --seed n            亂數種子 (整數)");
     puts("  --byte               輸出 I-only 之 8-bit 檔");
-    puts("  --geo-first          優先可見 GEO 衛星");
-    puts("  --no-geo            排除 GEO 衛星");
     puts("  --meo-only          僅模擬 MEO 衛星");
     puts("  --prn N             僅模擬指定 PRN");
     puts("  --prn37             僅使用 1-37 號衛星");
@@ -44,8 +42,6 @@ int main(int argc,char *argv[])
     cfg.duration    = 300;                /* 預設 300 秒 */
     cfg.seed        = 1;
     cfg.byte_output = false;
-    cfg.geo_first  = false;
-    cfg.no_geo     = false;
     cfg.meo_only   = false;
     cfg.single_prn = 0;
     cfg.prn37_only = false;
@@ -79,8 +75,6 @@ int main(int argc,char *argv[])
         {"gain",     required_argument, 0, 'g'},
         {"seed",     required_argument, 0, 'R'},
         {"byte",     no_argument,       0, 'b'},
-        {"geo-first",no_argument,       0, 'G'},
-        {"no-geo",   no_argument,       0, 'O'},
         {"meo-only", no_argument,       0, 'M'},
         {"prn",      required_argument, 0, 'p'},
         {"prn37",    no_argument,       0, 'B'},
@@ -89,7 +83,7 @@ int main(int argc,char *argv[])
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:R:hbGOp:BM", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:R:hbp:BM", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -137,12 +131,6 @@ int main(int argc,char *argv[])
         case 'b':
             cfg.byte_output = true;
             break;
-        case 'G':
-            cfg.geo_first = true;
-            break;
-        case 'O':
-            cfg.no_geo = true;
-            break;
         case 'M':
             cfg.meo_only = true;
             break;
@@ -161,8 +149,6 @@ int main(int argc,char *argv[])
         }
     }
 
-    /* unify GEO exclusion with GEO/D2 enable switch */
-    cfg.no_geo = cfg.no_geo || !cfg.enable_geo_d2;
 
     if(cfg.rinex_file[0]=='\0' || cfg.time_start[0]=='\0'){
         usage(argv[0]); return 1;
@@ -240,8 +226,8 @@ int main(int argc,char *argv[])
 
     channel_t ch[MAX_CH];
     int n_ch;
-    select_channels(ch,&n_ch,&usr,cfg.geo_first,cfg.single_prn,
-                    cfg.no_geo,cfg.meo_only);
+    select_channels(ch,&n_ch,&usr,cfg.single_prn,
+                    cfg.meo_only);
 
     /* 印出確認訊息 (簡潔模式) */
     printf("[cfg] UTC %s  BDT W%d %.3f\n",
@@ -261,10 +247,6 @@ int main(int argc,char *argv[])
             }
     printf("[cfg] PRN:");
     for(int i=0;i<n_ch;i++) printf(" %02d", prn_sorted[i]);
-    printf("\n[cfg] GEO:");
-    for(int i=0;i<n_ch;i++)
-        if(!is_igso_prn(prn_sorted[i]) && !is_meo_prn(prn_sorted[i]))
-            printf(" %02d", prn_sorted[i]);
     printf("\n[cfg] IGSO:");
     for(int i=0;i<n_ch;i++)
         if(is_igso_prn(prn_sorted[i])) printf(" %02d", prn_sorted[i]);

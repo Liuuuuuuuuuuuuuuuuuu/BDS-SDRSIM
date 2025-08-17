@@ -54,15 +54,9 @@ typedef struct {
     double   target_cn0;       /* 目標 CN0 (dB-Hz) */
     unsigned seed;             /* RNG seed */
     bool     byte_output;      /* 以 8-bit 檔輸出 */
-    bool     geo_first;        /* 優先可見 GEO 衛星 */
-    bool     no_geo;           /* 排除 GEO 衛星 */
     bool     meo_only;         /* 只模擬 MEO 衛星 */
     int      single_prn;       /* 僅模擬此 PRN (0 = 全部) */
     bool     prn37_only;       /* 僅使用 1-37 號衛星 */
-
-    /* ---- Simulation toggles ---- */
-    int   enable_geo_d2;       /* 0=禁用 GEO/D2（預設）; 1=啟用 GEO/D2 */
-    int   zero_doppler_geo;    /* 1=將 GEO r_dot 視為 0（僅當 enable_geo_d2=1 時生效）*/
 } sim_config_t;
 
 /* ---------- 介面 ---------- */
@@ -71,6 +65,5 @@ void  generate_signal(const sim_config_t *cfg);   /* ← 加上 const */
 void  cleanup_simulator(void);
 /* 讓 main 可以先做一次 select_channels() 取得 PRN 清單 */
 int  select_channels(channel_t *ch, int *n_ch, const coord_t *usr,
-                     bool geo_first, int single_prn, bool no_geo,
-                     bool meo_only);
+                     int single_prn, bool meo_only);
 #endif

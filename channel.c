@@ -38,46 +38,34 @@ static inline void fast_sincos(double ph,float*co,float*si){
 
 /* ---------- 載波與振幅計算 ---------- */
 
-static const int geo_prn[] = {1,2,3,4,5,59,60,61,62,63};
 
-static int is_geo_prn(int prn); /* forward */
+/* PRNs 1–5 and 59–63 are GEO satellites and are skipped during
+ * channel selection. */
+int is_geo_prn(int prn)
+{
+    static const int geo_prn[] = {1,2,3,4,5,59,60,61,62,63};
+    if(prn < 1 || prn >= MAX_SAT) return 0;
+    for(unsigned i=0;i<sizeof(geo_prn)/sizeof(geo_prn[0]);++i)
+        if(prn == geo_prn[i]) return 1;
+    return 0;
+}
 
-/* classify IGSO/MEO via sqrtA (semi-major axis).  BDS IGSO shares
- * the GEO semi-major axis (~42164 km, sqrtA around 6493), whereas
- * MEO satellites use a smaller semi-major axis (~27800 km, sqrtA
- * around 5282).  This allows for more robust identification even if
- * PRN assignments change. */
 int is_igso_prn(int prn)
 {
-    if(is_geo_prn(prn))
-        return 0;
-    if(prn<1 || prn>=MAX_SAT) return 0;
-    const ephemeris_t *ep=&eph[prn];
-    if(ep->prn==0) return 0;
-    return ep->sqrtA > 6000.0;  /* ~42164 km orbit */
+    if(prn < 1 || prn >= MAX_SAT) return 0;
+    const ephemeris_t *ep = &eph[prn];
+    if(ep->prn == 0) return 0;
+    return ep->sqrtA > 6000.0 && fabs(ep->i0) >= 0.2; /* IGSO */
 }
 
 int is_meo_prn(int prn)
 {
-    if(is_geo_prn(prn))
-        return 0;
-    if(prn<1 || prn>=MAX_SAT) return 0;
-    const ephemeris_t *ep=&eph[prn];
-    if(ep->prn==0) return 0;
+    if(prn < 1 || prn >= MAX_SAT) return 0;
+    const ephemeris_t *ep = &eph[prn];
+    if(ep->prn == 0) return 0;
     return ep->sqrtA <= 6000.0; /* ~27800 km orbit */
 }
 
-static int is_geo_prn(int prn)
-{
-    for(size_t i=0;i<sizeof(geo_prn)/sizeof(geo_prn[0]);++i)
-        if(prn==geo_prn[i]) return 1;
-    return 0;
-}
-
-int is_d2_prn(int prn)
-{
-    return is_geo_prn(prn);
-}
 
 /* ---- gps-sdr-sim 風格的振幅模型 ---- */
 static const double ant_pat_db[37] = {
@@ -108,13 +96,7 @@ static inline double amp_from_geom(double rho,double elev_deg,double gain,
 
 static inline double orbit_gain_amp(int prn)
 {
-    double dB = 0.0;
-    if (is_meo_prn(prn))
-        dB = GAIN_MEO_DB;
-    else if (is_igso_prn(prn))
-        dB = GAIN_IGSO_DB;
-    else /* GEO */
-        dB = GAIN_GEO_DB;
+    double dB = is_meo_prn(prn) ? GAIN_MEO_DB : GAIN_IGSO_DB;
     return pow(10.0, dB/20.0);
 }
 
@@ -195,7 +177,6 @@ void channel_set_time(channel_t *c,int week,double sow,double rho)
         c->ms_count   = 0;       /* NH20 index 從 0 開始 */
         c->bit_ptr    = 0;       /* 50 bps NAV bit 從 0 開始 */
     }
-    /* 暫時停用 GEO/D2：不初始化任何 D2 狀態 */
 }
 
 void channel_reset(channel_t *c,int prn,int week,double sow,double rho){
@@ -282,14 +263,4 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
     c->code_phase = code_phase;
     c->amp = amp;
 }
-
-#if 0
-/* ======== D2 (500 bps) support ========
- * 暫時停用 GEO/D2 */
-void gen_samples_1ms_d2(channel_t *c, int week, double sow,
-                        int samp_per_ms, int16_t *I, int16_t *Q)
-{
-    (void)c; (void)week; (void)sow; (void)samp_per_ms; (void)I; (void)Q;
-}
-#endif
 

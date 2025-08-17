@@ -10,15 +10,6 @@
 #define GM        3.986004418e14       /* WGS-84 μ  (m^3/s^2) */
 #define OMEGA_E   7.2921150e-5         /* 地球自轉角速度 (rad/s) */
 
-/* GEO PRN 列表，用於判斷衛星軌道型別 */
-static int is_geo_prn(int prn)
-{
-    static const int geo[] = {1,2,3,4,5,59,60,61,62,63};
-    for(size_t i=0; i<sizeof(geo)/sizeof(geo[0]); ++i)
-        if(prn == geo[i])
-            return 1;
-    return 0;
-}
 
 /* --------------------------------------------------------------*/
 /*             小工具：解 Kepler 方程 E − e·sinE = M             */
@@ -130,46 +121,14 @@ void calc_sat_position_velocity(int prn, int week, double sow,
         clk[1] = ep->af1 + 2.0 * tk_clk * ep->af2;
     }
 
-    if (is_geo_prn(prn)) {
-        const double theta = OMEGA_E * tk;
-        const double cosT  = cos(theta), sinT = sin(theta);
+    xyz[0] = x;
+    xyz[1] = y;
+    xyz[2] = z;
 
-        /* first rotate about Z by Earth's rotation */
-        const double x1 = cosT * x + sinT * y;
-        const double y1 = -sinT * x + cosT * y;
-        const double z1 = z;
-
-        const double vx = x_dot - OMEGA_E * y;
-        const double vy = y_dot + OMEGA_E * x;
-        const double vz = z_dot;
-
-        const double vx1 = cosT * vx + sinT * vy;
-        const double vy1 = -sinT * vx + cosT * vy;
-        const double vz1 = vz;
-
-        /* then rotate about X by -5 degrees */
-        const double phi  = -5.0 * M_PI / 180.0;
-        const double cosP = cos(phi), sinP = sin(phi);
-
-        xyz[0] = x1;
-        xyz[1] = cosP * y1 + sinP * z1;
-        xyz[2] = -sinP * y1 + cosP * z1;
-
-        if (vel) {
-            vel[0] = vx1;
-            vel[1] = cosP * vy1 + sinP * vz1;
-            vel[2] = -sinP * vy1 + cosP * vz1;
-        }
-    } else {
-        xyz[0] = x;
-        xyz[1] = y;
-        xyz[2] = z;
-
-        if (vel) {
-            vel[0] = x_dot;
-            vel[1] = y_dot;
-            vel[2] = z_dot;
-        }
+    if (vel) {
+        vel[0] = x_dot;
+        vel[1] = y_dot;
+        vel[2] = z_dot;
     }
 }
 
