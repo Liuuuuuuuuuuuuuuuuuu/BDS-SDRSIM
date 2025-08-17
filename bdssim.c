@@ -61,45 +61,80 @@ static void compute_range_rate(int prn,int week,double sow,
     double range = hypot(hypot(dx,dy),dz);
     double tau = range / CLIGHT;
 
-    pos[0] -= vel[0]*tau;
-    pos[1] -= vel[1]*tau;
-    pos[2] -= vel[2]*tau;
+    /* ---------- Two-step light-time with sat clock at tx, plus inertial velocities ---------- */
 
-    double xrot = pos[0] + pos[1]*OMEGA_E*tau;
-    double yrot = pos[1] - pos[0]*OMEGA_E*tau;
-    pos[0] = xrot;
-    pos[1] = yrot;
+    /* Step 1: clock at tx with first tau */
+    double clk_tx[2], pos_tx[3], vel_tx[3];
+    calc_sat_position_velocity(prn, week, sow - tau, pos_tx, vel_tx, clk_tx);
 
-    if(sat){ sat[0]=pos[0]; sat[1]=pos[1]; sat[2]=pos[2]; }
+    /* Recompute geometry at tx: rotate for Earth rotation during tau */
+    {
+        double x1 = pos_tx[0] + pos_tx[1]*OMEGA_E*tau;
+        double y1 = pos_tx[1] - pos_tx[0]*OMEGA_E*tau;
+        pos_tx[0] = x1; pos_tx[1] = y1;
+    }
 
-    dx = pos[0]-u->xyz[0];
-    dy = pos[1]-u->xyz[1];
-    dz = pos[2]-u->xyz[2];
+    /* New geometric range at tx */
+    dx = pos_tx[0]-u->xyz[0];
+    dy = pos_tx[1]-u->xyz[1];
+    dz = pos_tx[2]-u->xyz[2];
     range = hypot(hypot(dx,dy),dz);
 
-    /* Evaluate satellite clock bias at transmit time (sow - tau) */
+    /* Update tau with clock bias (second step) */
+    double tau2 = (range - CLIGHT*clk_tx[0]) / CLIGHT;
+
+    /* Step 2: recompute at sow - tau2 */
+    double clk2[2], pos2[3], vel2[3];
+    calc_sat_position_velocity(prn, week, sow - tau2, pos2, vel2, clk2);
+
+    /* Earth rotation during tau2 */
     {
-        double clk_tx[2], pos_dummy[3], vel_dummy[3];
-        calc_sat_position_velocity(prn, week, sow - tau, pos_dummy, vel_dummy, clk_tx);
-        if (rho) *rho = range - CLIGHT * clk_tx[0];
+        double x2 = pos2[0] + pos2[1]*OMEGA_E*tau2;
+        double y2 = pos2[1] - pos2[0]*OMEGA_E*tau2;
+        pos2[0] = x2; pos2[1] = y2;
     }
 
-    /* LOS range rate with receiver inertial velocity (ECEF):
-       v_rec_inertial = uvel (if provided) + Omega x r_rec */
+    /* Final geometry for rho/rdot */
+    dx = pos2[0]-u->xyz[0];
+    dy = pos2[1]-u->xyz[1];
+    dz = pos2[2]-u->xyz[2];
+    range = hypot(hypot(dx,dy),dz);
+    if (sat) { sat[0]=pos2[0]; sat[1]=pos2[1]; sat[2]=pos2[2]; }
+
+    /* Pseudorange: geometry minus c*clk at tx (no extra Sagnac here because we used rotation) */
+    if (rho) *rho = range - CLIGHT * clk2[0];
+
+    /* Range-rate with inertial velocities:
+       v_s_inertial = vel2 + Omega x r_s, v_r_inertial = uvel + Omega x r_r */
     if (rdot) {
-        double vrx = (uvel ? uvel[0] : 0.0);
-        double vry = (uvel ? uvel[1] : 0.0);
-        double vrz = (uvel ? uvel[2] : 0.0);
-        /* Omega x r_rec (ECEF), OMEGA_E already defined and used above */
-        vrx += -OMEGA_E * u->xyz[1];
-        vry +=  OMEGA_E * u->xyz[0];
-        /* vrz += 0 */
+        double vsx = vel2[0] - OMEGA_E * pos2[1];
+        double vsy = vel2[1] + OMEGA_E * pos2[0];
+        double vsz = vel2[2];
 
-        double rvx = vel[0] - vrx;
-        double rvy = vel[1] - vry;
-        double rvz = vel[2] - vrz;
-        *rdot = (rvx*dx + rvy*dy + rvz*dz) / range;  /* m/s */
+        double vrx = (uvel ? uvel[0] : 0.0) - OMEGA_E * u->xyz[1];
+        double vry = (uvel ? uvel[1] : 0.0) + OMEGA_E * u->xyz[0];
+        double vrz = (uvel ? uvel[2] : 0.0);
+
+        double dvx = vsx - vrx;
+        double dvy = vsy - vry;
+        double dvz = vsz - vrz;
+
+        *rdot = (dvx*dx + dvy*dy + dvz*dz) / range;  /* m/s */
     }
+#if 0
+    {
+        /* Check fractional-ms at transmit time and prefit common term */
+        double t_rx = week*604800.0 + sow;
+        double t_tx = t_rx - ( *rho / CLIGHT );  /* uses final rho above */
+        double frac_ms = fmod(t_tx*1000.0, 1.0); /* [0,1) ms */
+
+        /* prefit common term: (rho - geometric) */
+        double drho = *rho - range;
+
+        fprintf(stderr, "[dbg] PRN=%d frac_ms=%.6fms drho=%.3fm rdot=%.3f\n",
+                prn, 1e3*frac_ms, drho, (rdot?*rdot:0.0));
+    }
+#endif
 }
 
 /*----------------------------------------------------*/
