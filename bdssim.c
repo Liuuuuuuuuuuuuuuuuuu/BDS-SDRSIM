@@ -52,8 +52,8 @@ static void compute_range_rate(int prn,int week,double sow,
                                const coord_t *u,const double uvel[3],
                                double sat[3],double *rho,double *rdot)
 {
-    double pos[3], vel[3], clk[2];
-    calc_sat_position_velocity(prn, week, sow, pos, vel, clk);
+    double pos[3], vel[3];
+    calc_sat_position_velocity(prn, week, sow, pos, vel, NULL);
 
     double dx = pos[0]-u->xyz[0];
     double dy = pos[1]-u->xyz[1];
@@ -77,13 +77,28 @@ static void compute_range_rate(int prn,int week,double sow,
     dz = pos[2]-u->xyz[2];
     range = hypot(hypot(dx,dy),dz);
 
-    if(rho) *rho = range - CLIGHT*clk[0];
+    /* Evaluate satellite clock bias at transmit time (sow - tau) */
+    {
+        double clk_tx[2], pos_dummy[3], vel_dummy[3];
+        calc_sat_position_velocity(prn, week, sow - tau, pos_dummy, vel_dummy, clk_tx);
+        if (rho) *rho = range - CLIGHT * clk_tx[0];
+    }
 
-    if(rdot){
-        double rvx = vel[0] - (uvel?uvel[0]:0.0);
-        double rvy = vel[1] - (uvel?uvel[1]:0.0);
-        double rvz = vel[2] - (uvel?uvel[2]:0.0);
-        *rdot = (rvx*dx + rvy*dy + rvz*dz) / range;
+    /* LOS range rate with receiver inertial velocity (ECEF):
+       v_rec_inertial = uvel (if provided) + Omega x r_rec */
+    if (rdot) {
+        double vrx = (uvel ? uvel[0] : 0.0);
+        double vry = (uvel ? uvel[1] : 0.0);
+        double vrz = (uvel ? uvel[2] : 0.0);
+        /* Omega x r_rec (ECEF), OMEGA_E already defined and used above */
+        vrx += -OMEGA_E * u->xyz[1];
+        vry +=  OMEGA_E * u->xyz[0];
+        /* vrz += 0 */
+
+        double rvx = vel[0] - vrx;
+        double rvy = vel[1] - vry;
+        double rvz = vel[2] - vrz;
+        *rdot = (rvx*dx + rvy*dy + rvz*dz) / range;  /* m/s */
     }
 }
 
