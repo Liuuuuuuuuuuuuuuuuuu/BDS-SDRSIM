@@ -160,7 +160,7 @@ static void load_ca_once(void)
 void channel_set_time(channel_t *c,int week,double sow,double rho)
 {
     /* Transmission time accounts for signal travel time (rho/c). */
-    double tx_sow = sow - rho/299792458.0; /* seconds */
+    double tx_sow = sow - rho/CLIGHT; /* seconds */
     int tx_week = week;
     if(tx_sow < 0.0){
         tx_sow += 604800.0;
@@ -218,8 +218,8 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg
     c->amp = smooth_amp(c->amp, A_new, dt_ms);
     c->amp_dot = 0.0;
     c->elev_deg = elev_deg;
-    c->fd  = -FCARRIER*rdot/299792458.0;               /* Doppler (Hz) */
-    c->code_rate = CHIPRATE*(1.0 - rdot/299792458.0);  /* Code frequency (Hz) */
+    c->fd  = -FCARRIER*rdot/CLIGHT;               /* Doppler (Hz) */
+    c->code_rate = CHIPRATE*(1.0 - rdot/CLIGHT);  /* Code frequency (Hz) */
 }
 
 void channel_set_fs(double sample_rate)
