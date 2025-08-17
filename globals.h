@@ -14,7 +14,6 @@
 /* Per-orbit-class amplitude offsets (dB) */
 #define GAIN_MEO_DB   +1.5
 #define GAIN_IGSO_DB  +1.5
-#define GAIN_GEO_DB   -3.0
 
 /* 由 globals.c 定義 */
 extern uint8_t      prn_code[MAX_SAT][CODE_LEN];

@@ -51,7 +51,7 @@ each PRN number and the first 16 bits of its code in binary using the
 bundled RINEX file.
 
 Run `make check` to build and execute the self test
-(`tests/test_prn_d1d2`).
+(`tests/test_prn`).
 
 The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
 file containing interleaved **16‑bit little‑endian** I/Q samples. By
@@ -69,14 +69,12 @@ The legacy option `-byte` is still recognised as an alias for `--byte`.
 ## 訊號型別
 
 - IGSO/MEO PRN → D1 (50 bps, 有 NH 二次碼)
-- `--geo-first` 在挑選模擬衛星時會優先加入可見的 GEO 衛星
-- `--no-geo` 排除所有 GEO 衛星
 - `--meo-only` 僅模擬 MEO 衛星
 - `--prn`  可只輸出指定 PRN
 - `--prn37`  僅使用 1-37 號衛星
 
 MEO 與 IGSO 依據星曆中的 `sqrtA`(軌道半長軸平方根) 分辨。大於 6000 的視
-為與 GEO 相同的軌道高度，即 IGSO，否則為 MEO。
+為 IGSO，否則為 MEO。
 
 ## Usage
 
@@ -87,20 +85,6 @@ MEO 與 IGSO 依據星曆中的 `sqrtA`(軌道半長軸平方根) 分辨。大�
           --gain 1.0 \
           --llh lat,lon,height \
           --byte
-```
-
-Example prioritising visible GEO satellites:
-
-```
-./bds-sim --rinex BRDM00DLR_S_20251870000_01D_MN.rnx \
-          --geo-first --duration 120
-```
-
-Example excluding GEO satellites:
-
-```
-./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
-          --no-geo --duration 60
 ```
 
 Example generating only PRN 6:
@@ -115,9 +99,9 @@ the composite signal uses most of the 16‑bit range.  Larger values boost
 the level but may cause clipping.
 
 The amplitude itself is derived from a simple link budget.  Each orbit
-type is assigned a nominal transmit power (about 52 dBm for GEO,
-53 dBm for IGSO and 55 dBm for MEO).  Orbit type is detected by
-checking `sqrtA` so that IGSO and MEO receive the proper power.
+type is assigned a nominal transmit power (about 53 dBm for IGSO and
+55 dBm for MEO).  Orbit type is detected by checking `sqrtA` so that
+IGSO and MEO receive the proper power.
 Path loss is computed from the
 current slant range including a fixed 2 dB atmospheric term.  The gain
 factor multiplies this result before limiting to the 16‑bit output
@@ -178,7 +162,7 @@ the simulation start.
 make check
 ```
 
-This builds and runs `tests/test_prn_d1d2` to verify D1/D2 generation.
+This builds and runs `tests/test_prn` to verify PRN handling.
 
 ## SDR playback
 
@@ -216,15 +200,12 @@ searches for the correct PRNs automatically.
 
 ## v0.3.0 (2025-07-07)
 * Fix UTC→BDT +4 s
-* GEO satellites enabled
 * Added subframe 4/5 template
 * Default Fs → 6.144 MHz
 * Power scaling by target CN₀
-* Basic D2 (500 bps) support with D1 interleaving
 
 ## v0.3.1 (unreleased)
 * Correct subframe 4/5 constant words
-* Fix Time-of-Week handling for D2 frames
 * Minor API cleanup
 * Orbit propagation now applies the standard GPS/BDS RAAN
   expression `Ω(t) = Ω₀ + (Ω̇ − Ωₑ)·tk − Ωₑ·Toe` for all BeiDou
