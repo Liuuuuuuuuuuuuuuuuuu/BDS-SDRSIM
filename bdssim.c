@@ -12,12 +12,11 @@
 #include "navbits.h"
 #include "timeconv.h"
 #include "path.h"
-#include "globals.h"     /* nav_week */
+#include "globals.h"     /* nav_week, CLIGHT */
 #define FSAMP_DEF FS_OUTPUT_HZ    /* default 6.144 MHz for 16-bit I/Q output */
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
 #define FCARRIER   1561.098e6      /* B1I carrier */
 #define CHIPRATE   2.046e6
-#define CLIGHT     299792458.0
 #define OMEGA_E    7.2921150e-5
 
 /* ========= 振幅計算與 int16 飽和保護 ========= */
@@ -279,7 +278,7 @@ void generate_signal(const sim_config_t *cfg)
         }
         if(ms==0){
             for(int i=0;i<n_ch;++i){
-                double rdot = -ch[i].fd*299792458.0/FCARRIER;
+                double rdot = -ch[i].fd*CLIGHT/FCARRIER;
                 printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
             }
         }
