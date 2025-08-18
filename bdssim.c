@@ -147,6 +147,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
         if(single_prn>0 && prn!=single_prn) continue;
         if(is_geo_prn(prn)) continue;
         if(meo_only && !is_meo_prn(prn)) continue;
+        if(eph[prn].prn == 0) continue;
         double sat[3], rho, rdot;
         compute_range_rate(prn,u->week,u->sow,u,NULL,sat,&rho,&rdot);
         double enu[3]; ecef2enu(u,sat,enu);
