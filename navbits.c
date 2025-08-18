@@ -103,7 +103,7 @@ static void build_subframe1_d1(uint8_t *out, const B1I_D1_Frame *f, int week, do
      * corresponds to the rising edge of the frame sync
      * at the beginning of the subframe.
      */
-    uint32_t sow_int = (uint32_t)(floor(sow/frame_len)*frame_len);
+    uint32_t sow_int = (uint32_t)llround(sow);
     info = (info<<8) | ((sow_int>>12) & 0xFF);
     put_word(out,0, build_word(info, 26));
 
@@ -149,7 +149,7 @@ static void build_subframe2_d1(uint8_t *out, const B1I_D1_Frame *f, double sow, 
 {
     memset(out, 0, SF_STREAM_LEN);
 
-    uint32_t sow_int = (uint32_t)(floor(sow / frame_len) * frame_len);
+    uint32_t sow_int = (uint32_t)llround(sow);
     uint32_t w;
 
     /* Word1: preamble + reserved + FraID=2 + SOW[19:12] */
@@ -201,7 +201,7 @@ static void build_subframe3_d1(uint8_t *out, const B1I_D1_Frame *f, double sow, 
 {
     memset(out, 0, SF_STREAM_LEN);
 
-    uint32_t sow_int = (uint32_t)(floor(sow / frame_len) * frame_len);
+    uint32_t sow_int = (uint32_t)llround(sow);
     uint32_t w;
 
     /* Word1: preamble + reserved + FraID=3 + SOW[19:12] */
@@ -257,7 +257,7 @@ static void build_subframe4_d1(uint8_t *out, double sow, double frame_len)
 
     memset(out, 0, SF_STREAM_LEN);
 
-    uint32_t sow_int = (uint32_t)(floor(sow / frame_len) * frame_len);
+    uint32_t sow_int = (uint32_t)llround(sow);
 
     /* word1: preamble + reserved + FraID=4 + SOW[19:12] */
     uint32_t w = 0x712;
@@ -288,7 +288,7 @@ static void build_subframe5_d1(uint8_t *out, double sow, double frame_len)
 
     memset(out, 0, SF_STREAM_LEN);
 
-    uint32_t sow_int = (uint32_t)(floor(sow / frame_len) * frame_len);
+    uint32_t sow_int = (uint32_t)llround(sow);
 
     /* word1: preamble + reserved + FraID=5 + SOW[19:12] */
     uint32_t w = 0x712;
@@ -318,7 +318,7 @@ static void build_subframe5_d1(uint8_t *out, double sow, double frame_len)
 /* 根據時間取得子帧 bit 流 (300 bits) */
 void get_subframe_bits(int prn,int sf_id,int week,double sow,double frame_len,uint8_t *out)
 {
-    double start = floor(sow/frame_len)*frame_len;
+    double start = llround(sow);
     B1I_D1_Frame frm, *pf = NULL;
     if(sf_id >=1 && sf_id <=3){
         frame_from_ephemeris(&eph[prn], &frm);

@@ -183,19 +183,6 @@ static void update_channels_path(channel_t *ch,int n,
         double el = enu_elevation_deg(enu);
         update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
 
-        /* 每逢接收端時間靠近 6 s 邊界時，重新計算 tx 子幀錨點 */
-        const double SIX = 6.0;
-        const double EPS = 0.002; /* 2 ms */
-        double sow = u->sow;
-        if(fmod(sow, SIX) < EPS){
-            double tx_sow = sow - ch[i].last_rho / CLIGHT;
-            if(fabs(tx_sow - ch[i].d1_sf_t0) > EPS){
-                ch[i].d1_sf_t0 = floor(tx_sow / SIX) * SIX;
-                ch[i].tx_week = u->week;
-                ch[i].d1_sf_index = (int)floor((tx_sow - ch[i].d1_sf_t0)/SIX + 0.5);
-            }
-        }
-
         if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
 
         /* predict next dynamics using next position/velocity */
