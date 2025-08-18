@@ -152,6 +152,7 @@ void channel_set_time(channel_t *c,int week,double sow,double rho)
         tx_week += 1;
     }
     c->tx_week = tx_week;
+    c->last_rho = rho;
 
     /* Compute sub-ms fractional offset to align PRN/NH/data boundaries. */
     double sow_ms = tx_sow * 1000.0;
@@ -170,7 +171,8 @@ void channel_set_time(channel_t *c,int week,double sow,double rho)
     /* ---- D1：以 6 s 對齊作為固定錨點 ---- */
     c->d1_sf_t0    = sf_start;
     c->d1_sf_index = 0;
-    get_subframe_bits(c->prn,c->sf_id,c->tx_week,c->d1_sf_t0,6.0,c->nav_bits);
+    double sow_tx_anchor = c->d1_sf_t0 + 6.0 * c->d1_sf_index;
+    get_subframe_bits(c->prn,c->sf_id,c->tx_week,sow_tx_anchor,6.0,c->nav_bits);
     if(ms == 0 && frac_ms < 1e-9){
         /* 在子幀邊界，強制對齊三個時序：PRN、NH20、NAV */
         c->code_phase = 0.0;     /* 1 ms PRN 2046 chips 從頭開始 */
@@ -201,6 +203,7 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg
     c->elev_deg = elev_deg;
     c->fd  = -FCARRIER*rdot/CLIGHT;               /* Doppler (Hz) */
     c->code_rate = CHIPRATE*(1.0 - rdot/CLIGHT);  /* Code frequency (Hz) */
+    c->last_rho = rho;
 }
 
 void channel_set_fs(double sample_rate)
@@ -215,8 +218,8 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
     (void)week; (void)sow;
     if(c->bit_ptr==0 && c->ms_count==0){
         /* 一律使用固定錨點 + 6.0 * index，杜絕邊界抖動 */
-        double t0 = c->d1_sf_t0 + 6.0 * c->d1_sf_index;
-        get_subframe_bits(c->prn,c->sf_id,c->tx_week,t0,6.0,c->nav_bits);
+        double sow_tx_anchor = c->d1_sf_t0 + 6.0 * c->d1_sf_index;
+        get_subframe_bits(c->prn,c->sf_id,c->tx_week,sow_tx_anchor,6.0,c->nav_bits);
     }
 
     double fd = c->fd;
