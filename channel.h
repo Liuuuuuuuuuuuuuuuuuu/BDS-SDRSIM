@@ -17,6 +17,7 @@ typedef struct {
     double  carr_phase;   /* rad                       */
     double  code_phase;   /* chips                     */
     double  elev_deg;     /* satellite elevation (deg) */
+    double  last_rho;     /* 最近一次幾何距離 (m) */
     uint16_t code_ptr;
     uint16_t bit_ptr;
     uint8_t  sf_id;
