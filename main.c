@@ -220,6 +220,7 @@ int main(int argc,char *argv[])
     }
     usr.week = start_week;
     usr.sow  = start_sow;
+    g_t_tx   = start_bdt; /* initialize global transmit time */
 
     coord_t ref_llh = usr;
     static_user_at(usr.week, usr.sow, &ref_llh, &usr, NULL);
