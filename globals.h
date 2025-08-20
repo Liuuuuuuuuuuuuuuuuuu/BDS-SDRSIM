@@ -27,5 +27,8 @@ extern double       iono_alpha[4];  /* ionospheric parameters */
 extern double       iono_beta[4];
 extern int          utc_bdt_diff;   /* UTC->BDT offset seconds */
 
+/* Global transmit time in BDT seconds */
+extern double       g_t_tx;
+
 #endif
 

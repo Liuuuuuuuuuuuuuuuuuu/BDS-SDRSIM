@@ -52,8 +52,15 @@ static void compute_range_rate(int prn,int week,double sow,
                                const coord_t *u,const double uvel[3],
                                double sat[3],double *rho,double *rdot)
 {
-    double pos[3], vel[3];
-    calc_sat_position_velocity(prn, week, sow, pos, vel, NULL);
+    /* Satellite clock at global transmit time */
+    double clk_tx[2], pos_dummy[3], vel_dummy[3];
+    calc_sat_position_velocity(prn, week, sow, pos_dummy, vel_dummy, clk_tx);
+    double t_sv = week*604800.0 + sow - clk_tx[0];
+    int week_sv = (int)(t_sv/604800.0);
+    double sow_sv = t_sv - week_sv*604800.0;
+
+    double pos[3], vel[3], clk_sv[2];
+    calc_sat_position_velocity(prn, week_sv, sow_sv, pos, vel, clk_sv);
 
     double dx = pos[0]-u->xyz[0];
     double dy = pos[1]-u->xyz[1];
@@ -61,10 +68,7 @@ static void compute_range_rate(int prn,int week,double sow,
     double range = hypot(hypot(dx,dy),dz);
     double tau = range / CLIGHT;
 
-    pos[0] -= vel[0]*tau;
-    pos[1] -= vel[1]*tau;
-    pos[2] -= vel[2]*tau;
-
+    /* Earth rotation during signal travel */
     double xrot = pos[0] + pos[1]*OMEGA_E*tau;
     double yrot = pos[1] - pos[0]*OMEGA_E*tau;
     pos[0] = xrot;
@@ -77,24 +81,14 @@ static void compute_range_rate(int prn,int week,double sow,
     dz = pos[2]-u->xyz[2];
     range = hypot(hypot(dx,dy),dz);
 
-    /* Evaluate satellite clock bias at transmit time (sow - tau) */
-    {
-        double clk_tx[2], pos_dummy[3], vel_dummy[3];
-        calc_sat_position_velocity(prn, week, sow - tau, pos_dummy, vel_dummy, clk_tx);
-        if (rho) *rho = range - CLIGHT * clk_tx[0];
-    }
+    if (rho) *rho = range - CLIGHT * clk_sv[0];
 
-    /* LOS range rate with receiver inertial velocity (ECEF):
-       v_rec_inertial = uvel (if provided) + Omega x r_rec */
     if (rdot) {
         double vrx = (uvel ? uvel[0] : 0.0);
         double vry = (uvel ? uvel[1] : 0.0);
         double vrz = (uvel ? uvel[2] : 0.0);
-        /* Omega x r_rec (ECEF), OMEGA_E already defined and used above */
         vrx += -OMEGA_E * u->xyz[1];
         vry +=  OMEGA_E * u->xyz[0];
-        /* vrz += 0 */
-
         double rvx = vel[0] - vrx;
         double rvy = vel[1] - vry;
         double rvz = vel[2] - vrz;
@@ -126,7 +120,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
     }
     *n = m<MAX_CH?m:MAX_CH;
     for(int i=0;i<*n;++i)
-        channel_reset(&ch[i],c[i].prn,u->week,u->sow,c[i].rho);
+        channel_reset(&ch[i],c[i].prn,c[i].rho);
     return *n;
 }
 
@@ -143,6 +137,7 @@ static void update_channels_path(channel_t *ch,int n,
         int prn = ch[i].prn;
         double sat[3], rho, rdot;
         compute_range_rate(prn,u->week,u->sow,u,uvel,sat,&rho,&rdot);
+        channel_set_time(&ch[i], rho, 0);
         double enu[3]; ecef2enu(u,sat,enu);
         double el = enu_elevation_deg(enu);
         update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
@@ -194,6 +189,8 @@ void generate_signal(const sim_config_t *cfg)
     /* 檢查 start 時間是否與星曆 toe 接近 */
     check_ephemeris_age(usr.week, usr.sow);
 
+    g_t_tx = usr.week*604800.0 + usr.sow;
+
     channel_t ch[MAX_CH];
     int n_ch;
     select_channels(ch,&n_ch,&usr,cfg->single_prn,
@@ -228,11 +225,12 @@ void generate_signal(const sim_config_t *cfg)
     const int STEP_MS = cfg->step_ms;
     const uint64_t total_ms=(uint64_t)cfg->duration*1000;
     double start_bdt = usr.week*604800.0 + usr.sow;
+    uint64_t sample_count = 0;
     for(uint64_t ms=0; ms<total_ms; ms+=STEP_MS)
     {
-        double t_abs = start_bdt + ms*0.001;
-        int week = (int)(t_abs/604800.0);
-        double sow = t_abs - week*604800.0;
+        g_t_tx = start_bdt + sample_count/fs;
+        int week = (int)(g_t_tx/604800.0);
+        double sow = g_t_tx - week*604800.0;
 
         double dt = STEP_MS * 0.001;
         double uvel[3], uvel_next[3];
@@ -292,13 +290,13 @@ void generate_signal(const sim_config_t *cfg)
 
         /* --- STEP_MS 次 1ms 取樣 --- */
         for(int step=0;step<STEP_MS;++step){
+            g_t_tx = start_bdt + sample_count/fs;
             memset(accI,0,sizeof(accI)); memset(accQ,0,sizeof(accQ));
 
             /* 併行各通道 */
             #pragma omp parallel for
             for(int c=0;c<n_ch;++c){
-                gen_samples_1ms(&ch[c],week,sow+step*0.001,
-                                samp_per_ms,tmpI[c],tmpQ[c]);
+                gen_samples_1ms(&ch[c],samp_per_ms,tmpI[c],tmpQ[c]);
             }
 
             /* 歸併 */
@@ -331,6 +329,7 @@ void generate_signal(const sim_config_t *cfg)
                     sumI2 += (double)i8[k]*i8[k];
                 }
             }
+            sample_count += samp_per_ms;
             samp_cnt += samp_per_ms;
             if(fp)
                 fwrite(iq,sizeof(int16_t),2*samp_per_ms,fp);

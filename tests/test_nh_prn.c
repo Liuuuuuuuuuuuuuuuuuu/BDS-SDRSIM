@@ -23,7 +23,8 @@ int main(void)
 
     int prn = 8; /* MEO/IGSO uses D1 with NH code */
     channel_t ch;
-    channel_reset(&ch, prn, nav_week, 0.0, 0.0);
+    g_t_tx = nav_week*604800.0;
+    channel_reset(&ch, prn, 0.0);
     ch.carr_phase = 0.0;
     ch.code_phase = 0.1; /* avoid boundary ambiguity */
     update_channel_dynamics(&ch, 2.0e7, 0.0, 90.0, 1.0, cfg.target_cn0, 1, 1.0);
@@ -35,7 +36,7 @@ int main(void)
     /* generate 20 ms and verify NH/PRN relationship */
     int base_sign = 0;
     for(int i=0;i<20;i++){
-        gen_samples_1ms(&ch, nav_week, i*0.001, samp_per_ms, I, Q);
+        gen_samples_1ms(&ch, samp_per_ms, I, Q);
         int sign = (I[0] >= 0) ? 1 : -1;
         if(i==0){
             base_sign = sign;               /* nav bit sign */

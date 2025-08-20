@@ -3,8 +3,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdio.h>
 #include "channel.h"
 #include "globals.h"               /* prn_code */
+#include "orbits.h"                /* calc_sat_position_velocity */
 
 #define PI2        6.2831853071795864769
 #define FCARRIER   1561.098e6      /* B1I */
@@ -139,47 +141,81 @@ static void load_ca_once(void)
     ca_ready = 1;
 }
 
-void channel_set_time(channel_t *c,int week,double sow,double rho)
+void channel_set_time(channel_t *c,double rho,int debug)
 {
-    /* Transmission time accounts for signal travel time (rho/c). */
-    double tx_sow = sow - rho/CLIGHT; /* seconds */
-    int tx_week = week;
-    if(tx_sow < 0.0){
-        tx_sow += 604800.0;
-        tx_week -= 1;
-    } else if(tx_sow >= 604800.0){
-        tx_sow -= 604800.0;
-        tx_week += 1;
-    }
-    c->tx_week = tx_week;
+    /* Global transmit time is shared by all channels. */
+    int week = (int)(g_t_tx/604800.0);
+    double sow = g_t_tx - week*604800.0;
+    c->tx_week = week;
+    c->tx_sow  = sow;       /* identical across channels */
+
+    /* Satellite signal left earlier by propagation delay. */
+    double tx_time = g_t_tx - rho/CLIGHT; /* seconds since BDT epoch */
+    int    week_tx = (int)(tx_time/604800.0);
+    double sow_tx  = tx_time - week_tx*604800.0;
 
     /* Compute sub-ms fractional offset to align PRN/NH/data boundaries. */
-    double sow_ms = tx_sow * 1000.0;
+    double sow_ms  = sow_tx * 1000.0;
     double frac_ms = sow_ms - floor(sow_ms);
-    c->code_phase = frac_ms * CODE_LEN;  /* 1 ms = 2046 chips */
+    c->code_phase  = frac_ms * CODE_LEN;  /* 1 ms = 2046 chips */
 
-    double sf_start = floor(tx_sow/6.0)*6.0;
-    c->sf_id = ((int)(sf_start/6.0))%5 + 1;  /* 1..5 */
-    double sub_ms = (tx_sow - sf_start)*1000.0;
-    int ms = (int)floor(sub_ms);
+    /* Navigation subframe alignment (6 s). */
+    double sf_start = floor(sow_tx/6.0)*6.0;
+    if(sf_start != c->nav_sf_start){
+        c->sf_id = ((int)(sf_start/6.0))%5 + 1;  /* 1..5 */
+        get_subframe_bits(c->prn,c->sf_id,week_tx,sf_start,6.0,c->nav_bits);
+        c->nav_sf_start = sf_start;
+    } else {
+        c->sf_id = ((int)(sf_start/6.0))%5 + 1;  /* 1..5 */
+    }
+    int ms = (int)((sow_tx - sf_start)*1000.0);
     if(ms < 0)      ms = 0;
     else if(ms >= 6000) ms = 5999;
     c->bit_ptr = ms/20;
     c->ms_count = ms%20;
 
-    /* ---- D1：以 6 s 對齊作為固定錨點 ---- */
-    c->d1_sf_t0    = sf_start;
-    c->d1_sf_index = 0;
-    get_subframe_bits(c->prn,c->sf_id,c->tx_week,c->d1_sf_t0,6.0,c->nav_bits);
     if(ms == 0 && frac_ms < 1e-9){
-        /* 在子幀邊界，強制對齊三個時序：PRN、NH20、NAV */
-        c->code_phase = 0.0;     /* 1 ms PRN 2046 chips 從頭開始 */
-        c->ms_count   = 0;       /* NH20 index 從 0 開始 */
-        c->bit_ptr    = 0;       /* 50 bps NAV bit 從 0 開始 */
+        /* At subframe boundary, force perfect alignment of PRN/NH/NAV. */
+        c->code_phase = 0.0;
+        c->ms_count   = 0;
+        c->bit_ptr    = 0;
+    }
+
+    if(debug){
+        uint32_t sow_int = (uint32_t)sf_start; /* SOW integer used in navbits */
+        const ephemeris_t *ep = &eph[c->prn];
+        /* Extract word3 bits (30 bits with parity) from cached nav bits */
+        uint32_t word3 = 0;
+        for(int i=60;i<90;++i)
+            word3 = (word3<<1) | c->nav_bits[i];
+
+        double t_tx  = g_t_tx; /* global transmit time */
+        double t_toe = ep->week*604800.0 + ep->toe;
+        double t_toc = ep->week*604800.0 + ep->toc;
+        double dt_toe = t_tx - t_toe;
+        double dt_toc = t_tx - t_toc;
+        double clk_bias_ns = 0.0;
+        double clk[2], pos_dummy[3], vel_dummy[3];
+        calc_sat_position_velocity(c->prn, week, sow,
+                                   pos_dummy, vel_dummy, clk);
+        clk_bias_ns = clk[0]*1e9; /* seconds to ns */
+
+        static int printed_global = 0;
+        if(!printed_global){
+            printf("Global: tx_week %d tx_sow %.6f\n", week, sow);
+            printed_global = 1;
+        }
+
+        printf("PRN %02d: tx_sow %.6f sow_int %u word3_TOW 0x%08X "
+               "dToE %.3f dToC %.3f clock_bias %.3f ns code_phase %.0f "
+               "NH %u bit %u\n",
+               c->prn, sow, sow_int, word3,
+               dt_toe, dt_toc, clk_bias_ns,
+               floor(c->code_phase), c->ms_count, c->bit_ptr);
     }
 }
 
-void channel_reset(channel_t *c,int prn,int week,double sow,double rho){
+void channel_reset(channel_t *c,int prn,double rho){
     memset(c,0,sizeof(*c));
     c->prn   = prn;
     load_ca_once();
@@ -187,7 +223,7 @@ void channel_reset(channel_t *c,int prn,int week,double sow,double rho){
     /* Randomise starting carrier phase so I/Q averages are balanced. */
     c->carr_phase = ((double)rand()/(double)RAND_MAX)*PI2;
 
-    channel_set_time(c,week,sow,rho);
+    channel_set_time(c,rho,1);
 }
 /* 幾何→計算振幅 / 初始多普勒 */
 void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg,
@@ -209,16 +245,8 @@ void channel_set_fs(double sample_rate)
 }
 
 /* ---------- 產生 1 ms ---------- */
-void gen_samples_1ms(channel_t *c,int week,double sow,
-                     int samp_per_ms,int16_t*I,int16_t*Q)
+void gen_samples_1ms(channel_t *c,int samp_per_ms,int16_t*I,int16_t*Q)
 {
-    (void)week; (void)sow;
-    if(c->bit_ptr==0 && c->ms_count==0){
-        /* 一律使用固定錨點 + 6.0 * index，杜絕邊界抖動 */
-        double t0 = c->d1_sf_t0 + 6.0 * c->d1_sf_index;
-        get_subframe_bits(c->prn,c->sf_id,c->tx_week,t0,6.0,c->nav_bits);
-    }
-
     double fd = c->fd;
     double code_rate = c->code_rate;
     double phase = c->carr_phase;
@@ -252,7 +280,6 @@ void gen_samples_1ms(channel_t *c,int week,double sow,
                 if(++c->bit_ptr==300){
                     c->bit_ptr=0;
                     c->sf_id=c->sf_id%5+1;      /* 1..5 */
-                    c->d1_sf_index=(c->d1_sf_index+1)%5;
                 }
             }
         }
