@@ -1,34 +1,32 @@
 #include "coord.h"
 #include "globals.h"     /* nav_week */
-/* 地球自轉角速度 (rad/s) */
-#define OMEGA_E   7.2921150e-5
 
-/* LLH → ECEF，並把 llh/xyz 一併寫回 coord_t -------------- */
-void llh2xyz(const double llh_deg[3], coord_t *c)
+/* LLA(rad) → ECEF，並把 llh/xyz 一併寫回 coord_t -------------- */
+void lla_to_ecef(const double lla[3], coord_t *c)
 {
-    const double lat = llh_deg[0] * (M_PI/180.0);
-    const double lon = llh_deg[1] * (M_PI/180.0);
-    const double  h  = llh_deg[2];
+    const double lat = lla[0];
+    const double lon = lla[1];
+    const double  h  = lla[2];
 
-    /* 儲存原始 llh (deg) 方便之後 ecef2enu 使用 */
-    c->llh[0] = llh_deg[0];
-    c->llh[1] = llh_deg[1];
-    c->llh[2] = llh_deg[2];
+    /* 儲存原始 llh (rad) 方便之後 ecef_to_enu 使用 */
+    c->llh[0] = lat;
+    c->llh[1] = lon;
+    c->llh[2] = h;
 
     /* WGS-84 精確轉換 ------------------------------------------------ */
     const double sinp = sin(lat);
-    const double N = WGS_A / sqrt(1.0 - WGS_E2 * sinp * sinp);
+    const double N = WGS84_A / sqrt(1.0 - WGS84_E2 * sinp * sinp);
 
     c->xyz[0] = (N + h) * cos(lat) * cos(lon);
     c->xyz[1] = (N + h) * cos(lat) * sin(lon);
-    c->xyz[2] = (N * (1.0 - WGS_E2) + h) * sinp;
+    c->xyz[2] = (N * (1.0 - WGS84_E2) + h) * sinp;
 }
 
-/* ECEF → LLH ------------------------------------------------------- */
-void xyz2llh(const double xyz[3], coord_t *c)
+/* ECEF → LLA(rad) -------------------------------------------------- */
+void ecef_to_lla(const double xyz[3], coord_t *c)
 {
     const double x=xyz[0], y=xyz[1], z=xyz[2];
-    const double a=WGS_A, e2=WGS_E2;
+    const double a=WGS84_A, e2=WGS84_E2;
     double lon=atan2(y,x);
     double p=hypot(x,y);
     double lat=atan2(z,p*(1.0-e2));
@@ -39,17 +37,17 @@ void xyz2llh(const double xyz[3], coord_t *c)
     }
     double N=a/sqrt(1.0-e2*sin(lat)*sin(lat));
     double h=p/cos(lat)-N;
-    c->llh[0]=lat*(180.0/M_PI);
-    c->llh[1]=lon*(180.0/M_PI);
+    c->llh[0]=lat;
+    c->llh[1]=lon;
     c->llh[2]=h;
     c->xyz[0]=x; c->xyz[1]=y; c->xyz[2]=z;
 }
 
 /* ECEF → ENU ------------------------------------------------------- */
-void ecef2enu(const coord_t *usr, const double sat_xyz[3], double enu[3])
+void ecef_to_enu(const coord_t *usr, const double sat_xyz[3], double enu[3])
 {
-    const double lat = usr->llh[0] * (M_PI/180.0);
-    const double lon = usr->llh[1] * (M_PI/180.0);
+    const double lat = usr->llh[0];
+    const double lon = usr->llh[1];
 
     const double dx = sat_xyz[0] - usr->xyz[0];
     const double dy = sat_xyz[1] - usr->xyz[1];
@@ -71,34 +69,23 @@ double enu_elevation_deg(const double enu[3])
     return asin( enu[2] / rho ) * 180.0 / M_PI;
 }
 
-/* ECEF → ECI ------------------------------------------------------- */
-void ecef_to_eci(const double ecef[3],int week,double sow,double eci[3])
-{
-    double t = (week - nav_week)*604800.0 + sow;
-    double theta = -OMEGA_E * t;
-    double cosT = cos(theta), sinT = sin(theta);
-    eci[0] = cosT*ecef[0] - sinT*ecef[1];
-    eci[1] = sinT*ecef[0] + cosT*ecef[1];
-    eci[2] = ecef[2];
-}
-
 /* Fixed user in ECEF (no extra Earth-rotation on receiver) */
 void static_user_at(int week, double sow, const coord_t *ref,
                     coord_t *out, double vel[3])
 {
-    double lat = ref->llh[0] * (M_PI/180.0);
-    double lon = ref->llh[1] * (M_PI/180.0);
+    double lat = ref->llh[0];
+    double lon = ref->llh[1];
     double h   = ref->llh[2];
 
     double sinp = sin(lat), cosp = cos(lat);
-    double N = WGS_A / sqrt(1.0 - WGS_E2 * sinp * sinp);
+    double N = WGS84_A / sqrt(1.0 - WGS84_E2 * sinp * sinp);
 
-    /* ECEF position from LLH (WGS-84) — NO time-rotation on longitude */
+    /* ECEF position from LLA (WGS-84) — NO time-rotation on longitude */
     out->xyz[0] = (N + h) * cosp * cos(lon);
     out->xyz[1] = (N + h) * cosp * sin(lon);
-    out->xyz[2] = (N * (1.0 - WGS_E2) + h) * sinp;
+    out->xyz[2] = (N * (1.0 - WGS84_E2) + h) * sinp;
 
-    /* Echo LLH/time tags (for bookkeeping only) */
+    /* Echo LLA/time tags (for bookkeeping only) */
     out->llh[0] = ref->llh[0];
     out->llh[1] = ref->llh[1];
     out->llh[2] = ref->llh[2];

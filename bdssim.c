@@ -15,9 +15,8 @@
 #include "globals.h"     /* nav_week, CLIGHT */
 #define FSAMP_DEF FS_OUTPUT_HZ    /* default 6.144 MHz for 16-bit I/Q output */
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
-#define FCARRIER   1561.098e6      /* B1I carrier */
+#define F_B1I      1561.098e6      /* B1I carrier */
 #define CHIPRATE   2.046e6
-#define OMEGA_E    7.2921150e-5
 
 /* ========= 振幅計算與 int16 飽和保護 ========= */
 static inline int16_t saturate_int16(double x)
@@ -50,69 +49,77 @@ static void check_ephemeris_age(int week,double sow)
 /* Compute corrected pseudorange and range rate */
 static void compute_range_rate(int prn,int week,double sow,
                                const coord_t *u,const double uvel[3],
-                               double sat[3],double *rho,double *rdot)
+                               double sat_rx[3], double vsat_rx[3],
+                               double *rho,double *rdot,double los[3])
 {
     /* Receiver time in seconds since BDT epoch */
     double t_rx = week*604800.0 + sow;
 
-    /* First, get satellite clock at receiver time */
+    /* Satellite clock at receiver time for initial guess */
     double clk_rx[2], pos_dummy[3], vel_dummy[3];
     calc_sat_position_velocity(prn, week, sow, pos_dummy, vel_dummy, clk_rx);
 
-    /* Initial transmit time estimate (no range yet) */
+    /* Initial transmit time estimate */
     double t_tx = t_rx - clk_rx[0];
 
-    /* Compute satellite position/clock at this estimate */
+    /* Iterate once with geometric range */
     int week_sv = (int)(t_tx/604800.0);
     double sow_sv = t_tx - week_sv*604800.0;
-    double pos[3], vel[3], clk_sv[2];
-    calc_sat_position_velocity(prn, week_sv, sow_sv, pos, vel, clk_sv);
-
-    /* Rough geometric range to estimate signal flight time */
-    double dx = pos[0]-u->xyz[0];
-    double dy = pos[1]-u->xyz[1];
-    double dz = pos[2]-u->xyz[2];
+    double r_tx[3], v_tx[3], clk_sv[2];
+    calc_sat_position_velocity(prn, week_sv, sow_sv, r_tx, v_tx, clk_sv);
+    double dx = r_tx[0] - u->xyz[0];
+    double dy = r_tx[1] - u->xyz[1];
+    double dz = r_tx[2] - u->xyz[2];
     double range = hypot(hypot(dx,dy),dz);
     double tau = range / CLIGHT;
 
-    /* Refine transmit time with flight time and updated clock */
+    /* Refined transmit time */
     t_tx = t_rx - tau - clk_sv[0];
     week_sv = (int)(t_tx/604800.0);
     sow_sv  = t_tx - week_sv*604800.0;
-    calc_sat_position_velocity(prn, week_sv, sow_sv, pos, vel, clk_sv);
+    calc_sat_position_velocity(prn, week_sv, sow_sv, r_tx, v_tx, clk_sv);
 
-    /* Recompute range and signal travel time */
-    dx = pos[0]-u->xyz[0];
-    dy = pos[1]-u->xyz[1];
-    dz = pos[2]-u->xyz[2];
+    /* Time difference between tx and rx */
+    tau = t_rx - t_tx;
+
+    /* Rotate satellite state to receiver time */
+    double A = OMEGA_E * tau;
+    double cA = cos(A), sA = sin(A);
+    double x_rx =  cA*r_tx[0] + sA*r_tx[1];
+    double y_rx = -sA*r_tx[0] + cA*r_tx[1];
+    double z_rx =  r_tx[2];
+
+    double vx_rot =  cA*v_tx[0] + sA*v_tx[1];
+    double vy_rot = -sA*v_tx[0] + cA*v_tx[1];
+    double vz_rot =  v_tx[2];
+
+    double vx_rx = vx_rot + (sA*OMEGA_E)*r_tx[0] + (-cA*OMEGA_E)*r_tx[1];
+    double vy_rx = vy_rot + (cA*OMEGA_E)*r_tx[0] + ( sA*OMEGA_E)*r_tx[1];
+    double vz_rx = vz_rot;
+
+    if(sat_rx){ sat_rx[0]=x_rx; sat_rx[1]=y_rx; sat_rx[2]=z_rx; }
+    if(vsat_rx){ vsat_rx[0]=vx_rx; vsat_rx[1]=vy_rx; vsat_rx[2]=vz_rx; }
+
+    dx = x_rx - u->xyz[0];
+    dy = y_rx - u->xyz[1];
+    dz = z_rx - u->xyz[2];
     range = hypot(hypot(dx,dy),dz);
-    tau = range / CLIGHT;
 
-    /* Earth rotation during signal travel */
-    double xrot = pos[0] + pos[1]*OMEGA_E*tau;
-    double yrot = pos[1] - pos[0]*OMEGA_E*tau;
-    pos[0] = xrot;
-    pos[1] = yrot;
-
-    if(sat){ sat[0]=pos[0]; sat[1]=pos[1]; sat[2]=pos[2]; }
-
-    dx = pos[0]-u->xyz[0];
-    dy = pos[1]-u->xyz[1];
-    dz = pos[2]-u->xyz[2];
-    range = hypot(hypot(dx,dy),dz);
+    double ex = dx / range;
+    double ey = dy / range;
+    double ez = dz / range;
+    if(los){ los[0]=ex; los[1]=ey; los[2]=ez; }
 
     if (rho) *rho = range - CLIGHT * clk_sv[0];
 
     if (rdot) {
-        double vrx = (uvel ? uvel[0] : 0.0);
-        double vry = (uvel ? uvel[1] : 0.0);
-        double vrz = (uvel ? uvel[2] : 0.0);
-        vrx += -OMEGA_E * u->xyz[1];
-        vry +=  OMEGA_E * u->xyz[0];
-        double rvx = vel[0] - vrx;
-        double rvy = vel[1] - vry;
-        double rvz = vel[2] - vrz;
-        *rdot = (rvx*dx + rvy*dy + rvz*dz) / range;  /* m/s */
+        double vrx = uvel ? uvel[0] : 0.0;
+        double vry = uvel ? uvel[1] : 0.0;
+        double vrz = uvel ? uvel[2] : 0.0;
+        double dvx = vx_rx - vrx;
+        double dvy = vy_rx - vry;
+        double dvz = vz_rx - vrz;
+        *rdot = ex*dvx + ey*dvy + ez*dvz;  /* m/s */
     }
 }
 
@@ -127,8 +134,8 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
         if(is_geo_prn(prn)) continue;
         if(meo_only && !is_meo_prn(prn)) continue;
         double sat[3], rho, rdot;
-        compute_range_rate(prn,u->week,u->sow,u,NULL,sat,&rho,&rdot);
-        double enu[3]; ecef2enu(u,sat,enu);
+        compute_range_rate(prn,u->week,u->sow,u,NULL,sat,NULL,&rho,&rdot,NULL);
+        double enu[3]; ecef_to_enu(u,sat,enu);
         double el=enu_elevation_deg(enu); if(el<5.0)continue;
         c[m++] = (struct cand){prn,el,rho,rdot};
     }
@@ -153,14 +160,30 @@ static void update_channels_path(channel_t *ch,int n,
 {
     double dt = step_ms * 0.001; /* seconds */
 
+    double t_abs = u->week*604800.0 + u->sow;
+    static int last_sec = -1;
+    int cur_sec = (int)t_abs;
+    int print_now = 0;
+    if(cur_sec != last_sec){
+        last_sec = cur_sec;
+        print_now = 1;
+    }
+
     for(int i=0;i<n;++i){
         int prn = ch[i].prn;
         double sat[3], rho, rdot;
-        compute_range_rate(prn,u->week,u->sow,u,uvel,sat,&rho,&rdot);
+        double vsat[3], los[3];
+        compute_range_rate(prn,u->week,u->sow,u,uvel,sat,vsat,&rho,&rdot,los);
         channel_set_time(&ch[i], rho, 0);
-        double enu[3]; ecef2enu(u,sat,enu);
+        double enu[3]; ecef_to_enu(u,sat,enu);
         double el = enu_elevation_deg(enu);
         update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
+        if(print_now){
+            double rdot_pred = los[0]*vsat[0] + los[1]*vsat[1] + los[2]*vsat[2];
+            double rdot_fd = -CLIGHT*ch[i].fd/F_B1I;
+            double delta = rdot_pred - rdot_fd;
+            printf("[delta] PRN%02d %.3f %.3f %.3f\n", prn, rdot_pred, rdot_fd, delta);
+        }
         if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
 
         /* predict next dynamics using next position/velocity */
@@ -168,10 +191,10 @@ static void update_channels_path(channel_t *ch,int n,
         int week2 = (int)(t_abs/604800.0);
         double sow2 = t_abs - week2*604800.0;
         double sat2[3], rho2, rdot2;
-        compute_range_rate(prn,week2,sow2,u_next,uvel_next,sat2,&rho2,&rdot2);
-        double enu2[3]; ecef2enu(u_next,sat2,enu2);
+        compute_range_rate(prn,week2,sow2,u_next,uvel_next,sat2,NULL,&rho2,&rdot2,NULL);
+        double enu2[3]; ecef_to_enu(u_next,sat2,enu2);
         double el2 = enu_elevation_deg(enu2);
-        double fd2 = -FCARRIER*rdot2/CLIGHT;
+        double fd2 = -F_B1I*rdot2/CLIGHT;
         double cr2 = CHIPRATE*(1.0 - rdot2/CLIGHT);
         double A2 = predict_next_amp(&ch[i], rho2, el2, gain, target_cn0, n, step_ms);
         if(el2 < 5.0) A2 = 0.0;
@@ -195,8 +218,12 @@ void generate_signal(const sim_config_t *cfg)
         free_path(&path);
         return;
     }
-    if(cfg->path_type==0)      llh2xyz(cfg->llh,&usr);
-    else { interpolate_path(&path,0.0,&usr); xyz2llh(usr.xyz,&usr); }
+    if(cfg->path_type==0){
+        double llh_rad[3]={cfg->llh[0]*M_PI/180.0,
+                           cfg->llh[1]*M_PI/180.0,
+                           cfg->llh[2]};
+        lla_to_ecef(llh_rad,&usr);
+    } else { interpolate_path(&path,0.0,&usr); ecef_to_lla(usr.xyz,&usr); }
     if(utc_to_bdt(cfg->time_start,&usr.week,&usr.sow)!=0){
         fputs("UTC format err\n",stderr);
         free_path(&path);
@@ -269,9 +296,9 @@ void generate_signal(const sim_config_t *cfg)
             interpolate_path(&path, ms/1000.0, &u0);
             interpolate_path(&path, (ms+STEP_MS)/1000.0, &u1);
             interpolate_path(&path, (ms+2*STEP_MS)/1000.0, &u2);
-            xyz2llh(u0.xyz,&usr); usr.week=week; usr.sow=sow;
-            xyz2llh(u1.xyz,&usr_next);
-            xyz2llh(u2.xyz,&u2);
+            ecef_to_lla(u0.xyz,&usr); usr.week=week; usr.sow=sow;
+            ecef_to_lla(u1.xyz,&usr_next);
+            ecef_to_lla(u2.xyz,&u2);
             uvel[0]=(u1.xyz[0]-u0.xyz[0])/dt;
             uvel[1]=(u1.xyz[1]-u0.xyz[1])/dt;
             uvel[2]=(u1.xyz[2]-u0.xyz[2])/dt;
@@ -303,7 +330,7 @@ void generate_signal(const sim_config_t *cfg)
         }
         if(ms==0){
             for(int i=0;i<n_ch;++i){
-                double rdot = -ch[i].fd*CLIGHT/FCARRIER;
+                double rdot = -ch[i].fd*CLIGHT/F_B1I;
                 printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
             }
         }

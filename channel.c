@@ -9,7 +9,7 @@
 #include "orbits.h"                /* calc_sat_position_velocity */
 
 #define PI2        6.2831853071795864769
-#define FCARRIER   1561.098e6      /* B1I */
+#define F_B1I      1561.098e6      /* B1I carrier */
 #define CHIPRATE   2.046e6
 static double fs = FS_OUTPUT_HZ;           /* default sample rate */
 
@@ -235,7 +235,7 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg
     c->amp = smooth_amp(c->amp, A_new, dt_ms);
     c->amp_dot = 0.0;
     c->elev_deg = elev_deg;
-    c->fd  = -FCARRIER*rdot/CLIGHT;               /* Doppler (Hz) */
+    c->fd  = -F_B1I*rdot/CLIGHT;                  /* Doppler (Hz) */
     c->code_rate = CHIPRATE*(1.0 - rdot/CLIGHT);  /* Code frequency (Hz) */
 }
 
