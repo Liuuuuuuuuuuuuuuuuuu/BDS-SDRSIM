@@ -222,6 +222,9 @@ int main(int argc,char *argv[])
     usr.sow  = start_sow;
     g_t_tx   = start_bdt; /* initialize global transmit time */
 
+    coord_t ref_llh = usr;
+    static_user_at(usr.week, usr.sow, &ref_llh, &usr, NULL);
+
     channel_t ch[MAX_CH];
     int n_ch;
     select_channels(ch,&n_ch,&usr,cfg.single_prn,

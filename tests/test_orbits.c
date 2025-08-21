@@ -5,7 +5,6 @@
 #include "../globals.h"
 #include "../orbits.h"
 #include "../timeconv.h"
-#include "../coord.h"
 
 
 int main(void)
@@ -78,27 +77,20 @@ int main(void)
             continue;            /* skip header before first epoch */
 
         if(l[0]=='P' && l[1]=='C'){
-              int prn; double x,y,z,clk_sp3;
-              if(sscanf(l+1, "C%2d %lf %lf %lf %lf", &prn,&x,&y,&z,&clk_sp3)!=5) continue;
+            int prn; double x,y,z,clk;
+            if(sscanf(l+1, "C%2d %lf %lf %lf %lf", &prn,&x,&y,&z,&clk)!=5) continue;
             if(prn<1 || prn>63 || eph[prn].prn==0) continue;
             if(prn <= 5 || (prn >= 59 && prn <= 63))
                 continue;        /* skip GEO satellites */
 
-              double clk_sv[2], dummy[3];
-              calc_sat_position_velocity(prn, bw, bsow, dummy, NULL, clk_sv);
-              double t_sv = bw*604800.0 + bsow - clk_sv[0];
-              int w_sv = (int)(t_sv/604800.0);
-              double sow_sv = t_sv - w_sv*604800.0;
-              double eci[3];
-              calc_sat_position_velocity(prn, w_sv, sow_sv, eci, NULL, NULL);
-              double ecef[3];
-              eci_to_ecef(eci, w_sv, sow_sv, ecef);
+            double xyz[3];
+            calc_sat_position_velocity(prn, bw, bsow, xyz, NULL, NULL);
 
-              printf("time=%s PRN%02d calc=(%.3f %.3f %.3f) sp3=(%.3f %.3f %.3f)\n",
-                     current_utc, prn, ecef[0], ecef[1], ecef[2],
-                     x*1000.0, y*1000.0, z*1000.0);
-          }
-      }
+            printf("time=%s PRN%02d calc=(%.3f %.3f %.3f) sp3=(%.3f %.3f %.3f)\n",
+                   current_utc, prn, xyz[0], xyz[1], xyz[2],
+                   x*1000.0, y*1000.0, z*1000.0);
+        }
+    }
     fclose(fp);
 
     return 0;
