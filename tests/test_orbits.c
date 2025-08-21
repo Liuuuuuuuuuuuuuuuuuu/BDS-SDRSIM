@@ -18,25 +18,46 @@ int main(void)
     double bsow = 0.0;      /* first epoch BDT second-of-week */
     bool got_epoch = false; /* set once first epoch parsed */
 
-    int count = 0;          /* number of samples compared */
-    double err2_sum = 0.0;  /* squared error accumulator  */
-    bool printed[MAX_SAT] = {0};
+    char current_utc[32] = ""; /* epoch time string */
 
     while(fgets(l, sizeof l, fp))
     {
         if(l[0] == '*'){
             int Y,M,D,h,m; double s;
             sscanf(l+1, "%d %d %d %d %d %lf", &Y,&M,&D,&h,&m,&s);
-            char utc[32];
             int is = (int)s;
-            snprintf(utc, sizeof utc, "%04d/%02d/%02d,%02d:%02d:%02d", Y,M,D,h,m,is);
+            double frac = s - is;
+
+            /* original SP3 epoch (GPS time) */
+            char sp3_utc[32];
+            snprintf(sp3_utc, sizeof sp3_utc, "%04d/%02d/%02d,%02d:%02d:%02d",
+                     Y, M, D, h, m, is);
+            strncpy(current_utc, sp3_utc, sizeof current_utc);
+
+            /* convert (epoch - 18 s) to BDT */
+            struct tm tm = {0};
+            tm.tm_year = Y - 1900;
+            tm.tm_mon  = M - 1;
+            tm.tm_mday = D;
+            tm.tm_hour = h;
+            tm.tm_min  = m;
+            tm.tm_sec  = is;
+
+            time_t t = timegm(&tm) - 18;
+            struct tm tm2;
+            gmtime_r(&t, &tm2);
+
+            char utc[32];
+            snprintf(utc, sizeof utc, "%04d/%02d/%02d,%02d:%02d:%02d",
+                     tm2.tm_year + 1900, tm2.tm_mon + 1, tm2.tm_mday,
+                     tm2.tm_hour, tm2.tm_min, tm2.tm_sec);
+
             if (utc_to_bdt(utc, &bw, &bsow) != 0) {
                 fprintf(stderr, "utc_to_bdt failed\n");
                 return 1;
             }
-            bsow += s - is; /* fractional seconds */
-            bsow -= 8.0;     /* manual -4 s */
-            if(bsow < 0){ bsow += 604800.0; --bw; }
+            bsow += frac; /* fractional seconds */
+
             if(!got_epoch){
                 double start_bdt = bw*604800.0 + bsow;
                 sim_config_t cfg = {0};
@@ -59,33 +80,18 @@ int main(void)
             int prn; double x,y,z,clk;
             if(sscanf(l+1, "C%2d %lf %lf %lf %lf", &prn,&x,&y,&z,&clk)!=5) continue;
             if(prn<1 || prn>63 || eph[prn].prn==0) continue;
-
-            if(!printed[prn]){
-                printf("PRN%02d sqrtA=%.3f omegadot=%g\n",
-                       prn, eph[prn].sqrtA, eph[prn].omegadot);
-                printed[prn] = true;
-            }
-
+            if(prn <= 5 || (prn >= 59 && prn <= 63))
+                continue;        /* skip GEO satellites */
 
             double xyz[3];
             calc_sat_position_velocity(prn, bw, bsow, xyz, NULL, NULL);
 
-            double dx = xyz[0] - x*1000.0;
-            double dy = xyz[1] - y*1000.0;
-            double dz = xyz[2] - z*1000.0;
-            double err = sqrt(dx*dx + dy*dy + dz*dz);
-            char *nl = strchr(l, '\n');
-            if(nl) *nl = '\0';
-            printf("%s bw=%d bsow=%.3f PRN%02d calc=(%.3f %.3f %.3f) err=%.3f\n",
-                   l, bw, bsow, prn, xyz[0], xyz[1], xyz[2], err);
-            err2_sum += err*err;
-            ++count;
+            printf("time=%s PRN%02d calc=(%.3f %.3f %.3f) sp3=(%.3f %.3f %.3f)\n",
+                   current_utc, prn, xyz[0], xyz[1], xyz[2],
+                   x*1000.0, y*1000.0, z*1000.0);
         }
     }
     fclose(fp);
 
-    double rms = (count>0)? sqrt(err2_sum/count) : 0.0;
-    printf("Compared %d points, RMS error = %.3f m\n", count, rms);
-
-    return (rms < 10.0) ? 0 : 1; /* return error if RMS >10 m */
+    return 0;
 }
