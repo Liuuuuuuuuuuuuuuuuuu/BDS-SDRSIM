@@ -52,21 +52,41 @@ static void compute_range_rate(int prn,int week,double sow,
                                const coord_t *u,const double uvel[3],
                                double sat[3],double *rho,double *rdot)
 {
-    /* Satellite clock at global transmit time */
-    double clk_tx[2], pos_dummy[3], vel_dummy[3];
-    calc_sat_position_velocity(prn, week, sow, pos_dummy, vel_dummy, clk_tx);
-    double t_sv = week*604800.0 + sow - clk_tx[0];
-    int week_sv = (int)(t_sv/604800.0);
-    double sow_sv = t_sv - week_sv*604800.0;
+    /* Receiver time in seconds since BDT epoch */
+    double t_rx = week*604800.0 + sow;
 
+    /* First, get satellite clock at receiver time */
+    double clk_rx[2], pos_dummy[3], vel_dummy[3];
+    calc_sat_position_velocity(prn, week, sow, pos_dummy, vel_dummy, clk_rx);
+
+    /* Initial transmit time estimate (no range yet) */
+    double t_tx = t_rx - clk_rx[0];
+
+    /* Compute satellite position/clock at this estimate */
+    int week_sv = (int)(t_tx/604800.0);
+    double sow_sv = t_tx - week_sv*604800.0;
     double pos[3], vel[3], clk_sv[2];
     calc_sat_position_velocity(prn, week_sv, sow_sv, pos, vel, clk_sv);
 
+    /* Rough geometric range to estimate signal flight time */
     double dx = pos[0]-u->xyz[0];
     double dy = pos[1]-u->xyz[1];
     double dz = pos[2]-u->xyz[2];
     double range = hypot(hypot(dx,dy),dz);
     double tau = range / CLIGHT;
+
+    /* Refine transmit time with flight time and updated clock */
+    t_tx = t_rx - tau - clk_sv[0];
+    week_sv = (int)(t_tx/604800.0);
+    sow_sv  = t_tx - week_sv*604800.0;
+    calc_sat_position_velocity(prn, week_sv, sow_sv, pos, vel, clk_sv);
+
+    /* Recompute range and signal travel time */
+    dx = pos[0]-u->xyz[0];
+    dy = pos[1]-u->xyz[1];
+    dz = pos[2]-u->xyz[2];
+    range = hypot(hypot(dx,dy),dz);
+    tau = range / CLIGHT;
 
     /* Earth rotation during signal travel */
     double xrot = pos[0] + pos[1]*OMEGA_E*tau;
