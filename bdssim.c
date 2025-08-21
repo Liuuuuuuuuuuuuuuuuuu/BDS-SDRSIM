@@ -47,46 +47,72 @@ static void check_ephemeris_age(int week,double sow)
         fputs("建議使用接近星曆 toe 的起始時間以避免 tk 錯誤\n", stderr);
 }
 
-/* Compute pseudorange and satellite position in ECEF */
-static double compute_pseudorange(int prn,int week,double sow,
-                                  const coord_t *u,double sat[3])
+/* Compute corrected pseudorange and range rate */
+static void compute_range_rate(int prn,int week,double sow,
+                               const coord_t *u,const double uvel[3],
+                               double sat[3],double *rho,double *rdot)
 {
-    double clk_tx[2], dummy[3];
-    calc_sat_position_velocity(prn, week, sow, dummy, NULL, clk_tx);
+    /* Satellite clock at global transmit time */
+    double clk_tx[2], pos_dummy[3], vel_dummy[3];
+    calc_sat_position_velocity(prn, week, sow, pos_dummy, vel_dummy, clk_tx);
     double t_sv = week*604800.0 + sow - clk_tx[0];
     int week_sv = (int)(t_sv/604800.0);
     double sow_sv = t_sv - week_sv*604800.0;
 
-    double eci[3];
-    calc_sat_position_velocity(prn, week_sv, sow_sv, eci, NULL, NULL);
-    double ecef[3];
-    eci_to_ecef(eci, week_sv, sow_sv, ecef);
-    if(sat){ sat[0]=ecef[0]; sat[1]=ecef[1]; sat[2]=ecef[2]; }
+    double pos[3], vel[3], clk_sv[2];
+    calc_sat_position_velocity(prn, week_sv, sow_sv, pos, vel, clk_sv);
 
-    double dx = ecef[0]-u->xyz[0];
-    double dy = ecef[1]-u->xyz[1];
-    double dz = ecef[2]-u->xyz[2];
-    double rho_geom = hypot(hypot(dx,dy),dz);
-    double sag = OMEGA_E/CLIGHT * (ecef[0]*u->xyz[1] - ecef[1]*u->xyz[0]);
-    return rho_geom + sag - CLIGHT * clk_tx[0];
+    double dx = pos[0]-u->xyz[0];
+    double dy = pos[1]-u->xyz[1];
+    double dz = pos[2]-u->xyz[2];
+    double range = hypot(hypot(dx,dy),dz);
+    double tau = range / CLIGHT;
+
+    /* Earth rotation during signal travel */
+    double xrot = pos[0] + pos[1]*OMEGA_E*tau;
+    double yrot = pos[1] - pos[0]*OMEGA_E*tau;
+    pos[0] = xrot;
+    pos[1] = yrot;
+
+    if(sat){ sat[0]=pos[0]; sat[1]=pos[1]; sat[2]=pos[2]; }
+
+    dx = pos[0]-u->xyz[0];
+    dy = pos[1]-u->xyz[1];
+    dz = pos[2]-u->xyz[2];
+    range = hypot(hypot(dx,dy),dz);
+
+    if (rho) *rho = range - CLIGHT * clk_sv[0];
+
+    if (rdot) {
+        double vrx = (uvel ? uvel[0] : 0.0);
+        double vry = (uvel ? uvel[1] : 0.0);
+        double vrz = (uvel ? uvel[2] : 0.0);
+        vrx += -OMEGA_E * u->xyz[1];
+        vry +=  OMEGA_E * u->xyz[0];
+        double rvx = vel[0] - vrx;
+        double rvy = vel[1] - vry;
+        double rvz = vel[2] - vrz;
+        *rdot = (rvx*dx + rvy*dy + rvz*dz) / range;  /* m/s */
+    }
 }
 
 /*----------------------------------------------------*/
 int select_channels(channel_t *ch,int *n,const coord_t*u,
                     int single_prn,bool meo_only)
 {
-    struct cand{int prn;double elev,rho;} c[63];
+    struct cand{int prn;double elev,rho,rdot;} c[63];
     int m=0;
     for(int prn=1;prn<=prn_max;++prn){
         if(single_prn>0 && prn!=single_prn) continue;
         if(is_geo_prn(prn)) continue;
         if(meo_only && !is_meo_prn(prn)) continue;
-        double sat[3];
-        double rho0 = compute_pseudorange(prn,u->week,u->sow,u,sat);
+        double sat[3], rho, rdot;
+        compute_range_rate(prn,u->week,u->sow,u,NULL,sat,&rho,&rdot);
         double enu[3]; ecef2enu(u,sat,enu);
-        double el = enu_elevation_deg(enu); if(el<5.0) continue;
-        c[m++] = (struct cand){prn,el,rho0};
+        double el=enu_elevation_deg(enu); if(el<5.0)continue;
+        c[m++] = (struct cand){prn,el,rho,rdot};
     }
+    /* sort by elevation (desc) */
     for(int i=0;i<m-1;++i) for(int j=i+1;j<m;++j){
         if(c[j].elev>c[i].elev){
             struct cand t=c[i];c[i]=c[j];c[j]=t;
@@ -101,43 +127,34 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
 
 /* 依照使用者軌跡更新通道，使用目前與下一步的幾何資訊 */
 static void update_channels_path(channel_t *ch,int n,
-                                 const coord_t *u,
-                                 const coord_t *u_next,
-                                 const coord_t *u_next2,
+                                 const coord_t *u,const double uvel[3],
+                                 const coord_t *u_next,const double uvel_next[3],
                                  double gain,double target_cn0,int step_ms)
 {
     double dt = step_ms * 0.001; /* seconds */
 
     for(int i=0;i<n;++i){
         int prn = ch[i].prn;
+        double sat[3], rho, rdot;
+        compute_range_rate(prn,u->week,u->sow,u,uvel,sat,&rho,&rdot);
+        channel_set_time(&ch[i], rho, 0);
+        double enu[3]; ecef2enu(u,sat,enu);
+        double el = enu_elevation_deg(enu);
+        update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
+        if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
 
-        double sat0[3];
-        double rho0 = compute_pseudorange(prn, u->week, u->sow, u, sat0);
-
-        double t1_abs = u->week*604800.0 + u->sow + dt;
-        int week1 = (int)(t1_abs/604800.0);
-        double sow1 = t1_abs - week1*604800.0;
-        double sat1[3];
-        double rho1 = compute_pseudorange(prn, week1, sow1, u_next, sat1);
-
-        double rdot = (rho1 - rho0) / dt;
-        channel_set_time(&ch[i], rho0, 0);
-        double enu0[3]; ecef2enu(u, sat0, enu0);
-        double el0 = enu_elevation_deg(enu0);
-        update_channel_dynamics(&ch[i], rho0, rdot, el0, gain, target_cn0, n, step_ms);
-        if(el0 < 5.0) ch[i].amp = 0.0;
-
-        double t2_abs = t1_abs + dt;
-        int week2 = (int)(t2_abs/604800.0);
-        double sow2 = t2_abs - week2*604800.0;
-        double rho2 = compute_pseudorange(prn, week2, sow2, u_next2, NULL);
-        double rdot2 = (rho2 - rho1) / dt;
-        double enu1[3]; ecef2enu(u_next, sat1, enu1);
-        double el1 = enu_elevation_deg(enu1);
-        double fd2 = -FCARRIER * rdot2 / CLIGHT;
-        double cr2 = CHIPRATE * (1.0 - rdot2 / CLIGHT);
-        double A2 = predict_next_amp(&ch[i], rho1, el1, gain, target_cn0, n, step_ms);
-        if(el1 < 5.0) A2 = 0.0;
+        /* predict next dynamics using next position/velocity */
+        double t_abs = u->week*604800.0 + u->sow + dt;
+        int week2 = (int)(t_abs/604800.0);
+        double sow2 = t_abs - week2*604800.0;
+        double sat2[3], rho2, rdot2;
+        compute_range_rate(prn,week2,sow2,u_next,uvel_next,sat2,&rho2,&rdot2);
+        double enu2[3]; ecef2enu(u_next,sat2,enu2);
+        double el2 = enu_elevation_deg(enu2);
+        double fd2 = -FCARRIER*rdot2/CLIGHT;
+        double cr2 = CHIPRATE*(1.0 - rdot2/CLIGHT);
+        double A2 = predict_next_amp(&ch[i], rho2, el2, gain, target_cn0, n, step_ms);
+        if(el2 < 5.0) A2 = 0.0;
         ch[i].fd_dot = (fd2 - ch[i].fd) / dt;
         ch[i].code_rate_dot = (cr2 - ch[i].code_rate) / dt;
         ch[i].amp_dot = (A2 - ch[i].amp) / dt;
@@ -165,6 +182,9 @@ void generate_signal(const sim_config_t *cfg)
         free_path(&path);
         return;
     }
+
+    coord_t ref_llh=usr;              /* 保存經緯度作旋轉基準 */
+    static_user_at(usr.week,usr.sow,&ref_llh,&usr,NULL);
 
     /* 檢查 start 時間是否與星曆 toe 接近 */
     check_ephemeris_age(usr.week, usr.sow);
@@ -213,15 +233,16 @@ void generate_signal(const sim_config_t *cfg)
         double sow = g_t_tx - week*604800.0;
 
         double dt = STEP_MS * 0.001;
-        coord_t usr_next={0}, usr2={0};
+        double uvel[3], uvel_next[3];
+        coord_t usr_next={0};
         if(cfg->path_type==0){
             usr.week = week;
             usr.sow  = sow;
             usr_next = usr;
             usr_next.sow = sow + dt;
-            usr2 = usr;
-            usr2.sow = sow + 2*dt;
-            update_channels_path(ch,n_ch,&usr,&usr_next,&usr2,
+            uvel[0]=uvel[1]=uvel[2]=0.0;
+            uvel_next[0]=uvel_next[1]=uvel_next[2]=0.0;
+            update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
                                  cfg->gain,g_target_cn0,STEP_MS);
         } else if(cfg->path_type==1){
             coord_t u0,u1,u2;
@@ -229,19 +250,35 @@ void generate_signal(const sim_config_t *cfg)
             interpolate_path(&path, (ms+STEP_MS)/1000.0, &u1);
             interpolate_path(&path, (ms+2*STEP_MS)/1000.0, &u2);
             xyz2llh(u0.xyz,&usr); usr.week=week; usr.sow=sow;
-            xyz2llh(u1.xyz,&usr_next); usr_next.week=week; usr_next.sow=sow+dt;
-            xyz2llh(u2.xyz,&usr2); usr2.week=week; usr2.sow=sow+2*dt;
-            update_channels_path(ch,n_ch,&usr,&usr_next,&usr2,
+            xyz2llh(u1.xyz,&usr_next);
+            xyz2llh(u2.xyz,&u2);
+            uvel[0]=(u1.xyz[0]-u0.xyz[0])/dt;
+            uvel[1]=(u1.xyz[1]-u0.xyz[1])/dt;
+            uvel[2]=(u1.xyz[2]-u0.xyz[2])/dt;
+            uvel_next[0]=(u2.xyz[0]-u1.xyz[0])/dt;
+            uvel_next[1]=(u2.xyz[1]-u1.xyz[1])/dt;
+            uvel_next[2]=(u2.xyz[2]-u1.xyz[2])/dt;
+            update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
                                  cfg->gain,g_target_cn0,STEP_MS);
         } else {
             double llh0[3], llh1[3], llh2[3];
             interpolate_path_llh(&path, ms/1000.0, llh0);
             interpolate_path_llh(&path, (ms+STEP_MS)/1000.0, llh1);
             interpolate_path_llh(&path, (ms+2*STEP_MS)/1000.0, llh2);
-            llh2xyz(llh0,&usr); usr.week=week; usr.sow=sow;
-            llh2xyz(llh1,&usr_next); usr_next.week=week; usr_next.sow=sow+dt;
-            llh2xyz(llh2,&usr2); usr2.week=week; usr2.sow=sow+2*dt;
-            update_channels_path(ch,n_ch,&usr,&usr_next,&usr2,
+            coord_t ref0={0}, ref1={0}, ref2={0};
+            ref0.llh[0]=llh0[0]; ref0.llh[1]=llh0[1]; ref0.llh[2]=llh0[2];
+            ref1.llh[0]=llh1[0]; ref1.llh[1]=llh1[1]; ref1.llh[2]=llh1[2];
+            ref2.llh[0]=llh2[0]; ref2.llh[1]=llh2[1]; ref2.llh[2]=llh2[2];
+            static_user_at(week,sow,&ref0,&usr,NULL);
+            static_user_at(week,sow+dt,&ref1,&usr_next,NULL);
+            coord_t usr2; static_user_at(week,sow+2*dt,&ref2,&usr2,NULL);
+            uvel[0]=(usr_next.xyz[0]-usr.xyz[0])/dt;
+            uvel[1]=(usr_next.xyz[1]-usr.xyz[1])/dt;
+            uvel[2]=(usr_next.xyz[2]-usr.xyz[2])/dt;
+            uvel_next[0]=(usr2.xyz[0]-usr_next.xyz[0])/dt;
+            uvel_next[1]=(usr2.xyz[1]-usr_next.xyz[1])/dt;
+            uvel_next[2]=(usr2.xyz[2]-usr_next.xyz[2])/dt;
+            update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
                                  cfg->gain,g_target_cn0,STEP_MS);
         }
         if(ms==0){
