@@ -70,10 +70,11 @@ void calc_sat_position_velocity(int prn, int week, double sow,
     const double x_op = r * cos(u);
     const double y_op = r * sin(u);
 
-    /* -------- RAAN Ω(t) -------------------------------------- */
-    /* Use unified RAAN expression for all BeiDou satellites
-     * Ω(t) = Ω₀ + (Ω̇ − Ωₑ) · tk − Ωₑ · Toe */
-    double Omega = ep->omega0 + (ep->omegadot - OMEGA_E) * tk - OMEGA_E * ep->toe;
+    /* -------- RAAN Ω(t) (inertial frame) ---------------------- */
+    /* Compute the right ascension of the ascending node in the
+     * Earth-centered inertial frame. Earth rotation is applied
+     * later when converting to ECEF. */
+    double Omega = ep->omega0 + ep->omegadot * tk;
 
     /* -------- ECI (WGS-84 inertial) 座標 ----------------------- */
     const double cosO = cos(Omega), sinO = sin(Omega);
@@ -97,8 +98,8 @@ void calc_sat_position_velocity(int prn, int week, double sow,
         const double i_dot   = ep->idot + 2 * (ep->cis * cos(2 * phi)
                                              - ep->cic * sin(2 * phi)) * phi_dot;
 
-        /* dΩ/dt = Ω̇ − Ωₑ for all BeiDou satellites */
-        const double Omega_dot = ep->omegadot - OMEGA_E;
+        /* dΩ/dt in the inertial frame */
+        const double Omega_dot = ep->omegadot;
 
         const double x_op_dot = r_dot * cos(u) - r * u_dot * sin(u);
         const double y_op_dot = r_dot * sin(u) + r * u_dot * cos(u);

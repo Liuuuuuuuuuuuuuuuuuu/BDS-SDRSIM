@@ -82,31 +82,15 @@ void ecef_to_eci(const double ecef[3],int week,double sow,double eci[3])
     eci[2] = ecef[2];
 }
 
-/* Rotate fixed LLH with Earth rotation ------------------------------- */
-void static_user_at(int week,double sow,const coord_t *ref,
-                    coord_t *out,double vel[3])
+/* ECI → ECEF -------------------------------------------------------- */
+void eci_to_ecef(const double eci[3],int week,double sow,double ecef[3])
 {
-    double lat = ref->llh[0]*(M_PI/180.0);
-    double lon0= ref->llh[1]*(M_PI/180.0);
-    double h   = ref->llh[2];
-    double sinp= sin(lat); double cosp=cos(lat);
-    double N   = WGS_A/sqrt(1.0-WGS_E2*sinp*sinp);
-    double t   = (week-nav_week)*604800.0 + sow;
-    double lon = lon0 + OMEGA_E*t;
-    double cosL= cos(lon), sinL= sin(lon);
-    out->xyz[0]=(N+h)*cosp*cosL;
-    out->xyz[1]=(N+h)*cosp*sinL;
-    out->xyz[2]=(N*(1.0-WGS_E2)+h)*sinp;
-    out->llh[0]=ref->llh[0];
-    out->llh[1]=ref->llh[1];
-    out->llh[2]=ref->llh[2];
-    out->week=week;
-    out->sow=sow;
-    if(vel){
-        vel[0]=-OMEGA_E*out->xyz[1];
-        vel[1]= OMEGA_E*out->xyz[0];
-        vel[2]=0.0;
-    }
+    double t = (week - nav_week)*604800.0 + sow;
+    double theta = OMEGA_E * t;
+    double cosT = cos(theta), sinT = sin(theta);
+    ecef[0] = cosT*eci[0] + sinT*eci[1];
+    ecef[1] = -sinT*eci[0] + cosT*eci[1];
+    ecef[2] = eci[2];
 }
 
 
