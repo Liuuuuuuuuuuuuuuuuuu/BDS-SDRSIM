@@ -6,9 +6,9 @@
 #include <math.h>
 #include <stddef.h>
 #include "bdssim.h"          /* 提供 ephemeris_t 及 eph[] 全域陣列 */
+#include "orbits.h"          /* OMEGA_E, WGS84 constants */
 
 #define GM        3.986004418e14       /* WGS-84 μ  (m^3/s^2) */
-#define OMEGA_E   7.2921150e-5         /* 地球自轉角速度 (rad/s) */
 
 
 /* --------------------------------------------------------------*/
@@ -24,7 +24,7 @@ static double kepler(double M, double e)
 }
 
 /* --------------------------------------------------------------*/
-/*          主要 API：回傳 ECEF 位置 xyz 與速度 vel               */
+/*          主要 API：回傳 ECEF at t_tx 的位置 xyz 與速度 vel      */
 void calc_sat_position_velocity(int prn, int week, double sow,
                                 double *xyz, double *vel, double *clk)
 {
@@ -75,7 +75,7 @@ void calc_sat_position_velocity(int prn, int week, double sow,
      * Ω(t) = Ω₀ + (Ω̇ − Ωₑ) · tk − Ωₑ · Toe */
     double Omega = ep->omega0 + (ep->omegadot - OMEGA_E) * tk - OMEGA_E * ep->toe;
 
-    /* -------- ECI (WGS-84 inertial) 座標 ----------------------- */
+    /* -------- ECEF at transmit time t_tx ----------------------- */
     const double cosO = cos(Omega), sinO = sin(Omega);
     const double cosi = cos(i),     sini = sin(i);
 
@@ -83,7 +83,7 @@ void calc_sat_position_velocity(int prn, int week, double sow,
     const double y = x_op * sinO + y_op * cosi * cosO;
     const double z = y_op * sini;
 
-    /* ---- 若需要速度，先在 ECI 求導 --------------------------- */
+    /* ---- 若需要速度，直接在 ECEF 框架求導 --------------------- */
     double x_dot = 0.0, y_dot = 0.0, z_dot = 0.0;
     if (vel) {
         const double Edot   = n / (1 - ep->e * cosE);

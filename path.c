@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 #include "path.h"
 
 static void trim(char *s)
@@ -42,7 +43,9 @@ static int parse_llh(const char *buf, coord_t *out)
     double lat, lon, h;
     if (sscanf(buf, "%lf%lf%lf", &lat, &lon, &h) != 3)
         return -1;
-    llh2xyz((double[3]){lat, lon, h}, out);
+    lat *= M_PI/180.0;
+    lon *= M_PI/180.0;
+    lla_to_ecef((double[3]){lat, lon, h}, out);
     return 0;
 }
 
@@ -66,7 +69,9 @@ static int parse_nmea_gga(const char *buf, coord_t *out)
     if (ew == 'W')
         lon = -lon;
 
-    llh2xyz((double[3]){lat, lon, alt}, out);
+    lat *= M_PI/180.0;
+    lon *= M_PI/180.0;
+    lla_to_ecef((double[3]){lat, lon, alt}, out);
     return 0;
 }
 

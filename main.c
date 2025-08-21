@@ -213,10 +213,14 @@ int main(int argc,char *argv[])
         free_path(&path);
         return 1;
     }
-    if(cfg.path_type==0)      llh2xyz(cfg.llh,&usr);
-    else {                    
+    if(cfg.path_type==0){
+        double llh_rad[3]={cfg.llh[0]*M_PI/180.0,
+                           cfg.llh[1]*M_PI/180.0,
+                           cfg.llh[2]};
+        lla_to_ecef(llh_rad,&usr);
+    } else {
         interpolate_path(&path,0.0,&usr);
-        xyz2llh(usr.xyz,&usr);
+        ecef_to_lla(usr.xyz,&usr);
     }
     usr.week = start_week;
     usr.sow  = start_sow;

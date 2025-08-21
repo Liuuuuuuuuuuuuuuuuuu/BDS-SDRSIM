@@ -1,25 +1,20 @@
 #ifndef COORD_H
 #define COORD_H
 #include <math.h>
-
-/* WGS-84 */
-#define WGS_A   6378137.0
-#define WGS_F   (1.0/298.257223563)
-#define WGS_E2  (WGS_F*(2.0-WGS_F))
+#include "orbits.h"  /* WGS84 constants */
 
 typedef struct {
-    double llh[3];   /* [deg,deg,m]  使用者原始經緯高 */
+    double llh[3];   /* [rad,rad,m]  使用者原始經緯高 */
     double xyz[3];   /* [m]          對應 ECEF */
     int    week;     /* BDT 周 & 秒，可由主程式填入 */
     double sow;
 } coord_t;
 
 /* 介面 ----------------------------------------------------- */
-void   llh2xyz(const double llh_deg[3], coord_t *c);
-void   xyz2llh(const double xyz[3], coord_t *c);
-void   ecef2enu(const coord_t *usr, const double sat_xyz[3], double enu[3]);
+void   lla_to_ecef(const double lla[3], coord_t *c);
+void   ecef_to_lla(const double xyz[3], coord_t *c);
+void   ecef_to_enu(const coord_t *usr, const double sat_xyz[3], double enu[3]);
 double enu_elevation_deg(const double enu[3]);
-void   ecef_to_eci(const double ecef[3],int week,double sow,double eci[3]);
 void   static_user_at(int week,double sow,const coord_t *ref,coord_t *out,double vel[3]);
 
 #endif
