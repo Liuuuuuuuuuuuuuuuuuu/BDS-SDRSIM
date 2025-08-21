@@ -82,30 +82,33 @@ void ecef_to_eci(const double ecef[3],int week,double sow,double eci[3])
     eci[2] = ecef[2];
 }
 
-/* Rotate fixed LLH with Earth rotation ------------------------------- */
-void static_user_at(int week,double sow,const coord_t *ref,
-                    coord_t *out,double vel[3])
+/* Fixed user in ECEF (no extra Earth-rotation on receiver) */
+void static_user_at(int week, double sow, const coord_t *ref,
+                    coord_t *out, double vel[3])
 {
-    double lat = ref->llh[0]*(M_PI/180.0);
-    double lon0= ref->llh[1]*(M_PI/180.0);
+    double lat = ref->llh[0] * (M_PI/180.0);
+    double lon = ref->llh[1] * (M_PI/180.0);
     double h   = ref->llh[2];
-    double sinp= sin(lat); double cosp=cos(lat);
-    double N   = WGS_A/sqrt(1.0-WGS_E2*sinp*sinp);
-    double t   = (week-nav_week)*604800.0 + sow;
-    double lon = lon0 + OMEGA_E*t;
-    double cosL= cos(lon), sinL= sin(lon);
-    out->xyz[0]=(N+h)*cosp*cosL;
-    out->xyz[1]=(N+h)*cosp*sinL;
-    out->xyz[2]=(N*(1.0-WGS_E2)+h)*sinp;
-    out->llh[0]=ref->llh[0];
-    out->llh[1]=ref->llh[1];
-    out->llh[2]=ref->llh[2];
-    out->week=week;
-    out->sow=sow;
-    if(vel){
-        vel[0]=-OMEGA_E*out->xyz[1];
-        vel[1]= OMEGA_E*out->xyz[0];
-        vel[2]=0.0;
+
+    double sinp = sin(lat), cosp = cos(lat);
+    double N = WGS_A / sqrt(1.0 - WGS_E2 * sinp * sinp);
+
+    /* ECEF position from LLH (WGS-84) — NO time-rotation on longitude */
+    out->xyz[0] = (N + h) * cosp * cos(lon);
+    out->xyz[1] = (N + h) * cosp * sin(lon);
+    out->xyz[2] = (N * (1.0 - WGS_E2) + h) * sinp;
+
+    /* Echo LLH/time tags (for bookkeeping only) */
+    out->llh[0] = ref->llh[0];
+    out->llh[1] = ref->llh[1];
+    out->llh[2] = ref->llh[2];
+    out->week = week;
+    out->sow  = sow;
+
+    if (vel) {  /* Static receiver in ECEF */
+        vel[0] = 0.0;
+        vel[1] = 0.0;
+        vel[2] = 0.0;
     }
 }
 
