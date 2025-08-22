@@ -69,7 +69,7 @@ double enu_elevation_deg(const double enu[3])
     return asin( enu[2] / rho ) * 180.0 / M_PI;
 }
 
-/* Fixed user in ECEF (no extra Earth-rotation on receiver) */
+/* Fixed user in ECEF. If vel!=NULL, return velocity from Earth rotation. */
 void static_user_at(int week, double sow, const coord_t *ref,
                     coord_t *out, double vel[3])
 {
@@ -92,10 +92,11 @@ void static_user_at(int week, double sow, const coord_t *ref,
     out->week = week;
     out->sow  = sow;
 
-    if (vel) {  /* Static receiver in ECEF */
-        vel[0] = 0.0;
-        vel[1] = 0.0;
-        vel[2] = 0.0;
+    if (vel) {
+        /* Velocity in ECEF from Earth rotation: v = Ω × r */
+        vel[0] = -OMEGA_E * out->xyz[1];
+        vel[1] =  OMEGA_E * out->xyz[0];
+        vel[2] =  0.0;
     }
 }
 
