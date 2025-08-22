@@ -283,12 +283,9 @@ void generate_signal(const sim_config_t *cfg)
         double uvel[3], uvel_next[3];
         coord_t usr_next={0};
         if(cfg->path_type==0){
-            usr.week = week;
-            usr.sow  = sow;
-            usr_next = usr;
-            usr_next.sow = sow + dt;
-            uvel[0]=uvel[1]=uvel[2]=0.0;
-            uvel_next[0]=uvel_next[1]=uvel_next[2]=0.0;
+            /* Static user: include Earth-rotation velocity */
+            static_user_at(week, sow, &ref_llh, &usr, uvel);
+            static_user_at(week, sow + dt, &ref_llh, &usr_next, uvel_next);
             update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
                                  cfg->gain,g_target_cn0,STEP_MS);
         } else if(cfg->path_type==1){
