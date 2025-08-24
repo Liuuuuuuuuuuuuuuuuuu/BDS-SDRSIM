@@ -162,51 +162,50 @@ static void update_channels_path(channel_t *ch,int n,
     double dt = step_ms * 0.001; /* seconds */
 
     double t_abs = u->week*604800.0 + u->sow;
-    static int last_sec = -1;
-    int cur_sec = (int)t_abs;
-    int print_now = 0;
-    if(cur_sec != last_sec){
-        last_sec = cur_sec;
-        print_now = 1;
-    }
+    /* --- 第一輪：計算幾何與可視衛星數 --- */
+    double rho[MAX_CH], rdot[MAX_CH], el[MAX_CH];
+    double rho2[MAX_CH], rdot2[MAX_CH], el2[MAX_CH];
+    double fd2[MAX_CH], cr2[MAX_CH];
+    double sat[MAX_CH][3], vsat[MAX_CH][3], los[MAX_CH][3];
+    int n_vis_now = 0, n_vis_next = 0;
+
+    double t_next = t_abs + dt;
+    int week2 = (int)(t_next/604800.0);
+    double sow2 = t_next - week2*604800.0;
 
     for(int i=0;i<n;++i){
         int prn = ch[i].prn;
-        double sat[3], rho, rdot;
-        double vsat[3], los[3];
-        compute_range_rate(prn,u->week,u->sow,u,uvel,sat,vsat,&rho,&rdot,los);
-        channel_set_time(&ch[i], rho, 0);
-        double enu[3]; ecef_to_enu(u,sat,enu);
-        double el = enu_elevation_deg(enu);
-        update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
-        if(print_now){
-            double rvx = uvel ? uvel[0] : 0.0;
-            double rvy = uvel ? uvel[1] : 0.0;
-            double rvz = uvel ? uvel[2] : 0.0;
-            double rel_vx = vsat[0] - rvx;
-            double rel_vy = vsat[1] - rvy;
-            double rel_vz = vsat[2] - rvz;
-            double rdot_pred = los[0]*rel_vx + los[1]*rel_vy + los[2]*rel_vz;
-            double rdot_fd = CLIGHT*ch[i].fd/F_B1I;
-            double delta = rdot_pred - rdot_fd;
-            printf("[delta] PRN%02d %.3f %.3f %.3f\n", prn, rdot_pred, rdot_fd, delta);
-        }
-        if(el < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
+        compute_range_rate(prn,u->week,u->sow,u,uvel,
+                           sat[i],vsat[i],&rho[i],&rdot[i],los[i]);
+        double enu[3]; ecef_to_enu(u,sat[i],enu);
+        el[i] = enu_elevation_deg(enu);
+        if(el[i] >= 5.0) n_vis_now++;
 
-        /* predict next dynamics using next position/velocity */
-        double t_abs = u->week*604800.0 + u->sow + dt;
-        int week2 = (int)(t_abs/604800.0);
-        double sow2 = t_abs - week2*604800.0;
-        double sat2[3], rho2, rdot2;
-        compute_range_rate(prn,week2,sow2,u_next,uvel_next,sat2,NULL,&rho2,&rdot2,NULL);
+        double sat2[3];
+        compute_range_rate(prn,week2,sow2,u_next,uvel_next,
+                           sat2,NULL,&rho2[i],&rdot2[i],NULL);
         double enu2[3]; ecef_to_enu(u_next,sat2,enu2);
-        double el2 = enu_elevation_deg(enu2);
-        double fd2 = F_B1I*rdot2/CLIGHT;
-        double cr2 = CHIPRATE*(1.0 - rdot2/CLIGHT);
-        double A2 = predict_next_amp(&ch[i], rho2, el2, gain, target_cn0, n, step_ms);
-        if(el2 < 5.0) A2 = 0.0;
-        ch[i].fd_dot = (fd2 - ch[i].fd) / dt;
-        ch[i].code_rate_dot = (cr2 - ch[i].code_rate) / dt;
+        el2[i] = enu_elevation_deg(enu2);
+        if(el2[i] >= 5.0) n_vis_next++;
+        fd2[i] = F_B1I*rdot2[i]/CLIGHT;
+        cr2[i] = CHIPRATE*(1.0 - rdot2[i]/CLIGHT);
+    }
+
+    if(n_vis_now < 1) n_vis_now = 1;           /* avoid div-by-zero */
+    if(n_vis_next < 1) n_vis_next = 1;
+
+    /* --- 第二輪：更新通道狀態 --- */
+    for(int i=0;i<n;++i){
+        channel_set_time(&ch[i], rho[i]);
+        update_channel_dynamics(&ch[i],rho[i],rdot[i],el[i],
+                                gain,target_cn0,n_vis_now,step_ms);
+        if(el[i] < 5.0) ch[i].amp = 0.0;     /* below horizon → mute */
+
+        double A2 = predict_next_amp(&ch[i], rho2[i], el2[i],
+                                     gain,target_cn0,n_vis_next,step_ms);
+        if(el2[i] < 5.0) A2 = 0.0;
+        ch[i].fd_dot = (fd2[i] - ch[i].fd) / dt;
+        ch[i].code_rate_dot = (cr2[i] - ch[i].code_rate) / dt;
         ch[i].amp_dot = (A2 - ch[i].amp) / dt;
     }
 }
@@ -280,9 +279,6 @@ void generate_signal(const sim_config_t *cfg)
     }
     int16_t tmpI[MAX_CH][samp_per_ms],tmpQ[MAX_CH][samp_per_ms];
     int32_t accI[samp_per_ms],accQ[samp_per_ms];
-    double sumI=0.0,sumQ=0.0,sumI2=0.0,sumQ2=0.0;
-    uint64_t samp_cnt=0;
-    static uint64_t clip_cnt = 0, tot_cnt = 0;
 
     const int STEP_MS = cfg->step_ms;
     const uint64_t total_ms=(uint64_t)cfg->duration*1000;
@@ -340,9 +336,10 @@ void generate_signal(const sim_config_t *cfg)
             update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
                                  cfg->gain,g_target_cn0,STEP_MS);
         }
+
         if(ms==0){
             for(int i=0;i<n_ch;++i){
-                double rdot = ch[i].fd*CLIGHT/F_B1I;
+                double rdot = ch[i].fd * CLIGHT / F_B1I;
                 printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
             }
         }
@@ -373,22 +370,13 @@ void generate_signal(const sim_config_t *cfg)
                 int32_t i=accI[k];
                 int32_t q=accQ[k];
                 if(fp){
-                    if(i>32760 || i<-32760) clip_cnt++;
-                    if(q>32760 || q<-32760) clip_cnt++;
-                    tot_cnt += 2;
                     iq[2*k]   = saturate_int16((double)i);
                     iq[2*k+1] = saturate_int16((double)q);
-                    sumI  += iq[2*k];
-                    sumQ  += iq[2*k+1];
-                    sumI2 += (double)iq[2*k]*iq[2*k];
-                    sumQ2 += (double)iq[2*k+1]*iq[2*k+1];
                 } else {
                     double mixed = (double)i*c - (double)q*s;
                     int32_t m = (int32_t)llround(mixed);
                     if (m>127) m=127; else if (m<-128) m=-128;
                     i8[k] = (int8_t)m;
-                    sumI  += i8[k];
-                    sumI2 += (double)i8[k]*i8[k];
                     double tc = c*cos_d - s*sin_d;
                     double ts = s*cos_d + c*sin_d;
                     c = tc; s = ts;
@@ -396,20 +384,14 @@ void generate_signal(const sim_config_t *cfg)
             }
             if(!fp){ c_if = c; s_if = s; }
             sample_count += samp_per_ms;
-            samp_cnt += samp_per_ms;
             if(fp)
                 fwrite(iq,sizeof(int16_t),2*samp_per_ms,fp);
             else
                 fwrite(i8,sizeof(int8_t),samp_per_ms,fp8);
-            /* 每秒印一次 clipping 比例 */
-            if (((int)(step+1))%1000==0 && fp){
-                fprintf(stderr,"[stat] clip=%.5f%%\n", 100.0*(double)clip_cnt/(double)tot_cnt);
-                clip_cnt=tot_cnt=0;
-            }
 
         }
-        /* 進度顯示 */
-        printf("\r進度: %.2f / %.2f 秒",(ms+STEP_MS)/1000.0,total_ms/1000.0);
+
+        printf("\r進度: %.2f / %.2f 秒", (ms+STEP_MS)/1000.0, total_ms/1000.0);
         fflush(stdout);
     }
     puts("");
@@ -420,11 +402,6 @@ void generate_signal(const sim_config_t *cfg)
         fclose(fp8);
         puts("[bdssim] 完成 I-only 基帶輸出 beidou_b1i_u8.bin");
     }
-    double meanI=sumI/samp_cnt, meanQ=sumQ/samp_cnt;
-    double stdI = sqrt(sumI2/samp_cnt - meanI*meanI);
-    double stdQ = sqrt(sumQ2/samp_cnt - meanQ*meanQ);
-    printf("I mean=%.2f std=%.2f, Q mean=%.2f std=%.2f\n",
-           meanI, stdI, meanQ, stdQ);
     free_path(&path);
 }
 
