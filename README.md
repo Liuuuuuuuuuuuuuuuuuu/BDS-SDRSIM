@@ -59,12 +59,11 @@ default the file is written at **5.2 MHz**.  Each sample is a pair of
 16‑bit integers `(I,Q)` so be
 careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
-Using the `--byte` flag writes `beidou_b1i_u8.bin` containing the **8‑bit**
-I channel only, sampled at **25 MHz** for use with GNSS‑SDR.  The samples are
-mixed to a **1 kHz IF** and generated directly from the internal accumulator
-rather than converting the 16‑bit stream.  All output values are normalised to
-remain within ±1 before quantisation so the integers never exceed the format
-limits.
+Using the `--byte` flag writes `beidou_b1i_u8.bin` containing **8‑bit**
+interleaved I/Q samples at **25 MHz**.  The samples are at **0 Hz IF**
+(baseband) and generated directly from the internal accumulator rather than converting the
+16‑bit stream.  All output values are normalised to remain within ±1 before
+quantisation so the integers never exceed the format limits.
 The legacy option `-byte` is still recognised as an alias for `--byte`.
 
 ## 訊號型別
@@ -112,7 +111,7 @@ reduce signal strength excessively.
 
 `--seed` specifies the random seed for the initial carrier phase of each channel. The default is `1`.
 
-`--byte`  saves an 8‑bit file containing only the real samples mixed to a 1 kHz IF.
+`--byte`  saves an 8‑bit file containing interleaved I and Q samples at a 0 Hz IF.
 
 `--start` specifies the UTC start time; `--duration` is in seconds and
 `--llh` defines the user location in degrees and meters. The start time may
@@ -172,14 +171,12 @@ I/Q samples written at a fixed **5.2 MHz** sample rate.
 Ensure any analysis or playback software reads the file as 16‑bit
 integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
-When `--byte` is used, the output file `beidou_b1i_u8.bin` stores only the
-I samples in signed 8‑bit format at **25 MHz** and is mixed to a **1 kHz IF**.
-Only the real component is retained; Q is not saved.
+When `--byte` is used, the output file `beidou_b1i_u8.bin` stores interleaved
+I and Q samples in signed 8‑bit format at **25 MHz** at baseband (0 Hz IF).
 
-The 16‑bit file is at baseband (zero‑IF), so tune the SDR’s RF centre
+Both the 16‑bit and `--byte` files are at baseband, so tune the SDR’s RF centre
 frequency to the desired transmit frequency – for B1I this is typically
-**1561.098 MHz** – and play the samples at the same rate.  For the
-`--byte` file, offset the SDR tuning by 1 kHz to account for the IF.
+**1561.098 MHz** – and play the samples at the same rate.
 The following command illustrates playback with a HackRF:
 
 ```bash
