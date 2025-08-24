@@ -1,7 +1,7 @@
 ## v0.3.0 (2025-07-07)
 * Fix UTC→BDT +14 s
 * Added subframe 4/5 template
-* Default Fs → 8.192 MHz
+* Default Fs → 5.2 MHz
 * Power scaling by target CN₀
 
 ## v0.3.1 (unreleased)

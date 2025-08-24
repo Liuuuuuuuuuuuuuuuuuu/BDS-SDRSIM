@@ -13,7 +13,7 @@
 #include "timeconv.h"
 #include "path.h"
 #include "globals.h"     /* nav_week, CLIGHT */
-#define FSAMP_DEF FS_OUTPUT_HZ    /* default 6.144 MHz for 16-bit I/Q output */
+#define FSAMP_DEF FS_OUTPUT_HZ    /* default 5.2 MHz for 16-bit I/Q output */
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
 #define IF_BYTE    1000.0    /* 1 kHz IF for --byte output */
 #define F_B1I      1561.098e6      /* B1I carrier */
