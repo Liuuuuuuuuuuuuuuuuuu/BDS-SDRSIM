@@ -235,7 +235,7 @@ void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg
     c->amp = smooth_amp(c->amp, A_new, dt_ms);
     c->amp_dot = 0.0;
     c->elev_deg = elev_deg;
-    c->fd  = -F_B1I*rdot/CLIGHT;                  /* Doppler (Hz) */
+    c->fd  = F_B1I*rdot/CLIGHT;                   /* Doppler (Hz) */
     c->code_rate = CHIPRATE*(1.0 - rdot/CLIGHT);  /* Code frequency (Hz) */
 }
 
