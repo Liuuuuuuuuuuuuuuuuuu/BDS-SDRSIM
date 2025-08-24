@@ -179,7 +179,13 @@ static void update_channels_path(channel_t *ch,int n,
         double el = enu_elevation_deg(enu);
         update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
         if(print_now){
-            double rdot_pred = los[0]*vsat[0] + los[1]*vsat[1] + los[2]*vsat[2];
+            double rvx = uvel ? uvel[0] : 0.0;
+            double rvy = uvel ? uvel[1] : 0.0;
+            double rvz = uvel ? uvel[2] : 0.0;
+            double rel_vx = vsat[0] - rvx;
+            double rel_vy = vsat[1] - rvy;
+            double rel_vz = vsat[2] - rvz;
+            double rdot_pred = los[0]*rel_vx + los[1]*rel_vy + los[2]*rel_vz;
             double rdot_fd = CLIGHT*ch[i].fd/F_B1I;
             double delta = rdot_pred - rdot_fd;
             printf("[delta] PRN%02d %.3f %.3f %.3f\n", prn, rdot_pred, rdot_fd, delta);
