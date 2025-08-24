@@ -5,7 +5,7 @@
 #include "bdssim.h"          /* 已含 MAX_SAT、CODE_LEN、ephemeris_t */
 
 /* ===== gps-sdr-sim 風格的基本參數 ===== */
-#define FS_OUTPUT_HZ      8192000.0   /* 8.192 MHz output sample rate */
+#define FS_OUTPUT_HZ      5200000.0   /* 5.2 MHz output sample rate */
 #define CN0_TARGET_DBHZ   42.0        /* 40–45 dB-Hz 常用 */
 #define HEADROOM_RATIO    0.80        /* 約 -2 dB 頭房，防飽和 */
 #define AMP_SMOOTH_TC_MS  1000        /* 振幅平滑時間常數 */
