@@ -37,7 +37,7 @@ tool computes the user position (static or from a path file), derives
 satellite geometry and Doppler, and updates the channel state. The
 navigation message for subframes 1–5 is generated with correct
 time-of-week. Each channel spreads the bits with its PRN code and the
-samples are summed into a 16‑bit I/Q stream at a fixed 6.144 MHz sample
+samples are summed into a 16‑bit I/Q stream at a fixed 8.192 MHz sample
 rate.
 
 ## Build
@@ -55,7 +55,7 @@ Run `make check` to build and execute the self test
 
 The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
 file containing interleaved **16‑bit little‑endian** I/Q samples. By
-default the file is written at **6.144 MHz**.  Each sample is a pair of
+default the file is written at **8.192 MHz**.  Each sample is a pair of
 16‑bit integers `(I,Q)` so be
 careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
@@ -168,7 +168,7 @@ This builds and runs `tests/test_prn` to verify PRN handling.
 ## SDR playback
 
 The file `beidou_b1i.bin` contains interleaved **16‑bit little‑endian**
-I/Q samples written at a fixed **6.144 MHz** sample rate.
+I/Q samples written at a fixed **8.192 MHz** sample rate.
 Ensure any analysis or playback software reads the file as 16‑bit
 integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
@@ -183,7 +183,7 @@ frequency to the desired transmit frequency – for B1I this is typically
 The following command illustrates playback with a HackRF:
 
 ```bash
-hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 5120000 -x 0
+hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 8192000 -x 0
 ```
 
 Use the `-R` option for continuous looping if needed.  Other SDRs can
@@ -203,7 +203,7 @@ searches for the correct PRNs automatically.
 ## v0.3.0 (2025-07-07)
 * Fix UTC→BDT +4 s
 * Added subframe 4/5 template
-* Default Fs → 6.144 MHz
+* Default Fs → 8.192 MHz
 * Power scaling by target CN₀
 
 ## v0.3.1 (unreleased)
