@@ -394,7 +394,6 @@ void generate_signal(const sim_config_t *cfg)
         printf("\r進度: %.2f / %.2f 秒", (ms+STEP_MS)/1000.0, total_ms/1000.0);
         fflush(stdout);
     }
-    puts("");
     if(fp){
         fclose(fp);
         puts("[bdssim] 完成多星基帶輸出 beidou_b1i.bin");
