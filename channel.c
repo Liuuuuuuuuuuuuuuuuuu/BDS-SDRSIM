@@ -141,7 +141,7 @@ static void load_ca_once(void)
     ca_ready = 1;
 }
 
-void channel_set_time(channel_t *c,double rho,int debug)
+void channel_set_time(channel_t *c,double rho)
 {
     /* Global transmit time is shared by all channels. */
     int week = (int)(g_t_tx/604800.0);
@@ -181,38 +181,7 @@ void channel_set_time(channel_t *c,double rho,int debug)
         c->bit_ptr    = 0;
     }
 
-    if(debug){
-        uint32_t sow_int = (uint32_t)sf_start; /* SOW integer used in navbits */
-        const ephemeris_t *ep = &eph[c->prn];
-        /* Extract word3 bits (30 bits with parity) from cached nav bits */
-        uint32_t word3 = 0;
-        for(int i=60;i<90;++i)
-            word3 = (word3<<1) | c->nav_bits[i];
-
-        double t_tx  = g_t_tx; /* global transmit time */
-        double t_toe = ep->week*604800.0 + ep->toe;
-        double t_toc = ep->week*604800.0 + ep->toc;
-        double dt_toe = t_tx - t_toe;
-        double dt_toc = t_tx - t_toc;
-        double clk_bias_ns = 0.0;
-        double clk[2], pos_dummy[3], vel_dummy[3];
-        calc_sat_position_velocity(c->prn, week, sow,
-                                   pos_dummy, vel_dummy, clk);
-        clk_bias_ns = clk[0]*1e9; /* seconds to ns */
-
-        static int printed_global = 0;
-        if(!printed_global){
-            printf("Global: tx_week %d tx_sow %.6f\n", week, sow);
-            printed_global = 1;
-        }
-
-        printf("PRN %02d: tx_sow %.6f sow_int %u word3_TOW 0x%08X "
-               "dToE %.3f dToC %.3f clock_bias %.3f ns code_phase %.0f "
-               "NH %u bit %u\n",
-               c->prn, sow, sow_int, word3,
-               dt_toe, dt_toc, clk_bias_ns,
-               floor(c->code_phase), c->ms_count, c->bit_ptr);
-    }
+    /* Debug print removed */
 }
 
 void channel_reset(channel_t *c,int prn,double rho){
@@ -223,7 +192,7 @@ void channel_reset(channel_t *c,int prn,double rho){
     /* Randomise starting carrier phase so I/Q averages are balanced. */
     c->carr_phase = ((double)rand()/(double)RAND_MAX)*PI2;
 
-    channel_set_time(c,rho,1);
+    channel_set_time(c,rho);
 }
 /* 幾何→計算振幅 / 初始多普勒 */
 void update_channel_dynamics(channel_t *c,double rho,double rdot,double elev_deg,

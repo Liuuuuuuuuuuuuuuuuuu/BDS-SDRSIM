@@ -31,7 +31,7 @@ typedef struct {
 } channel_t;
 
 void channel_reset(channel_t *, int prn, double rho);
-void channel_set_time(channel_t *, double rho, int debug);
+void channel_set_time(channel_t *, double rho);
 void update_channel_dynamics(channel_t *, double rho, double rdot,
                              double elev_deg, double gain,
                              double target_cn0, int n_visible,
