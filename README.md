@@ -61,9 +61,10 @@ careful not to interpret the file as 8‑bit data—otherwise the Q channel
 may appear to contain only zeros or `-1` values.
 Using the `--byte` flag writes `beidou_b1i_u8.bin` containing the **8‑bit**
 I channel only, sampled at **25 MHz** for use with GNSS‑SDR.  The samples are
-generated directly from the internal accumulator rather than converting the
-16‑bit stream.  All output values are normalised to remain within ±1 before
-quantisation so the integers never exceed the format limits.
+mixed to a **1 kHz IF** and generated directly from the internal accumulator
+rather than converting the 16‑bit stream.  All output values are normalised to
+remain within ±1 before quantisation so the integers never exceed the format
+limits.
 The legacy option `-byte` is still recognised as an alias for `--byte`.
 
 ## 訊號型別
@@ -111,7 +112,7 @@ reduce signal strength excessively.
 
 `--seed` specifies the random seed for the initial carrier phase of each channel. The default is `1`.
 
-`--byte`  saves an 8‑bit file containing only the I samples.
+`--byte`  saves an 8‑bit file containing only the real samples mixed to a 1 kHz IF.
 
 `--start` specifies the UTC start time; `--duration` is in seconds and
 `--llh` defines the user location in degrees and meters. The start time may
@@ -172,13 +173,14 @@ Ensure any analysis or playback software reads the file as 16‑bit
 integers; using 8‑bit interpretation will yield
 Q samples that look like zeros.
 When `--byte` is used, the output file `beidou_b1i_u8.bin` stores only the
-I samples in signed 8‑bit format at **25 MHz**.  Only the real component is retained;
-Q is not saved.
+I samples in signed 8‑bit format at **25 MHz** and is mixed to a **1 kHz IF**.
+Only the real component is retained; Q is not saved.
 
-The signal is at baseband (zero‑IF), so tune the
-SDR’s RF centre frequency to the desired transmit frequency – for B1I
-this is typically **1561.098 MHz** – and play the samples at the same
-rate.  The following command illustrates playback with a HackRF:
+The 16‑bit file is at baseband (zero‑IF), so tune the SDR’s RF centre
+frequency to the desired transmit frequency – for B1I this is typically
+**1561.098 MHz** – and play the samples at the same rate.  For the
+`--byte` file, offset the SDR tuning by 1 kHz to account for the IF.
+The following command illustrates playback with a HackRF:
 
 ```bash
 hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 5120000 -x 0
