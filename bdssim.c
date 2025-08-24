@@ -187,7 +187,7 @@ static void update_channels_path(channel_t *ch,int n,
         double enu2[3]; ecef_to_enu(u_next,sat2,enu2);
         el2[i] = enu_elevation_deg(enu2);
         if(el2[i] >= 5.0) n_vis_next++;
-        fd2[i] = F_B1I*rdot2[i]/CLIGHT;
+        fd2[i] = -F_B1I*rdot2[i]/CLIGHT;
         cr2[i] = CHIPRATE*(1.0 - rdot2[i]/CLIGHT);
     }
 
@@ -339,7 +339,7 @@ void generate_signal(const sim_config_t *cfg)
 
         if(ms==0){
             for(int i=0;i<n_ch;++i){
-                double rdot = ch[i].fd * CLIGHT / F_B1I;
+                double rdot = -ch[i].fd * CLIGHT / F_B1I;
                 printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
             }
         }
