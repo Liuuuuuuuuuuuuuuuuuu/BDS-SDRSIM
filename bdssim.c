@@ -15,7 +15,7 @@
 #include "globals.h"     /* nav_week, CLIGHT */
 #define FSAMP_DEF FS_OUTPUT_HZ    /* default 5.2 MHz for 16-bit I/Q output */
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
-#define IF_BYTE    1000.0    /* 1 kHz IF for --byte output */
+#define IF_BYTE    0.0       /* baseband (0 Hz IF) for --byte output */
 #define F_B1I      1561.098e6      /* B1I carrier */
 #define CHIPRATE   2.046e6
 
@@ -364,7 +364,7 @@ void generate_signal(const sim_config_t *cfg)
 
             /* 限幅並打包成 I/Q */
             int16_t iq[2*samp_per_ms];
-            int8_t  i8[samp_per_ms];            /* byte output holds real IF signal */
+            int8_t  iq8[2*samp_per_ms];         /* byte output holds I/Q IF signal */
             double c = c_if, s = s_if;
             for(int k=0;k<samp_per_ms;++k){
                 int32_t i=accI[k];
@@ -373,10 +373,14 @@ void generate_signal(const sim_config_t *cfg)
                     iq[2*k]   = saturate_int16((double)i);
                     iq[2*k+1] = saturate_int16((double)q);
                 } else {
-                    double mixed = (double)i*c - (double)q*s;
-                    int32_t m = (int32_t)llround(mixed);
-                    if (m>127) m=127; else if (m<-128) m=-128;
-                    i8[k] = (int8_t)m;
+                    double mix_i = (double)i*c - (double)q*s;
+                    double mix_q = (double)i*s + (double)q*c;
+                    int32_t mi = (int32_t)llround(mix_i);
+                    int32_t mq = (int32_t)llround(mix_q);
+                    if (mi>127) mi=127; else if (mi<-128) mi=-128;
+                    if (mq>127) mq=127; else if (mq<-128) mq=-128;
+                    iq8[2*k]   = (int8_t)mi;
+                    iq8[2*k+1] = (int8_t)mq;
                     double tc = c*cos_d - s*sin_d;
                     double ts = s*cos_d + c*sin_d;
                     c = tc; s = ts;
@@ -387,7 +391,7 @@ void generate_signal(const sim_config_t *cfg)
             if(fp)
                 fwrite(iq,sizeof(int16_t),2*samp_per_ms,fp);
             else
-                fwrite(i8,sizeof(int8_t),samp_per_ms,fp8);
+                fwrite(iq8,sizeof(int8_t),2*samp_per_ms,fp8);
 
         }
 
@@ -399,7 +403,7 @@ void generate_signal(const sim_config_t *cfg)
         puts("[bdssim] 完成多星基帶輸出 beidou_b1i.bin");
     } else {
         fclose(fp8);
-        puts("[bdssim] 完成 I-only 基帶輸出 beidou_b1i_u8.bin");
+        puts("[bdssim] 完成 8-bit IQ 基帶輸出 beidou_b1i_u8.bin");
     }
     free_path(&path);
 }

@@ -25,7 +25,7 @@ static void usage(const char *p)
     puts("  --gain amp           輸出增益 (>0)");
     puts("  -cn0 value          目標 CN0 (dB-Hz)");
     puts("  --seed n            亂數種子 (整數)");
-    puts("  --byte               輸出 I-only 之 8-bit 檔 (1kHz IF)");
+    puts("  --byte               輸出 8-bit IQ 檔 (0 Hz IF)");
     puts("  --meo-only          僅模擬 MEO 衛星");
     puts("  --prn N             僅模擬指定 PRN");
     puts("  --prn37             僅使用 1-37 號衛星");
@@ -272,7 +272,7 @@ int main(int argc,char *argv[])
     /* 5. 結束 --------------------------------------- */
     cleanup_simulator();
     if(cfg.byte_output)
-        puts("[done] beidou_b1i_u8.bin (I-only, 1kHz IF) 已產生");
+        puts("[done] beidou_b1i_u8.bin (8-bit IQ, 0 Hz IF) 已產生");
     else
         puts("[done] beidou_b1i.bin 已產生");
     return 0;
