@@ -336,6 +336,14 @@ void generate_signal(const sim_config_t *cfg)
             update_channels_path(ch,n_ch,&usr,uvel,&usr_next,uvel_next,
                                  cfg->gain,g_target_cn0,STEP_MS);
         }
+
+        if(ms==0){
+            for(int i=0;i<n_ch;++i){
+                double rdot = ch[i].fd * CLIGHT / F_B1I;
+                printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
+            }
+        }
+
         /* --- STEP_MS 次 1ms 取樣 --- */
         for(int step=0;step<STEP_MS;++step){
             g_t_tx = start_bdt + sample_count/fs;
@@ -382,6 +390,9 @@ void generate_signal(const sim_config_t *cfg)
                 fwrite(i8,sizeof(int8_t),samp_per_ms,fp8);
 
         }
+
+        printf("\r進度: %.2f / %.2f 秒", (ms+STEP_MS)/1000.0, total_ms/1000.0);
+        fflush(stdout);
     }
     if(fp){
         fclose(fp);
