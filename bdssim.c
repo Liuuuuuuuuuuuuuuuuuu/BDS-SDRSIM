@@ -15,6 +15,7 @@
 #include "globals.h"     /* nav_week, CLIGHT */
 #define FSAMP_DEF FS_OUTPUT_HZ    /* default 6.144 MHz for 16-bit I/Q output */
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
+#define IF_BYTE    1000.0    /* 1 kHz IF for --byte output */
 #define F_B1I      1561.098e6      /* B1I carrier */
 #define CHIPRATE   2.046e6
 
@@ -253,6 +254,14 @@ void generate_signal(const sim_config_t *cfg)
     int samp_per_ms = (int)(fs/1000.0 + 0.5);
     channel_set_fs(fs);                   /* ensure dynamics use correct Fs */
 
+    double c_if = 1.0, s_if = 0.0;        /* mixer state for byte output */
+    double cos_d = 1.0, sin_d = 0.0;      /* per-sample rotation */
+    if(cfg->byte_output){
+        double w_if = 2*M_PI*IF_BYTE/fs;
+        cos_d = cos(w_if);
+        sin_d = sin(w_if);
+    }
+
     FILE *fp=NULL, *fp8=NULL;
     if(cfg->byte_output){
         fp8=fopen("beidou_b1i_u8.bin","wb");
@@ -358,7 +367,8 @@ void generate_signal(const sim_config_t *cfg)
 
             /* 限幅並打包成 I/Q */
             int16_t iq[2*samp_per_ms];
-            int8_t  i8[samp_per_ms];            /* byte output holds I only */
+            int8_t  i8[samp_per_ms];            /* byte output holds real IF signal */
+            double c = c_if, s = s_if;
             for(int k=0;k<samp_per_ms;++k){
                 int32_t i=accI[k];
                 int32_t q=accQ[k];
@@ -373,12 +383,18 @@ void generate_signal(const sim_config_t *cfg)
                     sumI2 += (double)iq[2*k]*iq[2*k];
                     sumQ2 += (double)iq[2*k+1]*iq[2*k+1];
                 } else {
-                    if (i>127) i=127; else if (i<-128) i=-128;
-                    i8[k] = (int8_t)i;
+                    double mixed = (double)i*c - (double)q*s;
+                    int32_t m = (int32_t)llround(mixed);
+                    if (m>127) m=127; else if (m<-128) m=-128;
+                    i8[k] = (int8_t)m;
                     sumI  += i8[k];
                     sumI2 += (double)i8[k]*i8[k];
+                    double tc = c*cos_d - s*sin_d;
+                    double ts = s*cos_d + c*sin_d;
+                    c = tc; s = ts;
                 }
             }
+            if(!fp){ c_if = c; s_if = s; }
             sample_count += samp_per_ms;
             samp_cnt += samp_per_ms;
             if(fp)
