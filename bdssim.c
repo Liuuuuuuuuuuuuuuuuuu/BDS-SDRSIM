@@ -180,7 +180,7 @@ static void update_channels_path(channel_t *ch,int n,
         update_channel_dynamics(&ch[i],rho,rdot,el,gain,target_cn0,n,step_ms);
         if(print_now){
             double rdot_pred = los[0]*vsat[0] + los[1]*vsat[1] + los[2]*vsat[2];
-            double rdot_fd = -CLIGHT*ch[i].fd/F_B1I;
+            double rdot_fd = CLIGHT*ch[i].fd/F_B1I;
             double delta = rdot_pred - rdot_fd;
             printf("[delta] PRN%02d %.3f %.3f %.3f\n", prn, rdot_pred, rdot_fd, delta);
         }
@@ -194,7 +194,7 @@ static void update_channels_path(channel_t *ch,int n,
         compute_range_rate(prn,week2,sow2,u_next,uvel_next,sat2,NULL,&rho2,&rdot2,NULL);
         double enu2[3]; ecef_to_enu(u_next,sat2,enu2);
         double el2 = enu_elevation_deg(enu2);
-        double fd2 = -F_B1I*rdot2/CLIGHT;
+        double fd2 = F_B1I*rdot2/CLIGHT;
         double cr2 = CHIPRATE*(1.0 - rdot2/CLIGHT);
         double A2 = predict_next_amp(&ch[i], rho2, el2, gain, target_cn0, n, step_ms);
         if(el2 < 5.0) A2 = 0.0;
@@ -327,7 +327,7 @@ void generate_signal(const sim_config_t *cfg)
         }
         if(ms==0){
             for(int i=0;i<n_ch;++i){
-                double rdot = -ch[i].fd*CLIGHT/F_B1I;
+                double rdot = ch[i].fd*CLIGHT/F_B1I;
                 printf("[ch%02d] rdot %.2f fd %.2fHz\n", ch[i].prn, rdot, ch[i].fd);
             }
         }
