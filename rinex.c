@@ -1,6 +1,5 @@
-/* rinex.c  –  解析 BDS RINEX3.04 NAV，僅提取 MEO/IGSO D1 需要的欄位
- *            (c) 2025  your-name
- * ------------------------------------------------------------------------ */
+/* rinex.c – 解析 BDS RINEX3.04 NAV，僅提取 MEO/IGSO D1 需要的欄位
+ * (c) 2025 your-name */
 
 #include "timeconv.h"
 #include <stdio.h>
@@ -13,7 +12,7 @@
 #include "bdssim.h"
 #include "globals.h"
 
-/* ---------- 小工具 ---------- */
+/* --------------------------- 小工具 ------------------------------*/
 static double fld(const char *ln, int idx, int ind)
 {
     char buf[20];
@@ -32,9 +31,9 @@ static int ifld(const char *ln, int idx, int ind)
     return (int)fld(ln, idx, ind);
 }
 
-/* very-tiny, zone-less timegm (UTC→UNIX)  –  只考慮閏年規則，可跨平台 */
+/* --------------------------- very-tiny, zone-less timegm (UTC→UNIX)  –  只考慮閏年規則，可跨平臺 ------------------------------*/
 
-/* ---------- 主要解析 ---------- */
+/* --------------------------- 主要解析 ------------------------------*/
 int read_rinex_nav(const char *fname, double start_bdt)
 {
     FILE *fp = fopen(fname, "r");
@@ -42,7 +41,7 @@ int read_rinex_nav(const char *fname, double start_bdt)
 
     char l[120];
 
-    /* parse header -------------------------------------------------- */
+    /* parse header */
     while (fgets(l, sizeof(l), fp))
     {
         if(strncmp(l,"BDSA",4)==0){
@@ -82,7 +81,7 @@ int read_rinex_nav(const char *fname, double start_bdt)
         ephemeris_t tmp = {0};
         tmp.prn = prn;
 
-        /* ── 1st row：時間戳記與 af0/1/2 -------------------------- */
+        /* 1st row：時間戳記與 af0/1/2 */
         int yy, mm, dd, hh, mi;
         double ss;
         int w_dummy; double sow;
@@ -100,9 +99,8 @@ int read_rinex_nav(const char *fname, double start_bdt)
         tmp.af1 = fld(l, 1, IND1);
         tmp.af2 = fld(l, 2, IND1);
 
-        /* ── 讀後 7 行 -------------------------------------------- */
+        /* 讀後 7 行 */
 
-        /* ── 讀後 7 行 -------------------------------------------- */
         char r[7][120];
         for (int i = 0; i < 7; ++i)
             if (!fgets(r[i], sizeof r[i], fp)) return -1;
@@ -158,4 +156,4 @@ int read_rinex_nav(const char *fname, double start_bdt)
     puts("[rinex] 北斗星曆已載入");
     return 0;
 }
-
+/* ---------------------------  End  ------------------------------*/

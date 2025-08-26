@@ -12,7 +12,6 @@
 #include "coord.h"
 #include "navbits.h"
 
-/* ───────────────────────────── */
 static void usage(const char *p)
 {
     printf("用法: %s --rinex file --start YYYY/MM/DD,hh:mm:ss [選項]\n", p);
@@ -34,7 +33,7 @@ static void usage(const char *p)
 
 int main(int argc,char *argv[])
 {
-    /* 1. 預設參數 ----------------------------------- */
+    /* 1. 預設參數 */
     sim_config_t cfg = {0};
     cfg.gain        = 1.0;
     cfg.target_cn0  = 45.0;            /* dB-Hz */
@@ -63,7 +62,7 @@ int main(int argc,char *argv[])
         }
     }
 
-    /* 2. 解析 CLI ----------------------------------- */
+    /* 2. 解析 CLI */
     static struct option longopt[] = {
         {"rinex",    required_argument, 0, 'e'},
         {"start",    required_argument, 0, 't'},
@@ -149,7 +148,6 @@ int main(int argc,char *argv[])
         }
     }
 
-
     if(cfg.rinex_file[0]=='\0' || cfg.time_start[0]=='\0'){
         usage(argv[0]); return 1;
     }
@@ -163,7 +161,7 @@ int main(int argc,char *argv[])
         return 1;
     }
 
-    /* --duration 1~3600 sec; --llh lat[-90,90], lon[-180,180], h[-1000,20000] */
+    /* duration 1~3600 sec; --llh lat[-90,90], lon[-180,180], h[-1000,20000] */
     if(cfg.duration==0 || cfg.duration>3600){
         fputs("--duration 範圍 1~3600 秒\n", stderr);
         return 1;
@@ -180,8 +178,6 @@ int main(int argc,char *argv[])
         return 1;
     }
 
-
-
     int start_week; double start_sow;
     if(utc_to_bdt(cfg.time_start, &start_week, &start_sow)!=0){
         fputs("--start 格式錯誤\n", stderr);
@@ -189,20 +185,20 @@ int main(int argc,char *argv[])
     }
     double start_bdt = start_week*604800.0 + start_sow;
 
-    /* 3. 初始化 ------------------------------------- */
+    /* 3. 初始化 */
     if(!init_simulator(&cfg, start_bdt)){
         fprintf(stderr,"初始化失敗\n");
         return 1;
     }
 
-    /* -- start 時間檢查：必須在星曆區間 h-1 ~ h+1 內 -- */
+    /* start 時間檢查：必須在星曆區間 h-1 ~ h+1 內 */
     if(start_bdt < nav_time_min - 3600.0 ||
        start_bdt + cfg.duration > nav_time_max + 86400.0){
         fputs("--start 超出星曆可用區間\n", stderr);
         return 1;
     }
 
-    /* ---- 3-b. 使用者初始座標 ---- */
+    /* 3-b. 使用者初始座標 */
     coord_t usr;
     path_t path={0};
     if(cfg.path_type==1)       load_path_xyz(cfg.path_file,&path);
@@ -265,11 +261,11 @@ int main(int argc,char *argv[])
     if(cfg.single_prn > 0)
         print_ephemeris_params(cfg.single_prn);
 
-    /* 4. 產生基帶 ----------------------------------- */
+    /* 4. 產生基帶 */
     generate_signal(&cfg);
     free_path(&path);
 
-    /* 5. 結束 --------------------------------------- */
+    /* 5. 結束 */
     cleanup_simulator();
     if(cfg.byte_output)
         puts("[done] beidou_b1i_u8.bin (8-bit IQ, 0 Hz IF) 已產生");
@@ -277,4 +273,4 @@ int main(int argc,char *argv[])
         puts("[done] beidou_b1i.bin 已產生");
     return 0;
 }
-
+/* ---------------------------  End  ------------------------------*/

@@ -1,6 +1,4 @@
-/* ---------------------------------------------------------------
- *  orbits.c
- * --------------------------------------------------------------*/
+/* --------------------------- orbits.c ------------------------------*/
 
 #include <stdio.h>
 #include <math.h>
@@ -10,9 +8,7 @@
 
 #define GM        3.986004418e14       /* WGS-84 μ  (m^3/s^2) */
 
-
-/* --------------------------------------------------------------*/
-/*             小工具：解 Kepler 方程 E − e·sinE = M             */
+/* --------------------------- 解 Kepler 方程 E − e·sinE = M ------------------------------*/
 static double kepler(double M, double e)
 {
     double E = M, d;
@@ -23,42 +19,40 @@ static double kepler(double M, double e)
     return E;
 }
 
-/* --------------------------------------------------------------*/
-/*          主要 API：回傳 ECEF at t_tx 的位置 xyz 與速度 vel      */
+/* --------------------------- 回傳衛星在 t_tx 的 ECEF 位置與速度 ------------------------------*/
 void calc_sat_position_velocity(int prn, int week, double sow,
                                 double *xyz, double *vel, double *clk)
 {
     const ephemeris_t *ep = &eph[prn];        /* 全域星曆陣列 (外部定義) */
 
-    /*          輸出保底值 (PRN 不存在)                             */
+    /* 輸出保底值 (PRN 不存在) */
     if (ep->prn == 0) {
         xyz[0] = xyz[1] = xyz[2] = 0.0;
         if (vel) vel[0] = vel[1] = vel[2] = 0.0;
         return;
     }
 
-
-    /* -------- tk: 時間差 (ToE → 模擬時刻)，處理週界溢位 ------- */
+    /* tk: 時間差 (ToE → 模擬時刻)，處理週界溢位 */
     const double t_sim = week * 604800.0 + sow;
     const double t_toe = ep->week * 604800.0 + ep->toe;
     double tk = t_sim - t_toe;
     if (tk >  302400.0) tk -= 604800.0;
     if (tk < -302400.0) tk += 604800.0;
 
-    /* -------- 基本軌道參數 & 平近點角 -------------------------- */
+    /* 基本軌道參數 & 平近點角 */
     const double A   = ep->sqrtA * ep->sqrtA;
     const double n0  = sqrt(GM / (A * A * A));
     const double n   = n0 + ep->deltan;
     const double M   = ep->M0 + n * tk;
     const double E   = kepler(M, ep->e);
 
-    /* 真近點角 ν 與引數 φ = ν + ω                               */
+    /* 真近點角 ν 與引數 φ = ν + ω */
     const double sinE = sin(E);
     const double cosE = cos(E);
     const double nu   = atan2(sqrt(1 - ep->e * ep->e) * sinE, cosE - ep->e);
     const double phi  = nu + ep->w;
 
-    /* -------- 攝動修正 ---------------------------------------- */
+    /* 攝動修正 */
     const double du = ep->cus * sin(2 * phi) + ep->cuc * cos(2 * phi);
     const double dr = ep->crs * sin(2 * phi) + ep->crc * cos(2 * phi);
     const double di = ep->cis * sin(2 * phi) + ep->cic * cos(2 * phi);
@@ -70,12 +64,12 @@ void calc_sat_position_velocity(int prn, int week, double sow,
     const double x_op = r * cos(u);
     const double y_op = r * sin(u);
 
-    /* -------- RAAN Ω(t) -------------------------------------- */
+    /* RAAN Ω(t) */
     /* Use unified RAAN expression for all BeiDou satellites
-     * Ω(t) = Ω₀ + (Ω̇ − Ωₑ) · tk − Ωₑ · Toe */
+ * Ω(t) = Ω₀ + (Ω̇ − Ωₑ) · tk − Ωₑ · Toe */
     double Omega = ep->omega0 + (ep->omegadot - OMEGA_E) * tk - OMEGA_E * ep->toe;
 
-    /* -------- ECEF at transmit time t_tx ----------------------- */
+    /* ECEF at transmit time t_tx */
     const double cosO = cos(Omega), sinO = sin(Omega);
     const double cosi = cos(i),     sini = sin(i);
 
@@ -83,7 +77,7 @@ void calc_sat_position_velocity(int prn, int week, double sow,
     const double y = x_op * sinO + y_op * cosi * cosO;
     const double z = y_op * sini;
 
-    /* ---- 若需要速度，直接在 ECEF 框架求導 --------------------- */
+    /* 若需要速度，直接在 ECEF 框架求導 */
     double x_dot = 0.0, y_dot = 0.0, z_dot = 0.0;
     if (vel) {
         const double Edot   = n / (1 - ep->e * cosE);
@@ -110,7 +104,7 @@ void calc_sat_position_velocity(int prn, int week, double sow,
         z_dot = y_op_dot * sini + y_op * cosi * i_dot;
     }
 
-    /* -------- 衛星鐘差 (含相對論效應與 TGD1) ----------------- */
+    /* 衛星鐘差 (含相對論效應與 TGD1) */
     if (clk) {
         const double relativistic = -4.442807633e-10 * ep->e * ep->sqrtA * sinE;
         const double t_clk_ref = ep->week * 604800.0 + ep->toc;

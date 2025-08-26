@@ -9,7 +9,7 @@
 #include "bdssim.h"
 #include "rinex.h"
 
-/* ───────────── 全域資料區 ───────────── */
+/* --------------------------- 全域資料區 ------------------------------*/
 uint8_t      prn_code[MAX_SAT][CODE_LEN];   /* Gold 2046-chip */
 ephemeris_t  eph[MAX_SAT];                  /* ★ 真正配置記憶體 ★ */
 
@@ -26,7 +26,7 @@ int prn_max = 63;
 /* Global transmit time (BDT seconds) */
 double g_t_tx = 0.0;
 
-/* ───────────── B1I PRN 產生 ───────────── */
+/* --------------------------- B1I PRN 產生 ------------------------------*/
 #define ITER 2047                     /* 先跑滿 2047，再丟掉最後 1 chip */
 
 /* 求 11-bit 內容在 mask 位置上的 XOR parity */
@@ -72,7 +72,7 @@ static void init_prn_table(void)
     printf("[bdssim] PRN 表已產生 (1–%d)\n", prn_max);
 }
 
-/* ───────────── 對外 API ───────────── */
+/* 對外 API */
 bool init_simulator(sim_config_t *cfg, double start_bdt)
 {
     if(simulator_inited) return true;
@@ -85,4 +85,4 @@ bool init_simulator(sim_config_t *cfg, double start_bdt)
     return true;
 }
 void cleanup_simulator(void){ simulator_inited = 0; }
-
+/* ---------------------------  End  ------------------------------*/

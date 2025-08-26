@@ -1,4 +1,4 @@
-/* navbits.c : 產生 B1I D1 子帧 (星曆) */
+/* navbits.c : 產生 B1I D1 子幀 (星曆) */
 
 #include <math.h>
 #include <string.h>
@@ -73,7 +73,7 @@ static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
     }
 }
 
-/* --------------------------------- 宏 & 工具 -------------------------------- */
+/* --------------------------- 宏與工具 ------------------------------*/
 
 /* 填 30-bit word 至 bit 流。pos 為 bit index 0..299 (MSB first) */
 static void put_word(uint8_t *b, int pos, uint32_t w30)
@@ -82,12 +82,12 @@ static void put_word(uint8_t *b, int pos, uint32_t w30)
         b[pos+i] = (w30>>(29-i)) & 1;
 }
 
-/* --------------------------------- 子帧 1 ----------------------------------- */
+/* --------------------------- 子幀 1 ------------------------------*/
 static void build_subframe1_d1(uint8_t *out, const B1I_D1_Frame *f, int week, double sow, double frame_len)
 {
     memset(out,0,SF_STREAM_LEN);
 
-    /* word1：帧同步 11 bits（11100010010） + FraID(001) + SOW[19:12] */
+    /* word1：幀同步 11 bits（11100010010） + FraID(001) + SOW[19:12] */
     uint32_t info = 0x712;            /* 11-bit preamble */
     info = (info << 4);               /* reserved bits */
     info = (info << 3) | 0x1;         /* FraID=001 */
@@ -138,7 +138,7 @@ static void build_subframe1_d1(uint8_t *out, const B1I_D1_Frame *f, int week, do
     put_word(out,270, build_word(w10,22));
 }
 
-/* --------------------------------- 子帧 2 ----------------------------------- */
+/* --------------------------- 子幀 2 ------------------------------*/
 static void build_subframe2_d1(uint8_t *out, const B1I_D1_Frame *f, double sow, double frame_len)
 {
     memset(out, 0, SF_STREAM_LEN);
@@ -190,7 +190,7 @@ static void build_subframe2_d1(uint8_t *out, const B1I_D1_Frame *f, double sow, 
     put_word(out, 270, build_word(w10, 22));
 }
 
-/* --------------------------------- 子帧 3 ----------------------------------- */
+/* --------------------------- 子幀 3 ------------------------------*/
 static void build_subframe3_d1(uint8_t *out, const B1I_D1_Frame *f, double sow, double frame_len)
 {
     memset(out, 0, SF_STREAM_LEN);
@@ -242,7 +242,7 @@ static void build_subframe3_d1(uint8_t *out, const B1I_D1_Frame *f, double sow, 
     put_word(out, 270, build_word(w10, 22));
 }
 
-/* --------------------------------- 子帧 4 ----------------------------------- */
+/* --------------------------- 子幀 4 ------------------------------*/
 static void build_subframe4_d1(uint8_t *out, double sow, double frame_len)
 {
     /* Subframe 4 carries almanac pages.  Actual parameters are not yet
@@ -274,7 +274,7 @@ static void build_subframe4_d1(uint8_t *out, double sow, double frame_len)
     put_word(out, 270, build_word(w10, 22));
     
 }
-/* --------------------------------- 子帧 5 ----------------------------------- */
+/* --------------------------- 子幀 5 ------------------------------*/
 static void build_subframe5_d1(uint8_t *out, double sow, double frame_len)
 {
     /* Identical to subframe 4 but with FraID=5.  Data words use the same
@@ -308,8 +308,7 @@ static void build_subframe5_d1(uint8_t *out, double sow, double frame_len)
     put_word(out, 270, build_word(filler, 22));
 }
 
-
-/* 根據時間取得子帧 bit 流 (300 bits) */
+/* --------------------------- 根據時間取得子幀 bit 流 (300 bits) ------------------------------*/
 void get_subframe_bits(int prn,int sf_id,int week,double sow,double frame_len,uint8_t *out)
 {
     double start = floor(sow/frame_len)*frame_len;
@@ -334,7 +333,7 @@ void get_subframe_bits(int prn,int sf_id,int week,double sow,double frame_len,ui
     }
 }
 
-/* Dump broadcast ephemeris parameters for a given PRN */
+/* --------------------------- Dump broadcast ephemeris parameters for a given PRN ------------------------------*/
 void print_ephemeris_params(int prn)
 {
     B1I_D1_Frame f;
@@ -355,4 +354,4 @@ void print_ephemeris_params(int prn)
     printf("[PRN %d] omegadot=%d idot=%d cic=%d cis=%d\n",
            prn, f.omegadot, f.idot, f.cic, f.cis);
 }
-
+/* ---------------------------  End  ------------------------------*/

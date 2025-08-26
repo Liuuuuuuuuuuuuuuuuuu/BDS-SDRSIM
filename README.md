@@ -1,218 +1,104 @@
 # BDS-SDRSIM
 
-This project generates synthetic BeiDou B1I baseband samples for SDR
-experiments.  Navigation data is read from a RINEX navigation file and
-converted into the binary subframe format required by receivers.
+BDS-SDRSIM is an open-source C simulator that synthesizes BeiDou B1I baseband signals for software-defined radio experiments.（BDS-SDRSIM 是一個以 C 語言撰寫的開源模擬器，可產生北斗 B1I 基帶訊號供 SDR 測試）
 
-## Project Summary
-BDS-SDRSIM converts RINEX ephemeris into BeiDou B1I navigation frames and outputs complex baseband samples for software-defined radios. It supports the D1 message, static or dynamic user motion and configurable power.
+## Features
+- **Signal output**: Generates interleaved I/Q samples in 16-bit (5.2 MHz) or 8-bit (25 MHz) format.（輸出 16 位元或 8 位元的 I/Q 樣本）
+- **Navigation data**: Builds D1 subframes from RINEX ephemeris and inserts 20‑bit Neumann–Hoffman codes.（從 RINEX 星曆產生 D1 子幀並加入 20 位元 Neumann–Hoffman 序列）
+- **Multi-satellite channels**: Automatically selects visible PRNs or restricts to user-specified sets.（自動選取可視衛星或依參數限制 PRN）
+- **User motion**: Supports fixed LLH coordinates or 1 Hz trajectory files (`--xyz`, `--llh-file`, `--nmea`).（可模擬靜止或動態使用者）
+- **Power control**: Simple link budget model with adjustable gain and target C/N₀.（內建簡易鏈結損失模型，可調整增益與 C/N₀）
+- **No external dependencies**: Portable C code compiled with `make`.（純 C 實作，透過 `make` 即可編譯）
 
+## Architecture and Signal Flow（整體架構與流程）
+1. **Ephemeris parsing** – `rinex.c` reads broadcast parameters from RINEX files.（由 `rinex.c` 解析 RINEX 星曆）
+2. **Satellite state** – `orbits.c` solves Kepler’s equation  
+   `E - e\sin E = M` to obtain the ECEF position and velocity. The range  
+   is `r = A (1 - e\cos E)` and the RAAN is  
+   `Ω(t) = Ω₀ + (Ω̇ - Ωₑ)·tk - Ωₑ·Toe`.（`orbits.c` 使用 Kepler 方程計算衛星軌道及 RAAN）
+3. **Receiver frame** – `coord.c` converts between LLA and ECEF using WGS‑84:  
+   `N = a / \sqrt{1 - e² \sin²φ}`,  
+   `x = (N + h) \cosφ \cosλ`, etc.（`coord.c` 進行 WGS‑84 座標轉換）
+4. **Geometry** – `bdssim.c` iterates to compute pseudorange `ρ` and range rate `ṙ`,  
+   applying Earth rotation `Ωₑτ` for Sagnac correction:  
+   `ρ = ‖r_sat - r_usr‖ - c·Δt_sv`.（`bdssim.c` 求得幾何距離與地球自轉修正）
+5. **Channel model** – `channel.c` derives carrier and code dynamics:  
+   `f_d = -f_B1I·ṙ/c`,  
+   `f_code = f_chip·(1 - ṙ/c)`. Amplitude uses a link budget  
+   `A ∝ 10^{(C/N₀ - 45)/20} · (1/ρ) · G_ant · gain`.（`channel.c` 依多普勒與功率模型產生通道）
+6. **Navigation bits** – `navbits.c` assembles five 6‑s subframes and applies BCH encoding.（`navbits.c` 建構 6 秒的導航子幀並進行 BCH 編碼）
+7. **Sample synthesis** – `bdssim.c` mixes PRN, NH code, navigation bits and carrier to produce interleaved I/Q output.（`bdssim.c` 混合 PRN、NH 以及導航資料產生 I/Q 樣本）
 
-## System Overview
+## Quick Start（快速開始）
+1. **Build**
+   ```bash
+   make
+   ```
+   Produces executable `bds-sim`.（編譯生成 `bds-sim`）
+2. **Fetch ephemeris**
+   ```bash
+   make download-brdm2025176
+   ```
+   Downloads MGEX BRDM file.（下載 MGEX 星曆）
+3. **Run simulation**
+   ```bash
+   ./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
+             --start 2025/06/25,00:00:00 \
+             --duration 60 \
+             --llh 25.0,121.0,30 \
+             --gain 1.0
+   ```
+   Generates `beidou_b1i.bin` (16‑bit). Add `--byte` for `beidou_b1i_u8.bin`.（預設輸出 16 位元，加入 `--byte` 轉為 8 位元）
+4. **Playback**
+   ```bash
+   hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 5200000 -x 0
+   ```
+   Sends the samples with HackRF.（以 HackRF 播放樣本）
 
-BDS‑SDRSIM parses BeiDou ephemeris from the RINEX navigation file,
-computes satellite positions and Doppler shifts for the requested start
-time and user location, and builds the B1I navigation subframes.  Each
-enabled satellite channel spreads these bits with the appropriate PRN
-code.  The 50 bps D1 navigation message is further modulated by the
-standard 20‑bit Neumann–Hoffman sequence so that the resulting signal
-matches the BeiDou B1I specification. Finally the channels are summed to
-produce complex baseband samples ready for SDR playback.
-The output is ready to be transmitted by an SDR.
+## Common Options（常用參數）
 
-## 功能總覽
+| Option | Description |
+|--------|-------------|
+| `--rinex file` | RINEX navigation file (required).（指定 RINEX 星曆） |
+| `--start YYYY/MM/DD,hh:mm:ss` | Simulation start time UTC.（模擬起始 UTC 時刻） |
+| `--duration sec` | Simulation length 1–3600 s.（模擬秒數） |
+| `--llh lat,lon,h` | Fixed user position in degrees/meters.（固定使用者位置） |
+| `--xyz/--llh-file/--nmea file` | 1 Hz trajectory file for moving user.（匯入路徑檔模擬移動） |
+| `--gain amp` | Output amplitude gain (>0).（輸出振幅倍率） |
+| `-cn0 value` | Target C/N₀ to balance channel power.（目標 C/N₀） |
+| `--byte` | Output 8‑bit I/Q at 25 MHz.（以 8 位元輸出 25 MHz 樣本） |
+| `--meo-only` | Use only MEO satellites.（僅模擬 MEO 衛星） |
+| `--prn N` | Simulate only PRN N.（指定單一 PRN） |
+| `--prn37` | Restrict to PRN 1–37.（限制 PRN 1–37） |
+| `--seed n` | Random seed.（設定亂數種子） |
 
-程式以 `main.c` 處理命令列與基本參數，並由 `bdssim.c` 統整整個
-模擬流程。`rinex.c` 讀取星曆，`navbits.c` 依時間產生子幀位元，
-`channel.c` 依各衛星計算擴頻與都卜勒，最後由 `bdssim.c` 將所有
-通道的 I/Q 樣本累加成輸出檔。座標轉換與使用者路徑處理分別
-由 `coord.c` 與 `path.c` 負責，其間的資料透過 `ephemeris_t` 與
-`channel_t` 結構傳遞。
+All options: `./bds-sim --help`.（完整參數請見 `./bds-sim --help`）
 
-## Detailed System Description
-
-BDS-SDRSIM reads BeiDou ephemeris from a RINEX navigation file and
-initialises a set of satellite channels. For each simulation step the
-tool computes the user position (static or from a path file), derives
-satellite geometry and Doppler, and updates the channel state. The
-navigation message for subframes 1–5 is generated with correct
-time-of-week. Each channel spreads the bits with its PRN code and the
-samples are summed into a 16‑bit I/Q stream at a fixed 5.2 MHz sample
-rate.
-
-## Build
-
-```
-make
-```
-
-The optional command `make tests/prn_test` builds a small utility that prints
-each PRN number and the first 16 bits of its code in binary using the
-bundled RINEX file.
-
-Run `make check` to build and execute the self test
-(`tests/test_prn`).
-
-The build produces `bds-sim` which outputs a signed `beidou_b1i.bin`
-file containing interleaved **16‑bit little‑endian** I/Q samples. By
-default the file is written at **5.2 MHz**.  Each sample is a pair of
-16‑bit integers `(I,Q)` so be
-careful not to interpret the file as 8‑bit data—otherwise the Q channel
-may appear to contain only zeros or `-1` values.
-Using the `--byte` flag writes `beidou_b1i_u8.bin` containing **8‑bit**
-interleaved I/Q samples at **25 MHz**.  The samples are at **0 Hz IF**
-(baseband) and generated directly from the internal accumulator rather than converting the
-16‑bit stream.  All output values are normalised to remain within ±1 before
-quantisation so the integers never exceed the format limits.
-The legacy option `-byte` is still recognised as an alias for `--byte`.
-
-## 訊號型別
-
-- IGSO/MEO PRN → D1 (50 bps, 有 NH 二次碼)
-- `--meo-only` 僅模擬 MEO 衛星
-- `--prn`  可只輸出指定 PRN
-- `--prn37`  僅使用 1-37 號衛星
-
-MEO 與 IGSO 依據星曆中的 `sqrtA`(軌道半長軸平方根) 分辨。大於 6000 的視
-為 IGSO，否則為 MEO。
-
-## Usage
-
-```
-./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
-          --start 2025/06/25,00:00:00 \
-          --duration 60 \
-          --gain 1.0 \
-          --llh lat,lon,height \
-          --byte
-```
-
-Example generating only PRN 6:
-
-```
-./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
-          --prn 6 --duration 60
-```
-
-`--gain` scales the output amplitude.  With the default gain of `1.0`
-the composite signal uses most of the 16‑bit range.  Larger values boost
-the level but may cause clipping.
-
-The amplitude itself is derived from a simple link budget.  Each orbit
-type is assigned a nominal transmit power (about 53 dBm for IGSO and
-55 dBm for MEO).  Orbit type is detected by checking `sqrtA` so that
-IGSO and MEO receive the proper power.
-Path loss is computed from the
-current slant range including a fixed 2 dB atmospheric term.  The gain
-factor multiplies this result before limiting to the 16‑bit output
-range.  The computed power is further adjusted toward the target
-C/N₀ value (45 dB‑Hz by default) so that adding more channels does not
-reduce signal strength excessively.
-
-`--seed` specifies the random seed for the initial carrier phase of each channel. The default is `1`.
-
-`--byte`  saves an 8‑bit file containing interleaved I and Q samples at a 0 Hz IF.
-
-`--start` specifies the UTC start time; `--duration` is in seconds and
-`--llh` defines the user location in degrees and meters. The start time may
-extend up to 24 hours past the last ephemeris in the RINEX file; the simulator
-continues using the nearest ephemeris block for interpolation. These static
-coordinates are mutually exclusive with the dynamic path options
-`--xyz`, `--llh-file` and `--nmea`.
-Run `./bds-sim --help` to see all command options. A brief configuration
-summary is printed before signal generation begins.
-
-### Dynamic user trajectory
-
-Instead of a fixed location you may supply a 1 Hz path file. Three formats are supported:
-
-```
---xyz       ECEF coordinates (x y z in metres)
---llh-file  Geodetic coordinates (lat lon h)
---nmea      NMEA GGA sentences
-```
-
-Example path files are provided in the `examples/` directory. Usage:
-The files contain one position per line at a 1 Hz rate. Coordinates are
-either ECEF XYZ in metres, latitude/longitude/height in degrees and
-metres, or NMEA GGA sentences.
-
-```
+## Dynamic Path Example（動態路徑範例）
+```bash
 ./bds-sim --rinex BRDM00DLR_S_20251760000_01D_MN.rnx \
           --start 2025/06/25,00:00:00 \
           --xyz examples/path_xyz.txt \
           --duration 60
 ```
+The user position updates every second from `examples/path_xyz.txt`.（使用者位置將依檔案每秒更新）
 
-## Code layout
-
-- `navbits.c`  – builds subframes 1–5 from ephemeris data.
-- `channel.c`  – generates PRN code and navigation modulation for each
-  satellite channel.
-- `bdssim.c`   – combines all channels into the final sample stream.
-- `rinex.c`    – small parser for RINEX navigation files.
-
-Subframes 2 and 3 are pre‑built from ephemeris while subframes 1, 4 and
-5 are generated on demand so that the Time‑of‑Week is consistent with
-the simulation start.
-
-### Testing
-
-```
+## Testing（測試）
+Build and run unit tests:
+```bash
 make check
 ```
+Executes `tests/test_prn` and `tests/test_nh_prn`.（執行 PRN 與 NH 序列測試）
 
-This builds and runs `tests/test_prn` to verify PRN handling.
-
-## SDR playback
-
-The file `beidou_b1i.bin` contains interleaved **16‑bit little‑endian**
-I/Q samples written at a fixed **5.2 MHz** sample rate.
-Ensure any analysis or playback software reads the file as 16‑bit
-integers; using 8‑bit interpretation will yield
-Q samples that look like zeros.
-When `--byte` is used, the output file `beidou_b1i_u8.bin` stores interleaved
-I and Q samples in signed 8‑bit format at **25 MHz** at baseband (0 Hz IF).
-
-Both the 16‑bit and `--byte` files are at baseband, so tune the SDR’s RF centre
-frequency to the desired transmit frequency – for B1I this is typically
-**1561.098 MHz** – and play the samples at the same rate.
-The following command illustrates playback with a HackRF:
-
-```bash
-hackrf_transfer -t beidou_b1i.bin -f 1561098000 -s 5200000 -x 0
-```
-
-Use the `-R` option for continuous looping if needed.  Other SDRs can
-transmit the file in a similar manner as long as they support the same
-sample rate.
-
-## Using GNSS-SDR
-
-When analyzing `beidou_b1i_u8.bin` with GNSS-SDR, ensure that the PRNs
-configured in your `gnss-sdr.conf` match the satellites generated by
-`bds-sim`. The standard `gnss-sdr_BDS_B1I_byte.conf` file is preset for
-PRNs 1–17 and may not align with the PRN list printed by the simulator.
-Adjust the `ChannelX.satellite` lines accordingly or set
-`Channels.in_acquisition` to the total channel count so that GNSS-SDR
-searches for the correct PRNs automatically.
-
-## v0.3.0 (2025-07-07)
-* Fix UTC→BDT +4 s
-* Added subframe 4/5 template
-* Default Fs → 5.2 MHz
-* Power scaling by target CN₀
-
-## v0.3.1 (unreleased)
-* Correct subframe 4/5 constant words
-* Minor API cleanup
-* Orbit propagation now applies the standard GPS/BDS RAAN
-  expression `Ω(t) = Ω₀ + (Ω̇ − Ωₑ)·tk − Ωₑ·Toe` for all BeiDou
-  satellites. Results were cross-checked against the provided SP3
-  precise orbit file.
+## Project Structure（專案結構）
+- `bdssim.c` – Main simulation loop and I/Q writer.（核心模擬流程與輸出）
+- `channel.c` – Per‑satellite signal generation and power control.（通道計算與功率模型）
+- `orbits.c` – Satellite orbit and clock model.（衛星軌道與時鐘模型）
+- `navbits.c` – B1I subframe assembly.（導航資料組合）
+- `rinex.c` – RINEX navigation parser.（星曆解析）
+- `coord.c`, `path.c` – Coordinate transforms and user trajectory.（座標轉換與路徑處理）
+- `examples/` – Sample trajectory files.（範例路徑）
+- `tests/` – Unit tests.（測試程式）
 
 ## License
-
-BDS-SDRSIM is released under the MIT License. See the [LICENSE](LICENSE)
-file for details.
-
+Released under the MIT License. See [LICENSE](LICENSE).（以 MIT 授權發布）
