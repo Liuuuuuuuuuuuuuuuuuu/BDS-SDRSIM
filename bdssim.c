@@ -11,6 +11,7 @@
 #include "navbits.h"
 #include "timeconv.h"
 #include "path.h"
+#include "iono.h"
 #define FSAMP_DEF FS_OUTPUT_HZ    /* default 5.2 MHz for 16-bit I/Q output */
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
 #define IF_BYTE    0.0       /* baseband (0 Hz IF) for --byte output */
@@ -134,6 +135,12 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
         compute_range_rate(prn,u->week,u->sow,u,NULL,sat,NULL,&rho,&rdot,NULL);
         double enu[3]; ecef_to_enu(u,sat,enu);
         double el=enu_elevation_deg(enu); if(el<5.0)continue;
+        double az_deg = atan2(enu[0], enu[1]) * 180.0 / M_PI;
+        double lat_deg = u->llh[0] * 180.0 / M_PI;
+        double lon_deg = u->llh[1] * 180.0 / M_PI;
+        rho += iono_delay(lat_deg, lon_deg, az_deg, el,
+                          u->sow, iono_alpha, iono_beta,
+                          F_B1I, F_B1I, NULL);
         c[m++] = (struct cand){prn,el,rho,rdot};
     }
     /* sort by elevation (desc) */
@@ -175,6 +182,12 @@ static void update_channels_path(channel_t *ch,int n,
         double enu[3]; ecef_to_enu(u,sat[i],enu);
         el[i] = enu_elevation_deg(enu);
         if(el[i] >= 5.0) n_vis_now++;
+        double az_deg = atan2(enu[0], enu[1]) * 180.0 / M_PI;
+        double lat_deg = u->llh[0] * 180.0 / M_PI;
+        double lon_deg = u->llh[1] * 180.0 / M_PI;
+        rho[i] += iono_delay(lat_deg, lon_deg, az_deg, el[i],
+                             u->sow, iono_alpha, iono_beta,
+                             F_B1I, F_B1I, NULL);
 
         double sat2[3];
         compute_range_rate(prn,week2,sow2,u_next,uvel_next,
@@ -182,6 +195,12 @@ static void update_channels_path(channel_t *ch,int n,
         double enu2[3]; ecef_to_enu(u_next,sat2,enu2);
         el2[i] = enu_elevation_deg(enu2);
         if(el2[i] >= 5.0) n_vis_next++;
+        double az2_deg = atan2(enu2[0], enu2[1]) * 180.0 / M_PI;
+        double lat2_deg = u_next->llh[0] * 180.0 / M_PI;
+        double lon2_deg = u_next->llh[1] * 180.0 / M_PI;
+        rho2[i] += iono_delay(lat2_deg, lon2_deg, az2_deg, el2[i],
+                              sow2, iono_alpha, iono_beta,
+                              F_B1I, F_B1I, NULL);
         fd2[i] = -F_B1I*rdot2[i]/CLIGHT;
         cr2[i] = CHIPRATE*(1.0 - rdot2[i]/CLIGHT);
     }
