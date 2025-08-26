@@ -28,6 +28,7 @@ static void usage(const char *p)
     puts("  --meo-only          僅模擬 MEO 衛星");
     puts("  --prn N             僅模擬指定 PRN");
     puts("  --prn37             僅使用 1-37 號衛星");
+    puts("  --no-iono           停用電離層延遲模型");
     puts("  --help               顯示本說明\n");
 }
 
@@ -44,6 +45,7 @@ int main(int argc,char *argv[])
     cfg.meo_only   = false;
     cfg.single_prn = 0;
     cfg.prn37_only = false;
+    cfg.iono_on    = true;
     bool llh_given   = false;
 
     /* 處理 "-byte" 舊習慣 */
@@ -77,12 +79,13 @@ int main(int argc,char *argv[])
         {"meo-only", no_argument,       0, 'M'},
         {"prn",      required_argument, 0, 'p'},
         {"prn37",    no_argument,       0, 'B'},
+        {"no-iono",  no_argument,       0, 'I'},
         {"help",     no_argument,       0, 'h'},
         {0,0,0,0}
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:R:hbp:BM", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:R:hbp:BMI", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -139,6 +142,10 @@ int main(int argc,char *argv[])
         case 'B':
             cfg.prn37_only = true;
             break;
+        case 'I':
+            cfg.iono_on = false;
+            g_enable_iono = 0;
+            break;
         case 'h':
             usage(argv[0]);
             return 0;
@@ -151,6 +158,8 @@ int main(int argc,char *argv[])
     if(cfg.rinex_file[0]=='\0' || cfg.time_start[0]=='\0'){
         usage(argv[0]); return 1;
     }
+
+    g_enable_iono = cfg.iono_on ? 1 : 0;
 
     if(cfg.path_type!=0 && llh_given){
         fputs("--llh 與路徑檔選項不可並用\n", stderr);

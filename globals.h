@@ -55,6 +55,7 @@ extern double iono_beta[4];
 extern int utc_bdt_diff;
 extern double g_t_tx;
 extern double g_target_cn0;
+extern int g_enable_iono;
 
 #endif /* GLOBALS_H */
 

@@ -26,6 +26,7 @@ typedef struct {
     bool     meo_only;
     int      single_prn;
     bool     prn37_only;
+    bool     iono_on;
 } sim_config_t;
 
 bool init_simulator(sim_config_t *, double start_bdt);

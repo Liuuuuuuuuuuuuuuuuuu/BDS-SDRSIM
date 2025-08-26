@@ -138,9 +138,10 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
         double az_deg = atan2(enu[0], enu[1]) * 180.0 / M_PI;
         double lat_deg = u->llh[0] * 180.0 / M_PI;
         double lon_deg = u->llh[1] * 180.0 / M_PI;
-        rho += iono_delay(lat_deg, lon_deg, az_deg, el,
-                          u->sow, iono_alpha, iono_beta,
-                          F_B1I, F_B1I, NULL);
+        if(g_enable_iono)
+            rho += iono_delay(lat_deg, lon_deg, az_deg, el,
+                               u->sow, iono_alpha, iono_beta,
+                               F_B1I, F_B1I, NULL);
         c[m++] = (struct cand){prn,el,rho,rdot};
     }
     /* sort by elevation (desc) */
@@ -185,9 +186,10 @@ static void update_channels_path(channel_t *ch,int n,
         double az_deg = atan2(enu[0], enu[1]) * 180.0 / M_PI;
         double lat_deg = u->llh[0] * 180.0 / M_PI;
         double lon_deg = u->llh[1] * 180.0 / M_PI;
-        rho[i] += iono_delay(lat_deg, lon_deg, az_deg, el[i],
-                             u->sow, iono_alpha, iono_beta,
-                             F_B1I, F_B1I, NULL);
+        if(g_enable_iono)
+            rho[i] += iono_delay(lat_deg, lon_deg, az_deg, el[i],
+                                 u->sow, iono_alpha, iono_beta,
+                                 F_B1I, F_B1I, NULL);
 
         double sat2[3];
         compute_range_rate(prn,week2,sow2,u_next,uvel_next,
@@ -198,9 +200,10 @@ static void update_channels_path(channel_t *ch,int n,
         double az2_deg = atan2(enu2[0], enu2[1]) * 180.0 / M_PI;
         double lat2_deg = u_next->llh[0] * 180.0 / M_PI;
         double lon2_deg = u_next->llh[1] * 180.0 / M_PI;
-        rho2[i] += iono_delay(lat2_deg, lon2_deg, az2_deg, el2[i],
-                              sow2, iono_alpha, iono_beta,
-                              F_B1I, F_B1I, NULL);
+        if(g_enable_iono)
+            rho2[i] += iono_delay(lat2_deg, lon2_deg, az2_deg, el2[i],
+                                  sow2, iono_alpha, iono_beta,
+                                  F_B1I, F_B1I, NULL);
         fd2[i] = -F_B1I*rdot2[i]/CLIGHT;
         cr2[i] = CHIPRATE*(1.0 - rdot2[i]/CLIGHT);
     }
