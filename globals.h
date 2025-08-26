@@ -4,6 +4,11 @@
 
 #include <stdint.h>
 
+/* Some platforms do not define M_PI in math.h */
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /* Physical and signal constants */
 #define CLIGHT      299792458.0    /* Speed of light (m/s) */
 #define F_B1I       1561.098e6     /* B1I carrier frequency (Hz) */
@@ -50,6 +55,7 @@ extern double iono_beta[4];
 extern int utc_bdt_diff;
 extern double g_t_tx;
 extern double g_target_cn0;
+extern int g_enable_iono;
 
 #endif /* GLOBALS_H */
 

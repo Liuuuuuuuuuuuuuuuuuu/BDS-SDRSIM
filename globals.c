@@ -26,6 +26,9 @@ int prn_max = 63;
 /* Global transmit time (BDT seconds) */
 double g_t_tx = 0.0;
 
+/* Enable/disable ionospheric delay model */
+int g_enable_iono = 1;
+
 /* --------------------------- B1I PRN 產生 ------------------------------*/
 #define ITER 2047                     /* 先跑滿 2047，再丟掉最後 1 chip */
 
