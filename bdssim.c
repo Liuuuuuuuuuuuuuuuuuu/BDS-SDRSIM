@@ -15,7 +15,7 @@
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
 #define IF_BYTE    0.0       /* baseband (0 Hz IF) for --byte output */
 
-/* ========= 振幅計算與 int16 飽和保護 ========= */
+/* --------------------------- 振幅計算與 int16 飽和保護 ------------------------------*/
 static inline int16_t saturate_int16(double x)
 {
     if (x >  32760.0) return  32760;
@@ -23,7 +23,7 @@ static inline int16_t saturate_int16(double x)
     return (int16_t)llround(x);
 }
 
-/* ---- 檢查模擬起始時間與星曆 toe 差距是否過大 ---- */
+/* --------------------------- 起始時間與星曆 toe 檢查 ------------------------------*/
 static void check_ephemeris_age(int week,double sow)
 {
     double t = week*604800.0 + sow;
@@ -43,7 +43,7 @@ static void check_ephemeris_age(int week,double sow)
         fputs("建議使用接近星曆 toe 的起始時間以避免 tk 錯誤\n", stderr);
 }
 
-/* Compute corrected pseudorange and range rate */
+/* --------------------------- Compute corrected pseudorange and range rate ------------------------------*/
 static void compute_range_rate(int prn,int week,double sow,
                                const coord_t *u,const double uvel[3],
                                double sat_rx[3], double vsat_rx[3],
@@ -120,7 +120,7 @@ static void compute_range_rate(int prn,int week,double sow,
     }
 }
 
-/*----------------------------------------------------*/
+/* --------------------------- Channel selection ------------------------------*/
 int select_channels(channel_t *ch,int *n,const coord_t*u,
                     int single_prn,bool meo_only)
 {
@@ -148,8 +148,7 @@ int select_channels(channel_t *ch,int *n,const coord_t*u,
     return *n;
 }
 
-
-/* 依照使用者軌跡更新通道，使用目前與下一步的幾何資訊 */
+/* --------------------------- 依照使用者軌跡更新通道，使用目前與下一步的幾何資訊 ------------------------------*/
 static void update_channels_path(channel_t *ch,int n,
                                  const coord_t *u,const double uvel[3],
                                  const coord_t *u_next,const double uvel_next[3],
@@ -158,7 +157,7 @@ static void update_channels_path(channel_t *ch,int n,
     double dt = step_ms * 0.001; /* seconds */
 
     double t_abs = u->week*604800.0 + u->sow;
-    /* --- 第一輪：計算幾何與可視衛星數 --- */
+    /* 第一輪：計算幾何與可視衛星數 */
     double rho[MAX_CH], rdot[MAX_CH], el[MAX_CH];
     double rho2[MAX_CH], rdot2[MAX_CH], el2[MAX_CH];
     double fd2[MAX_CH], cr2[MAX_CH];
@@ -190,7 +189,7 @@ static void update_channels_path(channel_t *ch,int n,
     if(n_vis_now < 1) n_vis_now = 1;           /* avoid div-by-zero */
     if(n_vis_next < 1) n_vis_next = 1;
 
-    /* --- 第二輪：更新通道狀態 --- */
+    /* 第二輪：更新通道狀態 */
     for(int i=0;i<n;++i){
         channel_set_time(&ch[i], rho[i]);
         update_channel_dynamics(&ch[i],rho[i],rdot[i],el[i],
@@ -205,7 +204,7 @@ static void update_channels_path(channel_t *ch,int n,
         ch[i].amp_dot = (A2 - ch[i].amp) / dt;
     }
 }
-/*----------------------------------------------------*/
+/* --------------------------- 信號產生 ------------------------------*/
 void generate_signal(const sim_config_t *cfg)
 {
     coord_t usr={0};
@@ -340,7 +339,7 @@ void generate_signal(const sim_config_t *cfg)
             }
         }
 
-        /* --- STEP_MS 次 1ms 取樣 --- */
+        /* STEP_MS 次 1ms 取樣 */
         for(int step=0;step<STEP_MS;++step){
             g_t_tx = start_bdt + sample_count/fs;
             memset(accI,0,sizeof(accI)); memset(accQ,0,sizeof(accQ));
@@ -403,4 +402,4 @@ void generate_signal(const sim_config_t *cfg)
     }
     free_path(&path);
 }
-
+/* ---------------------------  End  ------------------------------*/

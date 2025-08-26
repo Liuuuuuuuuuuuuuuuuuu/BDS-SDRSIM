@@ -17,7 +17,7 @@ double g_target_cn0 = 42.0;
 
 /* (舊的接收天線圖與 multipath 模型已移除) */
 
-/* ---------- 32k sin LUT ---------- */
+/* --------------------------- 32k sin LUT ------------------------------*/
 #define LUTBITS   15
 #define LUTSIZE   (1u<<LUTBITS)
 static float sin_lut[LUTSIZE];
@@ -37,8 +37,7 @@ static inline void fast_sincos(double ph,float*co,float*si){
     *co = sin_lut[j] + f*(sin_lut[j2]-sin_lut[j]);
 }
 
-/* ---------- 載波與振幅計算 ---------- */
-
+/* --------------------------- 載波與振幅計算 ------------------------------*/
 
 /* PRNs 1–5 and 59–63 are GEO satellites and are skipped during
  * channel selection. */
@@ -66,8 +65,7 @@ int is_meo_prn(int prn)
     return ep->sqrtA <= 6000.0; /* ~27800 km orbit */
 }
 
-
-/* ---- gps-sdr-sim 風格的振幅模型 ---- */
+/* --------------------------- 振幅模型 ------------------------------*/
 static double ant_pat[37];
 __attribute__((constructor))
 static void init_ant_pat(void){
@@ -79,7 +77,7 @@ static inline double amp_from_geom(double rho,double elev_deg,double gain,
                                    double cn0_dBHz,int n_visible)
 {
     double base = pow(10.0,(cn0_dBHz-45.0)/20.0) * 16384.0;
-    double path_loss = 20200000.0 / rho; /* gps-sdr-sim constant */
+    double path_loss = 20200000.0 / rho; /* 模型常數 */
     int ibs = (int)((90.0 - elev_deg)/5.0);
     if(ibs < 0) ibs = 0; else if(ibs > 36) ibs = 36;
     double ant = ant_pat[ibs];
@@ -94,7 +92,7 @@ static inline double orbit_gain_amp(int prn)
     return pow(10.0, dB/20.0);
 }
 
-/* 指數平滑振幅，避免 AM 旁帶 */
+/* --------------------------- 指數平滑振幅，避免 AM 旁帶 ------------------------------*/
 static inline double smooth_amp(double A_prev, double A_new, double dt_ms)
 {
     double alpha = 1.0 - exp(-dt_ms / AMP_SMOOTH_TC_MS);
@@ -113,14 +111,13 @@ double predict_next_amp(const channel_t *c,double rho_next,double elev_deg_next,
     return smooth_amp(c->amp, A_new, dt_ms);
 }
 
-/* ---------- CA cache ---------- */
+/* --------------------------- CA cache ------------------------------*/
 static int16_t ca_wave[64][CODE_LEN];
 static int     ca_ready=0;
 
 /* BeiDou D1 Neumann-Hoffman 20-bit code (0=+1, 1=-1) */
 
-
-/* ---------- Channel helpers ---------- */
+/* --------------------------- Channel helpers ------------------------------*/
 static void load_ca_once(void)
 {
     if(ca_ready) return;
@@ -164,7 +161,6 @@ void channel_set_time(channel_t *c,double rho)
         c->bit_ptr    = 0;
     }
 
-    /* Debug print removed */
 }
 
 void channel_reset(channel_t *c,int prn,double rho){
@@ -196,7 +192,7 @@ void channel_set_fs(double sample_rate)
     fs = sample_rate;
 }
 
-/* ---------- 產生 1 ms ---------- */
+/* 產生 1 ms */
 void gen_samples_1ms(channel_t *c,int samp_per_ms,int16_t*I,int16_t*Q)
 {
     double fd = c->fd;
@@ -242,4 +238,4 @@ void gen_samples_1ms(channel_t *c,int samp_per_ms,int16_t*I,int16_t*Q)
     c->code_phase = code_phase;
     c->amp = amp;
 }
-
+/* ---------------------------  End  ------------------------------*/

@@ -166,4 +166,4 @@ void interpolate_path_llh(const path_t *path,double t,double llh[3])
     for(int k=0;k<3;++k)
         llh[k]=path->p[i].llh[k]*(1.0-f)+path->p[i+1].llh[k]*f;
 }
-
+/* ---------------------------  End  ------------------------------*/

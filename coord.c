@@ -1,7 +1,7 @@
 #include "coord.h"
 #include "globals.h"     /* nav_week */
 
-/* LLA(rad) → ECEF，並把 llh/xyz 一併寫回 coord_t -------------- */
+/* --------------------------- LLA(rad) → ECEF，並把 llh/xyz 一併寫回 coord_t ------------------------------*/
 void lla_to_ecef(const double lla[3], coord_t *c)
 {
     const double lat = lla[0];
@@ -13,7 +13,7 @@ void lla_to_ecef(const double lla[3], coord_t *c)
     c->llh[1] = lon;
     c->llh[2] = h;
 
-    /* WGS-84 精確轉換 ------------------------------------------------ */
+    /* WGS-84 精確轉換 */
     const double sinp = sin(lat);
     const double N = WGS84_A / sqrt(1.0 - WGS84_E2 * sinp * sinp);
 
@@ -22,7 +22,7 @@ void lla_to_ecef(const double lla[3], coord_t *c)
     c->xyz[2] = (N * (1.0 - WGS84_E2) + h) * sinp;
 }
 
-/* ECEF → LLA(rad) -------------------------------------------------- */
+/* --------------------------- ECEF → LLA(rad) ------------------------------*/
 void ecef_to_lla(const double xyz[3], coord_t *c)
 {
     const double x=xyz[0], y=xyz[1], z=xyz[2];
@@ -43,7 +43,7 @@ void ecef_to_lla(const double xyz[3], coord_t *c)
     c->xyz[0]=x; c->xyz[1]=y; c->xyz[2]=z;
 }
 
-/* ECEF → ENU ------------------------------------------------------- */
+/* --------------------------- ECEF → ENU ------------------------------*/
 void ecef_to_enu(const coord_t *usr, const double sat_xyz[3], double enu[3])
 {
     const double lat = usr->llh[0];
@@ -61,7 +61,7 @@ void ecef_to_enu(const coord_t *usr, const double sat_xyz[3], double enu[3])
     enu[2] =  cosLon*cosLat*dx + sinLon*cosLat*dy + sinLat*dz;      /* U */
 }
 
-/* 由 ENU 向量計算仰角（deg） --------------------------------------- */
+/* --------------------------- 由 ENU 向量計算仰角（deg） ------------------------------*/
 double enu_elevation_deg(const double enu[3])
 {
     const double rho = sqrt(enu[0]*enu[0] + enu[1]*enu[1] + enu[2]*enu[2]);
@@ -69,7 +69,7 @@ double enu_elevation_deg(const double enu[3])
     return asin( enu[2] / rho ) * 180.0 / M_PI;
 }
 
-/* Fixed user in ECEF. If vel!=NULL, return velocity from Earth rotation. */
+/* --------------------------- 固定使用者：ECEF 位置與地球自轉速度 ------------------------------*/
 void static_user_at(int week, double sow, const coord_t *ref,
                     coord_t *out, double vel[3])
 {
@@ -99,5 +99,4 @@ void static_user_at(int week, double sow, const coord_t *ref,
         vel[2] =  0.0;
     }
 }
-
-
+/* ---------------------------  End  ------------------------------*/

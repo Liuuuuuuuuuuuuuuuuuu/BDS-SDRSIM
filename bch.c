@@ -11,7 +11,7 @@ uint16_t bch_encode(uint16_t d11)
     return (d11<<4) | (reg & 0xF);
 }
 
-/* 對 26 位元資料的後 11 位做 BCH，並在尾端附上 4 位校驗 */
+/* --------------------------- 對 26 位元資料的後 11 位做 BCH，並在尾端附上 4 位校驗 ------------------------------*/
 uint32_t bch_encode_26bit(uint32_t payload)
 {
     payload &= 0x3FFFFFF;                 /* 26 bits */
@@ -20,7 +20,7 @@ uint32_t bch_encode_26bit(uint32_t payload)
     return (payload << 4) | parity;       /* 26 資料 + 4 校驗 */
 }
 
-/* 將 22 位元資料分成兩組 11 位做 BCH，並交錯輸出 */
+/* --------------------------- 將 22 位元資料分成兩組 11 位做 BCH，並交錯輸出 ------------------------------*/
 uint32_t bch_interleave_22bit(uint32_t payload)
 {
     uint16_t high11 = (payload >> 11) & 0x7FF;
@@ -34,3 +34,4 @@ uint32_t bch_interleave_22bit(uint32_t payload)
     }
     return result;
 }
+/* ---------------------------  End  ------------------------------*/
