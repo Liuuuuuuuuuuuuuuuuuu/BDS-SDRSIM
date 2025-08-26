@@ -6,11 +6,6 @@
 #include "../channel.h"
 #include "../globals.h"
 
-/* Expected NH20 sequence: 0 -> +1, 1 -> -1 */
-static const uint8_t nh20_bits[20]={
-    0,0,0,0,0,1,0,0,1,1,0,1,0,1,0,0,1,1,1,0
-};
-
 int main(void)
 {
     sim_config_t cfg = {0};

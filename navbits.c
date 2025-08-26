@@ -3,6 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
+#include "bdssim.h"
 #include "navbits.h"
 #include "bch.h"
 #include "globals.h"
@@ -21,7 +22,6 @@ static uint32_t build_word(uint32_t payload, int bits)
 }
 
 extern ephemeris_t eph[MAX_SAT];
-#include "icd_fields.h"
 
 /* Convert ephemeris_t to the simplified B1I_D1_Frame structure.
  * Only the fields needed for navigation message assembly are
@@ -67,12 +67,6 @@ static void frame_from_ephemeris(const ephemeris_t *e, B1I_D1_Frame *f)
     
     /* Ionospheric parameters from header.  Each coefficient uses
      * a different scaling factor according to the B1I ICD. */
-    static const double a_scale[4] = {
-        pow(2, -30), pow(2, -27), pow(2, -24), pow(2, -24)
-    };
-    static const double b_scale[4] = {
-        pow(2, 11), pow(2, 14), pow(2, 16), pow(2, 16)
-    };
     for (int i = 0; i < 4; ++i) {
         f->alpha[i] = (int32_t)llround(iono_alpha[i] / a_scale[i]);
         f->beta[i]  = (int32_t)llround(iono_beta[i]  / b_scale[i]);

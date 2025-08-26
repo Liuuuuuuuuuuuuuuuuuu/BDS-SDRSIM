@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include <time.h>
 #include <math.h>
+#include "rinex.h"
 #include "bdssim.h"
 #include "globals.h"
 
@@ -139,8 +140,7 @@ int read_rinex_nav(const char *fname, double start_bdt)
         tmp.tgd1    = fld(r[5], 2, INDN);
         tmp.tgd2    = fld(r[5], 3, INDN);
 
-        /* line 8: transmission time of message and AODC */
-        tmp.toe_msg = fld(r[6], 0, INDN);
+        /* line 8: AODC */
         tmp.aodc    = ifld(r[6], 1, INDN);
 
         double t_bdt = tmp.week * 604800.0 + tmp.toe;
