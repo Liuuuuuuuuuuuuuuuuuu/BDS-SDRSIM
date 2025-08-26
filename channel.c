@@ -5,12 +5,11 @@
 #include <math.h>
 #include <stdio.h>
 #include "channel.h"
-#include "globals.h"               /* prn_code */
-#include "orbits.h"                /* calc_sat_position_velocity */
+#include "bdssim.h"
+#include "navbits.h"
+#include "orbits.h"
 
 #define PI2        6.2831853071795864769
-#define F_B1I      1561.098e6      /* B1I carrier */
-#define CHIPRATE   2.046e6
 static double fs = FS_OUTPUT_HZ;           /* default sample rate */
 
 /* default target CN0, overridable via CLI */
@@ -45,7 +44,6 @@ static inline void fast_sincos(double ph,float*co,float*si){
  * channel selection. */
 int is_geo_prn(int prn)
 {
-    static const int geo_prn[] = {1,2,3,4,5,59,60,61,62,63};
     if(prn < 1 || prn >= MAX_SAT) return 0;
     for(unsigned i=0;i<sizeof(geo_prn)/sizeof(geo_prn[0]);++i)
         if(prn == geo_prn[i]) return 1;
@@ -70,12 +68,6 @@ int is_meo_prn(int prn)
 
 
 /* ---- gps-sdr-sim 風格的振幅模型 ---- */
-static const double ant_pat_db[37] = {
-     0.00,  0.00,  0.22,  0.44,  0.67,  1.11,  1.56,  2.00,  2.44,  2.89,
-     3.56,  4.22,  4.89,  5.56,  6.22,  6.89,  7.56,  8.22,  8.89,  9.78,
-    10.67, 11.56, 12.44, 13.33, 14.44, 15.56, 16.67, 17.78, 18.89, 20.00,
-    21.33, 22.67, 24.00, 25.56, 27.33, 29.33, 31.56
-};
 static double ant_pat[37];
 __attribute__((constructor))
 static void init_ant_pat(void){
@@ -126,9 +118,6 @@ static int16_t ca_wave[64][CODE_LEN];
 static int     ca_ready=0;
 
 /* BeiDou D1 Neumann-Hoffman 20-bit code (0=+1, 1=-1) */
-static const uint8_t nh20_bits[20]={
-    0,0,0,0,0,1,0,0,1,1,0,1,0,1,0,0,1,1,1,0
-};
 
 
 /* ---------- Channel helpers ---------- */
@@ -143,12 +132,6 @@ static void load_ca_once(void)
 
 void channel_set_time(channel_t *c,double rho)
 {
-    /* Global transmit time is shared by all channels. */
-    int week = (int)(g_t_tx/604800.0);
-    double sow = g_t_tx - week*604800.0;
-    c->tx_week = week;
-    c->tx_sow  = sow;       /* identical across channels */
-
     /* Satellite signal left earlier by propagation delay. */
     double tx_time = g_t_tx - rho/CLIGHT; /* seconds since BDT epoch */
     int    week_tx = (int)(tx_time/604800.0);

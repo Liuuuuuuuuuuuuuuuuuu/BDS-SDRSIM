@@ -6,18 +6,14 @@
 #include <stdlib.h>
 #include <omp.h>
 #include "bdssim.h"
-#include "channel.h"
 #include "coord.h"
 #include "orbits.h"
 #include "navbits.h"
 #include "timeconv.h"
 #include "path.h"
-#include "globals.h"     /* nav_week, CLIGHT */
 #define FSAMP_DEF FS_OUTPUT_HZ    /* default 5.2 MHz for 16-bit I/Q output */
 #define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
 #define IF_BYTE    0.0       /* baseband (0 Hz IF) for --byte output */
-#define F_B1I      1561.098e6      /* B1I carrier */
-#define CHIPRATE   2.046e6
 
 /* ========= 振幅計算與 int16 飽和保護 ========= */
 static inline int16_t saturate_int16(double x)
