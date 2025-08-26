@@ -38,7 +38,7 @@ clean:
         tests/test_prn tests/test_nh_prn tests/test_nh_prn.o \
         tests/test_orbits tests/test_orbits.o \
         tests/test_timeconv *.bin *.gz
-	@echo "✅ 已清除中間檔與 .gz 暫存檔"
+	@echo "已清除中間檔與 .gz 暫存檔"
 
 # =====================[ 下載區 ]=====================
 # 使用範例：
@@ -65,22 +65,22 @@ download-%:
 		FILE=$${NAME}.gz; \
 		SUBDIR=brdc; \
 	else \
-		echo "❌ 無法辨識檔名 $$NAME_LOWER"; exit 1; \
+		echo "無法辨識檔名 $$NAME_LOWER"; exit 1; \
 	fi; \
 	URL=https://cddis.nasa.gov/archive/gnss/data/daily/$${YEAR}/brdc/$$FILE; \
-	echo "⬇️  下載 $$URL"; \
+	echo "下載 $$URL"; \
 	curl -s -L -n -c cookies.txt -b cookies.txt \
 	     -H "User-Agent: Mozilla/5.0" \
 	     -o $$FILE $$URL; \
 	if grep -q '<html' $$FILE; then \
-		echo "⚠️  下載失敗，收到 HTML 錯誤頁 (未授權?)"; \
+		echo "下載失敗，收到 HTML 錯誤頁 (未授權?)"; \
 		rm -f $$FILE; exit 1; \
 	fi; \
 	if file $$FILE | grep -q 'gzip compressed'; then \
 		gunzip -f $$FILE; \
-		echo "✅ 解壓完成 → $${FILE%.gz}"; \
+		echo "解壓完成 → $${FILE%.gz}"; \
 	else \
-		echo "✅ 檔案已是解壓狀態：$$FILE"; \
+		echo "檔案已是解壓狀態：$$FILE"; \
 	fi
 
 .PHONY: all clean download-%
