@@ -242,8 +242,11 @@ int main(int argc,char *argv[])
     /* 印出確認訊息 (簡潔模式) */
     printf("[cfg] UTC %s  BDT W%d %.3f\n",
            cfg.time_start, usr.week, usr.sow);
+    /* 將內部儲存的緯度/經度 (弧度) 轉回度以便與使用者輸入對照 */
     printf("[cfg] LLH %.6f %.6f %.1f\n",
-           usr.llh[0], usr.llh[1], usr.llh[2]);
+           usr.llh[0] * 180.0 / M_PI,
+           usr.llh[1] * 180.0 / M_PI,
+           usr.llh[2]);
     printf("[cfg] XYZ %.3f %.3f %.3f (m)\n",
            usr.xyz[0], usr.xyz[1], usr.xyz[2]);
     int prn_sorted[MAX_CH];
