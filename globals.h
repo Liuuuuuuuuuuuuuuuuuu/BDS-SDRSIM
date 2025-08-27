@@ -24,7 +24,7 @@
 #define CN0_TARGET_DBHZ 42.0
 #define HEADROOM_RATIO  0.80
 #define AMP_SMOOTH_TC_MS 1000
-#define GAIN_MEO_DB     +1.5
+#define GAIN_MEO_DB     +0.5
 #define GAIN_IGSO_DB    +1.5
 
 /* G2 tap table for B1I PRN generation */
