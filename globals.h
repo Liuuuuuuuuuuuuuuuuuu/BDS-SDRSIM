@@ -15,7 +15,7 @@
 #define CHIPRATE    2.046e6        /* B1I code chipping rate (Hz) */
 
 /* Simulation limits */
-#define MAX_CH      8              /* Maximum channels */
+#define MAX_CH      16             /* Maximum channels */
 #define CODE_LEN    2046           /* PRN code length */
 #define MAX_SAT     65             /* PRN slots */
 
