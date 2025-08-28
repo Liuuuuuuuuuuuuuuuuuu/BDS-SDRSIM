@@ -1,3 +1,12 @@
+<p align="center">
+  <a href="https://github.com/Liuuuuuuuuuuuuuuuuuu/BDS-SDRSIM">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/bds-sdrsim-card-dark.png">
+      <img src=".github/assets/bds-sdrsim-card-light.png" alt="BDS-SDRSIM" width="880">
+    </picture>
+  </a>
+</p>
+
 # BDS-SDRSIM
 
 BDS-SDRSIM is an open-source C simulator that synthesizes BeiDou B1I baseband signals for software-defined radio experiments.（BDS-SDRSIM 是一個以 C 語言撰寫的開源模擬器，可產生北斗 B1I 基帶訊號供 SDR 測試）
