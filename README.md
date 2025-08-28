@@ -93,8 +93,8 @@ make check
 Executes `tests/test_prn` and `tests/test_nh_prn`.（執行 PRN 與 NH 序列測試）
 
 Additional test resources:
-- `tests/gnss_sdr/` – GNSS-SDR configuration example and a dump of multiple analysis reports.（GNSS-SDR 使用設定範例與多個分析報告的 dump）
-- `tests/gnuradio_usrp/` – GNU Radio USRP settings and a smartphone GNSS test using the Android “GPS Test” app.（GNU Radio USRP 設定與 Android「GPS Test」應用程式的一次 GNSS 測試結果）
+- `tests/gnss_sdr/` – GNSS-SDR configuration example and multiple analysis reports.（GNSS-SDR 使用設定範例與多個分析報告）
+- `tests/gnuradio_usrp/` – GNU Radio USRP settings and a smartphone test using the Android “GPS Test” app.（GNU Radio USRP 設定與 Android「GPS Test」應用程式的測試結果）
 
 ## Project Structure（專案結構）
 - `bdssim.c` – Main simulation loop and I/Q writer.（核心模擬流程與輸出）
