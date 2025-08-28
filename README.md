@@ -19,15 +19,16 @@ BDS-SDRSIM is an open-source C simulator that synthesizes BeiDou B1I baseband si
 3. **Receiver frame** – `coord.c` converts between LLA and ECEF using WGS‑84:  
    `N = a / \sqrt{1 - e² \sin²φ}`,  
    `x = (N + h) \cosφ \cosλ`, etc.（`coord.c` 進行 WGS‑84 座標轉換）
-4. **Geometry** – `bdssim.c` iterates to compute pseudorange `ρ` and range rate `ṙ`,  
-   applying Earth rotation `Ωₑτ` for Sagnac correction:  
+4. **Geometry** – `bdssim.c` iterates to compute pseudorange `ρ` and range rate `ṙ`,
+   applying Earth rotation `Ωₑτ` for Sagnac correction:
    `ρ = ‖r_sat - r_usr‖ - c·Δt_sv`.（`bdssim.c` 求得幾何距離與地球自轉修正）
-5. **Channel model** – `channel.c` derives carrier and code dynamics:  
-   `f_d = -f_B1I·ṙ/c`,  
-   `f_code = f_chip·(1 - ṙ/c)`. Amplitude uses a link budget  
+5. **Ionospheric delay** – `iono.c` applies the Klobuchar model to correct `ρ`.（`iono.c` 以 Klobuchar 模型修正電離層延遲）
+6. **Channel model** – `channel.c` derives carrier and code dynamics:
+   `f_d = -f_B1I·ṙ/c`,
+   `f_code = f_chip·(1 - ṙ/c)`. Amplitude uses a link budget
    `A ∝ 10^{(C/N₀ - 45)/20} · (1/ρ) · G_ant · gain`.（`channel.c` 依多普勒與功率模型產生通道）
-6. **Navigation bits** – `navbits.c` assembles five 6‑s subframes and applies BCH encoding.（`navbits.c` 建構 6 秒的導航子幀並進行 BCH 編碼）
-7. **Sample synthesis** – `bdssim.c` mixes PRN, NH code, navigation bits and carrier to produce interleaved I/Q output.（`bdssim.c` 混合 PRN、NH 以及導航資料產生 I/Q 樣本）
+7. **Navigation bits** – `navbits.c` assembles five 6‑s subframes and applies BCH encoding.（`navbits.c` 建構 6 秒的導航子幀並進行 BCH 編碼）
+8. **Sample synthesis** – `bdssim.c` mixes PRN, NH code, navigation bits and carrier to produce interleaved I/Q output.（`bdssim.c` 混合 PRN、NH 以及導航資料產生 I/Q 樣本）
 
 ## Quick Start（快速開始）
 1. **Build**
@@ -90,6 +91,10 @@ make check
 ```
 Executes `tests/test_prn` and `tests/test_nh_prn`.（執行 PRN 與 NH 序列測試）
 
+Additional test resources:
+- `tests/gnss_sdr/` – GNSS-SDR configuration example and a dump of multiple analysis reports.（GNSS-SDR 使用設定範例與多個分析報告的 dump）
+- `tests/gnuradio_usrp/` – GNU Radio USRP settings and a smartphone GNSS test using the Android “GPS Test” app.（GNU Radio USRP 設定與 Android「GPS Test」應用程式的一次 GNSS 測試結果）
+
 ## Project Structure（專案結構）
 - `bdssim.c` – Main simulation loop and I/Q writer.（核心模擬流程與輸出）
 - `channel.c` – Per‑satellite signal generation and power control.（通道計算與功率模型）
@@ -97,6 +102,7 @@ Executes `tests/test_prn` and `tests/test_nh_prn`.（執行 PRN 與 NH 序列測
 - `navbits.c` – B1I subframe assembly.（導航資料組合）
 - `rinex.c` – RINEX navigation parser.（星曆解析）
 - `coord.c`, `path.c` – Coordinate transforms and user trajectory.（座標轉換與路徑處理）
+- `iono.c` – Klobuchar ionospheric delay correction.（Klobuchar 電離層延遲修正）
 - `examples/` – Sample trajectory files.（範例路徑）
 - `tests/` – Unit tests.（測試程式）
 
