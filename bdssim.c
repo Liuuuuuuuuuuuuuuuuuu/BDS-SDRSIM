@@ -12,8 +12,8 @@
 #include "timeconv.h"
 #include "path.h"
 #include "iono.h"
-#define FSAMP_DEF FS_OUTPUT_HZ    /* default 5.2 MHz for 16-bit I/Q output */
-#define FSAMP_BYTE 25.0e6    /* 25 MHz when --byte is used */
+#define FSAMP_DEF  FS_OUTPUT_HZ    /* default 5.2 MHz for 16-bit I/Q output */
+#define FSAMP_BYTE FS_BYTE_HZ      /* 25 MHz when --byte is used */
 #define IF_BYTE    0.0       /* baseband (0 Hz IF) for --byte output */
 
 /* --------------------------- 振幅計算與 int16 飽和保護 ------------------------------*/
@@ -266,7 +266,7 @@ void generate_signal(const sim_config_t *cfg)
     select_channels(ch,&n_ch,&usr,cfg->single_prn,
                     cfg->meo_only);
 
-    double fs = cfg->byte_output ? FSAMP_BYTE : FSAMP_DEF;
+    double fs = cfg->fs;
     int samp_per_ms = (int)(fs/1000.0 + 0.5);
     channel_set_fs(fs);                   /* ensure dynamics use correct Fs */
 

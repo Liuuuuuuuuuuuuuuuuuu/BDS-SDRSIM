@@ -16,7 +16,7 @@
 BDS-SDRSIM is an open-source C simulator that synthesizes BeiDou B1I baseband signals for software-defined radio experiments.（BDS-SDRSIM 是一個以 C 語言撰寫的開源模擬器，可產生北斗 B1I 基帶訊號供 SDR 測試）
 
 ## Features
-- **Signal output**: Generates interleaved I/Q samples in 16-bit (5.2 MHz) or 8-bit (25 MHz) format.（輸出 16 位元或 8 位元的 I/Q 樣本）
+- **Signal output**: Generates interleaved I/Q samples in 16-bit or 8-bit format with configurable sample rate (default 5.2 MHz or 25 MHz with `--byte`).（輸出 16 位元或 8 位元的 I/Q 樣本，可設定取樣率，預設為 5.2 MHz，`--byte` 模式為 25 MHz）
 - **Navigation data**: Builds D1 subframes from RINEX ephemeris and inserts 20‑bit Neumann–Hoffman codes.（從 RINEX 星曆產生 D1 子幀並加入 20 位元 Neumann–Hoffman 序列）
 - **Multi-satellite channels**: Automatically selects visible PRNs or restricts to user-specified sets.（自動選取可視衛星或依參數限制 PRN）
 - **User motion**: Supports fixed LLH coordinates or 1 Hz trajectory files (`--xyz`, `--llh-file`, `--nmea`).（可模擬靜止或動態使用者）
@@ -79,6 +79,7 @@ BDS-SDRSIM is an open-source C simulator that synthesizes BeiDou B1I baseband si
 | `--llh lat,lon,h` | Fixed user position in degrees/meters.（固定使用者位置） |
 | `--xyz/--llh-file/--nmea file` | 1 Hz trajectory file for moving user.（匯入路徑檔模擬移動） |
 | `--gain amp` | Output amplitude gain (>0).（輸出振幅倍率） |
+| `--fs MHz` | Sample rate in MHz (default 5.2 or 25 with `--byte`).（設定取樣率，預設 5.2 MHz；`--byte` 模式 25 MHz） |
 | `-cn0 value` | Target C/N₀ to balance channel power.（目標 C/N₀） |
 | `--byte` | Output 8‑bit I/Q at 25 MHz.（以 8 位元輸出 25 MHz 樣本） |
 | `--meo-only` | Use only MEO satellites.（僅模擬 MEO 衛星） |
