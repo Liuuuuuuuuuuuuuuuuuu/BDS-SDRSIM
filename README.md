@@ -71,6 +71,7 @@ BDS-SDRSIM is an open-source C simulator that synthesizes BeiDou B1I baseband si
 | `--meo-only` | Use only MEO satellites.（僅模擬 MEO 衛星） |
 | `--prn N` | Simulate only PRN N.（指定單一 PRN） |
 | `--prn37` | Restrict to PRN 1–37.（限制 PRN 1–37） |
+| `--no-iono` | Disable ionospheric delay model.（停用電離層延遲模型） |
 | `--seed n` | Random seed.（設定亂數種子） |
 
 All options: `./bds-sim --help`.（完整參數請見 `./bds-sim --help`）
