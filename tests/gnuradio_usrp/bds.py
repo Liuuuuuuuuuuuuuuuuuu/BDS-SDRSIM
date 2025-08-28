@@ -144,7 +144,7 @@ class bds(gr.top_block, Qt.QWidget):
 
     def set_freq(self, freq):
         self.freq = freq
-        self.qtgui_sink_x_0.set_frequency_range(self.freq, 6000000)
+        self.qtgui_sink_x_0.set_frequency_range(self.freq, samp_rate)
         self.uhd_usrp_sink_0.set_center_freq(self.freq, 0)
 
 
