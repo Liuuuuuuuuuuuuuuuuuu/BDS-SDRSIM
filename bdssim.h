@@ -23,6 +23,7 @@ typedef struct {
     double   target_cn0;
     unsigned seed;
     bool     byte_output;
+    double   fs;           /* sample rate (Hz) */
     bool     meo_only;
     int      single_prn;
     bool     prn37_only;

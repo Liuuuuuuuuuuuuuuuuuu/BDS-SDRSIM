@@ -21,6 +21,7 @@
 
 /* Amplitude and sampling parameters */
 #define FS_OUTPUT_HZ    5200000.0
+#define FS_BYTE_HZ      25000000.0
 #define CN0_TARGET_DBHZ 42.0
 #define HEADROOM_RATIO  0.80
 #define AMP_SMOOTH_TC_MS 1000

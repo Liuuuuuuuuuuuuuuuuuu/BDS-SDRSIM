@@ -22,6 +22,7 @@ static void usage(const char *p)
     puts("  --nmea file          NMEA 路徑檔");
     puts("  --duration sec       模擬秒數 (1-3600)");
     puts("  --gain amp           輸出增益 (>0)");
+    puts("  --fs MHz            取樣率 (MHz)");
     puts("  -cn0 value          目標 CN0 (dB-Hz)");
     puts("  --seed n            亂數種子 (整數)");
     puts("  --byte               輸出 8-bit IQ 檔 (0 Hz IF)");
@@ -42,11 +43,13 @@ int main(int argc,char *argv[])
     cfg.duration    = 300;                /* 預設 300 秒 */
     cfg.seed        = 1;
     cfg.byte_output = false;
+    cfg.fs          = FS_OUTPUT_HZ;
     cfg.meo_only   = false;
     cfg.single_prn = 0;
     cfg.prn37_only = false;
     cfg.iono_on    = true;
     bool llh_given   = false;
+    bool fs_given    = false;
 
     /* 處理 "-byte" 舊習慣 */
     for(int i=1;i<argc;i++){
@@ -74,6 +77,7 @@ int main(int argc,char *argv[])
         {"nmea",     required_argument, 0, 'n'},
         {"duration", required_argument, 0, 'd'},
         {"gain",     required_argument, 0, 'g'},
+        {"fs",       required_argument, 0, 'f'},
         {"seed",     required_argument, 0, 'R'},
         {"byte",     no_argument,       0, 'b'},
         {"meo-only", no_argument,       0, 'M'},
@@ -85,7 +89,7 @@ int main(int argc,char *argv[])
     };
 
     int c, idx;
-    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:R:hbp:BMI", longopt, &idx)) != -1){
+    while((c = getopt_long(argc, argv, "e:t:l:x:y:n:d:g:f:R:hbp:BMI", longopt, &idx)) != -1){
         switch(c){
         case 'e':
             strncpy(cfg.rinex_file, optarg, sizeof(cfg.rinex_file)-1);
@@ -127,6 +131,10 @@ int main(int argc,char *argv[])
                 return 1;
             }
             break;
+        case 'f':
+            cfg.fs = atof(optarg) * 1e6;
+            fs_given = true;
+            break;
         case 'R':
             cfg.seed = (unsigned)strtoul(optarg,NULL,0);
             break;
@@ -160,6 +168,13 @@ int main(int argc,char *argv[])
     }
 
     g_enable_iono = cfg.iono_on ? 1 : 0;
+
+    if(cfg.byte_output && !fs_given)
+        cfg.fs = FS_BYTE_HZ;
+    if(cfg.fs <= 0.0){
+        fputs("--fs 必須 >0\n", stderr);
+        return 1;
+    }
 
     if(cfg.path_type!=0 && llh_given){
         fputs("--llh 與路徑檔選項不可並用\n", stderr);
@@ -266,7 +281,7 @@ int main(int argc,char *argv[])
     printf("\n[cfg] MEO:");
     for(int i=0;i<n_ch;i++)
         if(is_meo_prn(prn_sorted[i])) printf(" %02d", prn_sorted[i]);
-    double fs_out = cfg.byte_output ? 25.0 : FS_OUTPUT_HZ/1e6;
+    double fs_out = cfg.fs/1e6;
     printf("\n[cfg] Fs %.2fMHz  Gain %.2f\n\n",
            fs_out, cfg.gain);
 
