@@ -111,7 +111,7 @@ class bds(gr.top_block, Qt.QWidget):
         self.blocks_multiply_const_vxx_0.set_max_output_buffer(8192)
         self.blocks_interleaved_short_to_complex_0 = blocks.interleaved_short_to_complex(False, False,1.0)
         self.blocks_interleaved_short_to_complex_0.set_max_output_buffer(8192)
-        self.blocks_file_source_0 = blocks.file_source(gr.sizeof_short*1, '/home/liu/beidou-sim/beidou_b1i.bin', False, 0, 0)
+        self.blocks_file_source_0 = blocks.file_source(gr.sizeof_short*1, '/path/to/beidou_b1i.bin', False, 0, 0)
         self.blocks_file_source_0.set_begin_tag(pmt.PMT_NIL)
 
 
