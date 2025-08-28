@@ -1,11 +1,4 @@
-<p align="center">
-  <a href="https://github.com/Liuuuuuuuuuuuuuuuuuu/BDS-SDRSIM">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/bds-sdrsim-card-dark.png">
-      <img src=".github/assets/bds-sdrsim-card-light.png" alt="BDS-SDRSIM" width="880">
-    </picture>
-  </a>
-</p>
+![BDS-SDRSIM](.github/assets/bds-sdrsim-card-light.png)
 
 # BDS-SDRSIM
 
