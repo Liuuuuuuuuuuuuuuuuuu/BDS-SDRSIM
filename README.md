@@ -2,11 +2,11 @@
   <a href="https://github.com/Liuuuuuuuuuuuuuuuuuu/BDS-SDRSIM">
     <picture>
       <!-- 深色主題 -->
-      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/bds-sdrsim-card-dark.png?v=1">
+      <source media="(prefers-color-scheme: dark)" srcset="assets/bds-sdrsim-card-dark.png?v=1">
       <!-- 淺色主題 -->
-      <source media="(prefers-color-scheme: light)" srcset=".github/assets/bds-sdrsim-card-light.png?v=1">
+      <source media="(prefers-color-scheme: light)" srcset="assets/bds-sdrsim-card-light.png?v=1">
       <!-- 預設（不支援 prefers-color-scheme 的情境） -->
-      <img alt="BDS-SDRSIM" src=".github/assets/bds-sdrsim-card-light.png?v=1" width="880">
+      <img alt="BDS-SDRSIM" src="assets/bds-sdrsim-card-light.png?v=1" width="880">
     </picture>
   </a>
 </p>
